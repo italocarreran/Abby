@@ -379,7 +379,7 @@ manteniendo el formato de las celdas.
 | `C_NEUTRO` | `'SystemButtonFace'` |  |
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `DIR_SALIDAS` | `DIR_SCRIPT / 'Salidas'` |  |
+| `DIR_SALIDAS` | `DIR_SCRIPT.parent / '00_Salidas'` |  |
 | `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
 | `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Cache de directorios Una relectura completa hacia 68 recorridos de carpeta para 13 carpetas distintas: cada nodo del arbol recorria la carpeta entera de nuevo, y encima resolver_carpeta recorria la r… |
 | `RE_COPIA` | `re.compile('(-\\s*cop(?:ia\|y)(?:\\s*\\(\\d+\\))?\|\\(\\d+\\))\\s*$')` | Sufijos que deja Windows al copiar: "archivo - copia.mdb", "archivo - copia (2).mdb", "archivo - Copy.xlsm". |
@@ -415,7 +415,7 @@ en self.stats, para poder decir en la bitacora cuanto se ahorro.
 
 #### `class Estado`
 
-Verificaciones de un mes. Se guardan en Salidas/AAMM junto al .py.
+Verificaciones de un mes. Se guardan en 00_Salidas/AAMM, fuera de Revisor_Relq.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -430,7 +430,7 @@ Verificaciones de un mes. Se guardan en Salidas/AAMM junto al .py.
 
 Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
 modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-vuelve a abrir. Se guarda en Salidas/AAMM para que sirva entre ejecuciones.
+vuelve a abrir. Se guarda en 00_Salidas/AAMM para que sirva entre ejecuciones.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -473,7 +473,7 @@ ni guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
 
 #### `def dir_mes(aamm, crear=False)`
 
-Salidas/AAMM junto al .py. Solo la crea si crear=True.
+00_Salidas/AAMM, hermana de Revisor_Relq. Solo la crea si crear=True.
 
 #### `def escribir_json(ruta, data)`
 

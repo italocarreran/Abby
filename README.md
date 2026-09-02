@@ -10,7 +10,8 @@ prorrateador y los cargadores de datos.
 entera. Ahí adentro está todo lo que corre, con la estructura que los scripts
 esperan.
 
-Lo que no se sube y aparece solo al usarlo: `config.json`, `Salidas/` y
+Lo que no se sube y aparece solo al usarlo: `config.json`, `00_Salidas/` (hermana
+de `Revisor_Relq/`) y
 `Reemplazos REUC/Auxiliares/config.json`.
 
 ## Si sos un asistente y entrás — Claude, ChatGPT, el que sea

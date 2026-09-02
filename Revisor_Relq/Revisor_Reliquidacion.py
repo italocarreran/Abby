@@ -1097,12 +1097,12 @@ C_NEUTRO    = "SystemButtonFace"
 
 DIR_SCRIPT = Path(__file__).resolve().parent
 CONFIG_PATH = DIR_SCRIPT / "config.json"
-DIR_SALIDAS = DIR_SCRIPT / "Salidas"
+DIR_SALIDAS = DIR_SCRIPT.parent / "00_Salidas"
 ARCHIVO_ESTADO = "_revisor_verificaciones.json"
 
 
 def dir_mes(aamm, crear=False):
-    """Salidas/AAMM junto al .py. Solo la crea si crear=True."""
+    """00_Salidas/AAMM, hermana de Revisor_Relq. Solo la crea si crear=True."""
     p = DIR_SALIDAS / str(aamm).strip()
     if crear:
         p.mkdir(parents=True, exist_ok=True)
@@ -1509,7 +1509,7 @@ def firma_verificador(vid):
 
 
 class Estado:
-    """Verificaciones de un mes. Se guardan en Salidas/AAMM junto al .py."""
+    """Verificaciones de un mes. Se guardan en 00_Salidas/AAMM, fuera de Revisor_Relq."""
 
     def __init__(self):
         self.ruta = None
@@ -1610,7 +1610,7 @@ def huella_spec(spec):
 class CacheValores:
     """Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
     modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-    vuelve a abrir. Se guarda en Salidas/AAMM para que sirva entre ejecuciones."""
+    vuelve a abrir. Se guarda en 00_Salidas/AAMM para que sirva entre ejecuciones."""
 
     def __init__(self):
         self.aamm = None
@@ -4030,7 +4030,7 @@ class Revisor:
             if not messagebox.askyesno(
                     "Sin mes",
                     "No hay AAMM definido, así que no se sabe a qué mes pertenece "
-                    "esto.\n\nEl traspaso se guardará en Salidas/sin_mes.\n\n¿Lanzar igual?"):
+                    "esto.\n\nEl traspaso se guardará en 00_Salidas/sin_mes.\n\n¿Lanzar igual?"):
                 return
 
         # Se deja el mes en curso en config.json para que los actualizadores
@@ -5018,7 +5018,7 @@ class Revisor:
             if not messagebox.askyesno(
                     "Sin mes definido",
                     "No hay un AAMM definido, así que el resultado no se va a "
-                    "guardar en Salidas.\n\n¿Verificar igual?"):
+                    "guardar en 00_Salidas.\n\n¿Verificar igual?"):
                 return
         self.trabajando = True
         self._bloquear(True)

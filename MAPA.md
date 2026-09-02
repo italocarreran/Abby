@@ -61,7 +61,7 @@ propia `Auxiliares/`, como siempre.
                                                               (el que se va a pago)
 
    Revisor_Reliquidacion  ← orquesta todo: verifica V4..V17 y lanza los de arriba
-                            pasándoles Salidas/AAMM/_traspaso_actualizador.json
+                            pasándoles 00_Salidas/AAMM/_traspaso_actualizador.json
 ```
 
 ---
@@ -75,7 +75,8 @@ propia `Auxiliares/`, como siempre.
 - **Consume:** todo el árbol de `02 CASO RELIQUIDACION` + `FD/`, las tres bases
   Access, `config.json` (`carpeta_base`, `ultimo_mes`, `carpetas_por_mes`,
   `_valores`).
-- **Produce:** `Salidas/AAMM/` — estado, caché y `_traspaso_actualizador.json`, que
+- **Produce:** `00_Salidas/AAMM/`, en la carpeta hermana de `Revisor_Relq/` —
+  estado, caché y `_traspaso_actualizador.json`, que
   le pasa como único argumento al actualizador que lanza.
 - **Expone:** el JSON de traspaso (`origen`, `version`, `aamm`, `carpeta_reliq`,
   `planilla`, `rutas`, `nodo`, `clave_nodo`, `ruta_nodo`); `plan_traer_maestro()`

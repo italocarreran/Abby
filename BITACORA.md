@@ -33,6 +33,14 @@
 
 ---
 
+## 2026-09-02 — ChatGPT — mueve las salidas fuera de `Revisor_Relq`
+
+El Revisor ahora resuelve `DIR_SALIDAS` como
+`DIR_SCRIPT.parent / "00_Salidas"`: la carpeta de estado, caché y traspaso queda
+como hermana de `Revisor_Relq/`, no adentro. Se actualizaron los textos del
+Revisor, el mapa, las instrucciones, el README y la exclusión de Git. No queda
+nada pendiente de este cambio.
+
 ## 2026-09-02 — Claude — reglas obligatorias y esta bitácora
 
 El usuario va a darle a ChatGPT el mismo acceso de escritura por git que
