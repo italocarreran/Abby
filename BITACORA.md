@@ -30,8 +30,39 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+- [ ] Quedaron 3 comentarios `# ... Salidas/AAMM/ ...` (sin el `00_` nuevo) en
+      `Actualiza_datos.py`, `Actualiza_Data_Access.py` y
+      `ActualizaRemplazos.py` — scripts que todavía no leen ni escriben
+      `DIR_SALIDAS` directamente, así que no son un bug funcional, pero van a
+      quedar mal si algún día alguno de esos scripts empieza a usar esa ruta.
+      Corregirlos de paso la próxima vez que se toque cualquiera de esos tres
+      archivos. `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene las mismas 2
+      menciones viejas — se suma a la fila ya abierta de diferencias con el
+      código real (arriba).
 
 ---
+
+## 2026-09-02 — Claude — mergea la rama de Codex, verifica el cambio de `00_Salidas`
+
+El usuario le pidió a **Codex** (no a ChatGPT) mover `DIR_SALIDAS` fuera de
+`Revisor_Relq/`. Codex no tenía push configurado en su sandbox y avisó que el
+commit quedó solo local — pero apareció igual en GitHub, en la rama
+`codex/modificar-carpeta-de-salida-del-revisor` (`1f16007`), aparentemente
+subida por el usuario. Esa rama partía exactamente del commit anterior de
+esta bitácora (`e2443c8`), sin divergencia, así que se pudo traer con un
+`git merge --ff-only` — nada que resolver.
+
+Se verificó de nuevo por cuenta propia, sin confiar solo en lo que reportó
+Codex: `generar_interfaces.py --check` (al día), sintaxis del Revisor,
+`DIR_SALIDAS` leído por AST (`DIR_SCRIPT.parent / '00_Salidas'`, exacto), y
+las 13 pruebas de `comun/test_config.py` (no tocadas por este cambio, pero
+confirman que sigue sano). Todo coincidió con lo reportado.
+
+Dos correcciones sobre la entrada de acá abajo, sin editarla (así lo pide
+`REGLAS.md`): la firma dice "ChatGPT" pero fue Codex quien lo hizo; y donde
+dice "no queda nada pendiente" en realidad sí quedó algo menor — 3
+comentarios y el documento de dominio con la ruta vieja sin actualizar (ver
+"Pendientes abiertos", arriba). No bloquea nada, es cosmético.
 
 ## 2026-09-02 — ChatGPT — mueve las salidas fuera de `Revisor_Relq`
 
