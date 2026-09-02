@@ -40,7 +40,56 @@
       menciones viejas — se suma a la fila ya abierta de diferencias con el
       código real (arriba).
 
+- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tarea 1 (`comun/salidas.py` +
+      `dir_mes` del Revisor) y Tarea 2 (cablear los dos comparadores). Los dos
+      `.py` ya están en `Comparadores/` pero **sin cablear: hoy no corren en
+      esa ubicación**. Borrar ese plan cuando las dos tareas estén aplicadas.
+- [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
+      `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
+- [ ] Los comparadores tienen su propia copia de `leer_config` /
+      `guardar_config` / `escribir_json_atomico`. Migrarlas a `comun/config.py`
+      como ya se hizo con `Actualiza_SC_CO.py` — **no** dentro de las tareas
+      del plan, después y por separado.
+
 ---
+
+## 2026-09-02 — Claude — plan de los comparadores y de `00_Salidas` por año
+
+El usuario pidió: los dos comparadores a una carpeta hermana `Comparadores/`,
+tomando las rutas del mismo origen que el Revisor, y `00_Salidas` reorganizada
+en `AAAA/MM Mes` con `_comparador` y `_comparador_tabulado` dentro de su año.
+Pidió explícitamente planificar, no ejecutar: lo aplica Codex.
+
+Se leyeron los dos comparadores y el código del Revisor antes de planificar.
+Tres hallazgos que cambian el plan:
+
+1. **`dir_mes()` del Revisor es el único punto por donde pasa el armado de la
+   carpeta del mes** (~10 llamadas). Cambiar la estructura es cambiar una sola
+   función, no diez. Y ningún actualizador usa `DIR_SALIDAS`: reciben la ruta
+   del traspaso por `argv[1]`.
+2. **Los comparadores ya leen el `config.json` compartido y ya leen/escriben
+   los `_traspaso_actualizador.json` del Revisor** (Etapas escribe bajo su
+   propia clave `comparador_etapas`, sin tocar nada ajeno). O sea que el pedido
+   de "las rutas del mismo origen" ya está casi resuelto en el código: solo
+   falta que `CONFIG_PATH` siga apuntando al del Revisor después de la mudanza.
+3. **Bug en `Comparador_Tabulado.py`:** `DIR_PARQUET` y `DIR_VISTAS` están
+   definidos dos veces (159-160 y 827-828). Todos los usos vienen después de
+   la 827, así que las carpetas reales son `parquet_variables` /
+   `vistas_variables`; las líneas de arriba son código muerto que engaña a
+   quien lee el bloque de constantes. Queda anotado en el plan para que el
+   refactor preserve el comportamiento real y borre las muertas.
+
+Decisión de diseño: la lógica AAMM → carpeta va en `comun/salidas.py`, una sola
+vez, importada por el Revisor y por los dos comparadores. Si se duplicara, uno
+leería donde el otro no escribe **sin ningún error visible** — el mismo tipo de
+bug que ya documentó `CENTRALES_EMBALSE`. Y como `Comparadores/` es hermana de
+`Revisor_Relq/`, los comparadores localizan al Revisor buscando el archivo
+`Revisor_Reliquidacion.py` entre las carpetas hermanas, no por el nombre de la
+carpeta — que ya cambió tres veces.
+
+Los dos `.py` se subieron sin modificar a `Comparadores/` para que Codex pueda
+trabajarlos (solo existían como adjuntos en el chat). **Quedan rotos en esa
+ubicación hasta la Tarea 2**, y así lo dice `Comparadores/README.md`.
 
 ## 2026-09-02 — Claude — mergea la rama de Codex, verifica el cambio de `00_Salidas`
 
