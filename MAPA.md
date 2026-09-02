@@ -4,10 +4,10 @@
 > entradas que hacen falta → abrir completo **únicamente** el archivo que se va a
 > modificar. No abrir los vecinos "para tener contexto".
 
-**Estado:** los `.py` todavía no están subidos. Los bloques de abajo están escritos
-desde `docs/ESTRUCTURA_CASO_RELIQUIDACION.md`, no desde el código. Cuando cada
-script llegue al repositorio hay que **validar su bloque contra el archivo real** y
-sacarle la marca ⚠️.
+**Estado:** los 10 scripts están en el repositorio y los bloques de abajo están
+**validados contra el código**. Donde el código difiere de
+`docs/ESTRUCTURA_CASO_RELIQUIDACION.md`, manda el código y la diferencia está
+anotada al final, en "Diferencias con el documento de dominio".
 
 Convención de cada bloque: **qué hace · consume · produce · expone · depende de**.
 
@@ -41,7 +41,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 
 ---
 
-## ⚠️ `Revisor_Reliquidacion.py`
+## `Revisor_Reliquidacion.py`
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,
   verifica por fecha de modificación (copias contra sus maestros) y por valores
@@ -55,16 +55,20 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 - **Expone:** el JSON de traspaso (`origen`, `version`, `aamm`, `carpeta_reliq`,
   `planilla`, `rutas`, `nodo`, `clave_nodo`, `ruta_nodo`); `plan_traer_maestro()`
   separado del ejecutor; `cache_directorios()` como context manager;
-  `CENTRALES_EMBALSE`; `UMBRAL_DESCUADRE_CPRT` (500) y `UMBRAL_PAR_SEGURO` (100).
+  `CENTRALES_EMBALSE` (27); `UMBRAL_DESCUADRE_CPRT` (**1000.0**, no 500) y
+  `UMBRAL_PAR_SEGURO` (100.0); `TOLERANCIA` (1.0), `TOL_PAGO_EMPRESA` (150.0),
+  `TOL_SOBRECOSTO_FILA` (1.0), `TOL_MTIME` (2 s); `NODOS` (36) y `VERIFICADORES` (14).
 - **Depende de:** los 9 scripts que lanza, pero solo por línea de comandos — no los
   importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**
 - **Detalles que importan:** V17 es la raíz de casi todo (si el tabulado tiene el
   sobrecosto mal calculado, todos los totales cuadran igual y el error llega al
   cuadro de pago). El caché de directorios está apagado por omisión y solo se
   enciende dentro del `with`, porque `mtime()` se usa después para decidir si una
-  verificación venció. La relectura es parcial: V9 relee 1 nodo de 27, V16 relee 13.
+  verificación venció. La relectura es parcial: V9 relee 1 nodo, V16 relee 13 (el
+  árbol tiene 36 nodos). `cache_directorios` es una clase, no una función: al salir
+  deja `self.stats = (scans, hits)` para poder decir en la bitácora cuánto se ahorró.
 
-## ⚠️ `Actualiza_datos.py`
+## `Actualiza_datos.py`
 
 - **Qué hace:** trae las hojas FD desde `SSCC_Desempeno*`, el consolidado tabulado y
   la prorrata de retiros, a `Cálculo_SobrecostosSSCC` y a las planillas 3, 5 y 6.
@@ -85,7 +89,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   alfabéticamente, faltantes en 0. El "Traer Consolidado" filtra solo las filas con
   columna `C = C.Frec`. Los `.xlsm` destino tienen que estar cerrados.
 
-## ⚠️ `Actualiza_Data_Access.py`
+## `Actualiza_Data_Access.py`
 
 - **Qué hace:** consolida tres Excel (SSCC, CO, CCA) en la tabla `Sobrecostos` del
   `.mdb` de `01 Sobrecostos`. Es además **el motor** que reutilizan
@@ -99,15 +103,22 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   solo los tipos que vienen en los Excel seleccionados; los demás quedan intactos.
 - **Expone:** `proceso(..., fuentes=..., borrar_todo=...)`, `leer_fuente(cfg)` (que
   respeta `cfg["filtro"]` y `cfg["cols_no_cero"]`), la verificación posterior a la
-  carga, y `CAPACIDADES = {"fuentes_externas", "filtro_por_valores", "borrar_todo",
-  "cols_no_cero"}`.
+  carga, el lector de Excel por ZIP/XML (`NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT`,
+  compartido con el Revisor), y
+  `CAPACIDADES = frozenset({"fuentes_externas", "filtro_por_valores", "borrar_todo",
+  "cols_no_cero", "forzar_valores"})` — **son 5**, el documento de dominio todavía
+  lista 4.
 - **Depende de:** driver `Microsoft Access Driver (*.mdb, *.accdb)` de la **misma
   arquitectura** (32/64 bits) que el Python que lo ejecuta.
 - **⚠️ Al agregar una capacidad hay que sumarla a `CAPACIDADES`.** Si no, el script
   que la use falla con un `TypeError` raro en vez de decir "copiá el archivo
   actualizado"; y si la capacidad es un filtro, no falla nada y entran datos de más.
+  Hay un `_verificar_capacidades()` que comprueba al arrancar que lo declarado
+  exista de verdad en el código, porque el error ya pasó dos veces en los dos
+  sentidos — y declarar de más es lo peor, porque el que importa el motor cree que
+  puede usarla.
 
-## ⚠️ `Actualiza_Energia.py`
+## `Actualiza_Energia.py`
 
 - **Qué hace:** los dos entregables de `01.a Sobrecostos de Energia`, los dos desde
   el `02 Consolidado_Tabulado`, tomando **solo SCMT y SCPC** (columna `AB`).
@@ -125,7 +136,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   SCPC del tabulado, las filas viejas de SCPC quedan; V5 lo caza pero se ve como
   descuadre de monto.
 
-## ⚠️ `Actualiza_Cuadro0.py`
+## `Actualiza_Cuadro0.py`
 
 - **Qué hace:** deja datos y fórmulas del cuadro cero al día. **No** llama macros ni
   refresca la tabla dinámica: eso se hace a mano.
@@ -145,7 +156,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   COM; la `D` se ajusta contra la tabla `A:C`, no contra `K`; la `Q` queda vacía a
   propósito; la tasa se guarda por mes, no suelta.
 
-## ⚠️ `Actualiza_SC_CO.py`
+## `Actualiza_SC_CO.py`
 
 - **Qué hace:** reescribe la hoja **"SC y CO"** de la planilla 5, con los SC y los CO
   de los embalses y su prorrata de instrucción directa. SC arriba, CO abajo.
@@ -166,7 +177,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   los SC (no viene en el origen); si no hay SC, la que ya tenía el destino; si
   tampoco, el mes de la ventana.
 
-## ⚠️ `Actualiza_Access_P9.py`
+## `Actualiza_Access_P9.py`
 
 - **Qué hace:** carga el `.mdb` de la planilla 9 desde las planillas 3, 5 y 6.
   Reemplaza a `para ricardo.py` + `archivo_de_configuracion.yaml`. Una casilla por
@@ -179,9 +190,11 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   propietarios, **vaciadas completas una sola vez** antes de insertar. Opcionalmente
   `df_ricardo_salida.xlsx` junto al `.mdb`.
 - **Expone:** —
-- **Depende de:** el motor y la verificación de `Actualiza_Data_Access.py`
-  (capacidades `fuentes_externas`, `filtro_por_valores`, `borrar_todo`,
-  `cols_no_cero`).
+- **Depende de:** el motor y la verificación de `Actualiza_Data_Access.py`. Exige
+  las **5** capacidades (`fuentes_externas`, `filtro_por_valores`, `borrar_todo`,
+  `cols_no_cero`, `forzar_valores`) y si falta alguna corta con un mensaje que dice
+  cuál y que hay que copiar el archivo actualizado al lado. `Actualiza_Energia.py`
+  solo exige las dos primeras.
 - **Detalles que importan:** la `Clave Año_Mes` del origen **no se usa** (viene mal,
   siempre `23xx`): se pisa con el mes sacado del nombre de los archivos. Los bloques
   se leen **por posición, no por nombre de columna** (un `pd.concat` alinea por
@@ -193,7 +206,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   central **con monto** sin dueño, y eso lo caza V12. El bloque BESS del script viejo
   no se incluye.
 
-## ⚠️ `Prorratear.py`
+## `Prorratear.py`
 
 - **Qué hace:** automatiza en SQL Server lo que se hacía a mano en Management
   Studio. Está como botón en los **tres** `.mdb`.
@@ -215,15 +228,17 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   tablas existan **antes de borrar nada**. Modo SOLO MIRAR por defecto. Si falla
   después del borrado la base queda incompleta: hay que volver a correrlo.
 
-## ⚠️ `Carga_Retiros.py`
+## `Carga_Retiros.py`
 
 - **Qué hace:** carga `Retiros_h.parquet` a SQL Server. Es el único script que
   escribe en una base y no en un Excel.
 - **Consume:** `04 Planilla 9/Retiros_h.parquet`; `config.json` (`retiros_base`).
 - **Produce:** tabla `Retiros` en `SRV-DTE`, base `02_RETIROS` o
-  `14_RETIROS_RELIQUIDACIÓN`. Driver `ODBC Driver 17 for SQL Server`, conexión de
-  confianza. **Siempre `TRUNCATE`** y carga de cero, por trozos de 50.000,
-  verificando que la cuenta cuadre.
+  `14_RETIROS_RELIQUIDACION` (**sin tilde** en el código; el documento la escribe con
+  tilde en un lado y sin tilde en otro). Driver `ODBC Driver 17 for SQL Server`,
+  conexión de confianza. **Siempre `TRUNCATE`** y carga de cero, en trozos de
+  `CHUNK` = 50.000, verificando que la cuenta cuadre. La hora del cambio por omisión
+  es la 145.
 - **Expone:** la casilla «Cambio de hora (−)» y la hora del mes.
 - **Depende de:** la ruta del parquet, que puede venir del revisor.
 - **Detalles que importan:** los nombres de columna no se escriben igual en todos
@@ -235,19 +250,32 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   no existe; **el parquet no se modifica**. No la aplica si el archivo ya viene
   corrido (la hora del cambio no existe en los datos) ni si el mes está completo.
 
-## ⚠️ `reemplazos_reuc/ActualizaRemplazos.py`
+## `reemplazos_reuc/ActualizaRemplazos.py`
 
-- **Qué hace:** genera la tabla de empresas con RUT y la de reemplazos, y las pega
-  en el cuadro cero.
-- **Consume:** el registro de empresas del REUC, `Reemplazos forzados*.xlsx` (hoja
-  `Reemplazos forzados`, columnas `Reemplazada` / `Reemplazante`), y un
-  `1_CUADROS_PAGO` que sale del árbol de `T:\Facturacion\<mes>\<versión>` — **no**
-  del `00 Entregables` que tiene el revisor (por confirmar si es el mismo archivo).
-- **Produce:** en el cuadro cero, `B:C` las empresas y `H:I` los reemplazos, con
-  encabezado en la fila 1 en los dos bloques.
+- **Qué hace:** arma la tabla de empresas con RUT y la de reemplazos, y las escribe
+  en la hoja `EMPRESAS` del cuadro cero. Hace bastante más de lo que dice el
+  documento de dominio: además descarga los datos del REUC solo y busca en el disco
+  T: los dos archivos grandes que necesita.
+- **Consume:**
+  - `datos_reuc_*.xlsx` y `datos_reuc_reemplazos_*.xlsx` — **los descarga solo**
+    desde `reuc.coordinador.cl` con **playwright** (pide `pip install playwright` y
+    `playwright install chromium`); si no está, se pueden bajar a mano.
+  - `Reemplazos forzados*.xlsx`, hoja `Reemplazos forzados`, columnas
+    `Reemplazada` / `Reemplazante`. Se copia del último mes reliquidado y se
+    confirma.
+  - `Cuadros de Pago_Balances_SEN_*_Simplificado_def.xlsb` — de PLABACOM, buscado
+    bajo `T:\Facturacion\Plabacom` con el patrón `balances_sen.*simplificado.*\.xlsb$`.
+  - `1_CUADROS_PAGO_SSCC_*.xlsm` — buscado bajo `T:\Facturacion`, con búsqueda
+    conjunta por mes (`MESES_ES`, `MESES_ABR`). **No** es el de `00 Entregables` que
+    tiene el revisor; sigue sin confirmarse si es el mismo archivo, y por eso el
+    revisor manda `cuadro_1` en el JSON pero el script no la usa.
+- **Produce:** `Reemplazos_AAAAMMDD_SSCC.xlsx` (el entregable suelto) y, en la hoja
+  `EMPRESAS` del cuadro cero, `B:C` = EMPRESA / RUT y `H:I` = Reemplazada /
+  Reemplazante. **Los dos bloques se limpian antes de pegar, conservando el formato
+  de las celdas.**
 - **Expone:** —
-- **Depende de:** su **propio** `config.json`, en `reemplazos_reuc/Auxiliares/`, no
-  el compartido.
+- **Depende de:** `pandas`, `xlwings` y `playwright` (este último opcional). Su
+  **propio** `config.json`, en `reemplazos_reuc/Auxiliares/`, no el compartido.
 - **⚠️ Orden corregido:** los reemplazos forzados se aplican **antes** del cruce con
   el registro de empresas. Aplicándolos después, las filas sin RUT ya se habían
   descartado y un forzado nunca podía arreglar el nombre que no coincidía: la alerta
@@ -258,18 +286,45 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 
 ---
 
+## Diferencias con el documento de dominio
+
+`docs/ESTRUCTURA_CASO_RELIQUIDACION.md` se quedó atrás en estos puntos. **Manda el
+código.** Corregir el documento cuando haya oportunidad:
+
+| Dónde | Dice el documento | Dice el código |
+|---|---|---|
+| V16, comprobación 6 | `UMBRAL_DESCUADRE_CPRT` = 500 | **1000.0** — es el redondeo acumulado del reparto proporcional, que crece con la cantidad de empresas; en 2312, con 481 pares, dio 31,3 pesos |
+| `Actualiza_Data_Access.py` | `CAPACIDADES` tiene 4 | **5**: falta listar `forzar_valores`. Y hay un `_verificar_capacidades()` que el documento no menciona |
+| Caché de directorios | "27 nodos" | el árbol tiene **36** nodos (`NODOS`) |
+| `Carga_Retiros.py` | `14_RETIROS_RELIQUIDACIÓN` con tilde | **`14_RETIROS_RELIQUIDACION`** sin tilde, igual que en `Prorratear.py` |
+| `ActualizaRemplazos.py` | solo pega empresas y reemplazos | además **descarga del REUC con playwright**, busca los Balances SEN de PLABACOM y el `1_CUADROS_PAGO` en `T:\Facturacion`, y genera `Reemplazos_AAAAMMDD_SSCC.xlsx`. Escribe en la hoja `EMPRESAS`, no en una hoja sin nombrar |
+
+---
+
 ## Lo que todavía no existe
 
-- **`comun/`** — el módulo compartido. Hoy la ventana de selección, el `config.json`,
-  el log con progreso, la apertura/cierre de Excel y el descarte de copias de Windows
-  están **copiados en cada script**. Sacarlo a `comun/` deja los scripts cortos
-  (baratos de leer y de modificar) y elimina la clase entera de errores por
-  duplicación, de la que `CENTRALES_EMBALSE` es el caso documentado.
+**`comun/`** — el módulo compartido. El generador detectó **15 constantes definidas
+en más de un archivo** (la tabla completa está al final de `INTERFACES.md`). Ordenadas
+por cuánto rinde sacarlas:
 
-  **Este cambio toca todos los scripts a la vez, así que va por partes.** Primera
-  pieza sugerida: el manejo del `config.json`, que está bien acotado y ya está
-  documentado (sección 9 del documento de dominio). Un script a la vez, verificando
-  que sigue corriendo antes de seguir con el próximo.
+| Constante | En cuántos archivos | Qué es |
+|---|---|---|
+| `CONFIG_PATH` | **10 de 10** | la ruta del `config.json` |
+| `TRASPASO_ORIGEN`, `TRASPASO_VERSION_MAX` | 9 | el contrato del JSON del revisor |
+| `DIR_SCRIPT` | 7 | la carpeta del script |
+| `NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` | 2 | el lector de Excel por ZIP/XML, duplicado entre el Revisor y `Actualiza_Data_Access` |
+| `CENTRALES_EMBALSE` | 2 | el caso documentado, el único que ya obligó a defenderse con una verificación |
+| `SERVER`, `DRIVER`, `CHUNK`, `LARGO_TEXTO` | 2 | la conexión a SQL Server |
 
-- **Los `.py` mismos.** El repositorio tiene la estructura y los contratos; falta
-  subir el código.
+**El orden de migración sugerido no es `CENTRALES_EMBALSE`**, aunque sea el caso más
+famoso: es el que menos riesgo tiene de quedar mal, porque V10 lo caza. Conviene
+empezar por el **manejo del `config.json`** (`CONFIG_PATH` + `leer_config` /
+`guardar_config` / `escribir_json` / `get_usuario`), que está en los 10 archivos,
+está bien acotado y ya está documentado en la sección 9 del documento de dominio.
+
+Después, por tamaño de la ganancia: el **lector de Excel por ZIP/XML**, que son
+varios cientos de líneas idénticas entre el Revisor y `Actualiza_Data_Access`.
+
+**Este cambio toca todos los scripts a la vez, así que va por partes.** Una pieza a
+la vez, un script a la vez, verificando que sigue corriendo antes de seguir con el
+próximo.

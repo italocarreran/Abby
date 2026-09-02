@@ -106,7 +106,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 | Trampa | Regla |
 |---|---|
 | `CENTRALES_EMBALSE` está duplicada en `Actualiza_SC_CO.py` y `Revisor_Reliquidacion.py` | Al tocarla hay que cambiarla en **los dos**, con el nombre exacto del origen. V10 caza la desincronización en ambos sentidos, pero se ve como descuadre de monto. |
-| Capacidad nueva en `Actualiza_Data_Access.py` | Sumarla a `CAPACIDADES`. Si no, el script que la importa se cae con un `TypeError` raro en vez de decir "copiá el archivo actualizado". Peor si la capacidad es un **filtro**: no falla nada y entran datos de más. |
+| Capacidad nueva en `Actualiza_Data_Access.py` | Sumarla a `CAPACIDADES` (hoy son **5**). Si no, el script que la importa se cae con un `TypeError` raro en vez de decir "copiá el archivo actualizado". Peor si la capacidad es un **filtro**: no falla nada y entran datos de más. Hay un `_verificar_capacidades()` que comprueba al arrancar que lo declarado exista de verdad; ya hizo falta dos veces. |
 | Columnas que no llevan fórmula | La `Q` de la hoja #3 del cuadro cero y la `AC` de la hoja "SC y CO" están vacías **a propósito**. Nunca hacer un AutoFill corrido que las pise: hay que tratar los bloques por separado. El actualizador y el verificador usan la misma partición. |
 | La `D` de la hoja #3 | Va contra la tabla `A:C`, **no** contra `K`. `K` junta las empresas de `A` y de `F`, así que casi siempre es más larga. |
 | `Clave Año_Mes` del origen de la planilla 9 | Viene mal (siempre `23xx`). Se pisa con el mes sacado del **nombre de los archivos**. |
@@ -129,9 +129,20 @@ python generar_interfaces.py --esqueleto-mapa   # bloques para los .py que falta
 Solo biblioteca estándar, Python 3.9+. **Correrlo después de cualquier cambio de
 firma** y subir el `INTERFACES.md` resultante junto con el `.py`.
 
-El generador además avisa de dos cosas que conviene mirar: constantes definidas en
-más de un archivo (la clase de error de `CENTRALES_EMBALSE`) y archivos `.py` que
-todavía no tienen bloque en `MAPA.md`.
+El generador está ajustado a cómo documentan estos scripts, así que **conviene
+seguir el mismo estilo** para que siga saliendo bien:
+
+- **Encabezado arriba de todo**, docstring o bloque `#`: los dos se usan igual. De
+  ahí sale la descripción del archivo (las primeras líneas, hasta el primer
+  subtítulo en MAYÚSCULAS).
+- **Banners `# === TÍTULO ===`** para separar secciones. El generador los reconoce y
+  los muestra como divisores, no como descripción de la función que viene abajo.
+- **Comentario justo encima** de una función o constante cuando no hay docstring:
+  eso es lo que se usa como descripción.
+
+Además avisa de dos cosas que conviene mirar: constantes definidas en más de un
+archivo (la clase de error de `CENTRALES_EMBALSE`) y archivos `.py` que todavía no
+tienen bloque en `MAPA.md`.
 
 ---
 
@@ -148,9 +159,9 @@ todavía no tienen bloque en `MAPA.md`.
 - **`docs/ESTRUCTURA_CASO_RELIQUIDACION.md` entra tal cual y es la referencia de
   dominio.** No hay que rehacerlo. Si algo del dominio cambia, se corrige ahí, no en
   una copia.
-- **Los `.py` todavía no están en el repositorio** (ver `MAPA.md`, sección de estado).
-  Los bloques del mapa están escritos desde el documento de dominio y hay que
-  validarlos contra el código cuando llegue.
+- **Donde el código y el documento de dominio difieren, manda el código.** Ya hay
+  cinco diferencias detectadas, anotadas en `MAPA.md` → "Diferencias con el
+  documento de dominio". Al corregir el documento, borrar la fila de esa tabla.
 
 ---
 
