@@ -5,8 +5,8 @@ prorrateador y los cargadores de datos.
 
 ## Para descargar y usar
 
-**`Revisor/` es la carpeta de trabajo.** Descargás el repositorio
-(`Code` → `Download ZIP`), lo descomprimís, y te llevás la carpeta `Revisor/`
+**`Revisor_Relq/` es la carpeta de trabajo.** Descargás el repositorio
+(`Code` → `Download ZIP`), lo descomprimís, y te llevás la carpeta `Revisor_Relq/`
 entera. Ahí adentro está todo lo que corre, con la estructura que los scripts
 esperan.
 
@@ -33,7 +33,7 @@ MAPA.md                         qué hace cada script y de qué depende
 INTERFACES.md                   generado — firmas, constantes y dependencias
 generar_interfaces.py           el generador de INTERFACES.md
 docs/                           referencia de dominio
-Revisor/                        ← LA CARPETA DE TRABAJO
+Revisor_Relq/                   ← LA CARPETA DE TRABAJO
 ├── Revisor_Reliquidacion.py   solo, en la raíz — es el que se abre siempre
 ├── comun/                     lo compartido, con sus pruebas
 ├── actualizadores/            los 8 que el Revisor lanza por botón
@@ -52,7 +52,7 @@ Revisor/                        ← LA CARPETA DE TRABAJO
 Dos cosas que **no son un descuido** y no conviene reordenar a mano:
 
 - `Reemplazos REUC`, con espacio y mayúsculas: el Revisor lo busca así, literal.
-- `config.json` vive en `Revisor/`, **compartido** entre el Revisor y los 8 de
+- `config.json` vive en `Revisor_Relq/`, **compartido** entre el Revisor y los 8 de
   `actualizadores/`. Si movés uno de esos 8 a otra carpeta, tiene que seguir
   apuntando a ese mismo archivo (no crearse el suyo propio), o el traspaso de
   rutas entre el Revisor y los actualizadores se rompe sin avisar.
@@ -61,7 +61,7 @@ Dos cosas que **no son un descuido** y no conviene reordenar a mano:
 
 ```
 python generar_interfaces.py          # regenera INTERFACES.md
-python Revisor/comun/test_config.py   # pruebas del módulo común
+python Revisor_Relq/comun/test_config.py   # pruebas del módulo común
 ```
 
 Solo biblioteca estándar, Python 3.9 o superior. Subí el `INTERFACES.md` resultante

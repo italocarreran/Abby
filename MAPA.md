@@ -14,7 +14,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 **Dónde vive cada uno:**
 
 ```
-Revisor/
+Revisor_Relq/
 ├── Revisor_Reliquidacion.py     ← el único que va suelto en la raíz
 ├── comun/                        lo compartido (ver más abajo)
 ├── actualizadores/                los 8 que el Revisor lanza por botón
@@ -31,7 +31,7 @@ Revisor/
 ```
 
 `config.json` es **compartido** entre el Revisor y los 8 de `actualizadores/`:
-vive en `Revisor/`, un nivel arriba de ellos, y cada uno lo resuelve con
+vive en `Revisor_Relq/`, un nivel arriba de ellos, y cada uno lo resuelve con
 `DIR_SCRIPT.parent / "config.json"` (antes era `DIR_SCRIPT / "config.json"`,
 porque vivían junto al Revisor). `Reemplazos REUC/` no: el suyo está en su
 propia `Auxiliares/`, como siempre.
@@ -66,7 +66,7 @@ propia `Auxiliares/`, como siempre.
 
 ---
 
-## `Revisor/Revisor_Reliquidacion.py`
+## `Revisor_Relq/Revisor_Reliquidacion.py`
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,
   verifica por fecha de modificación (copias contra sus maestros) y por valores
@@ -93,7 +93,7 @@ propia `Auxiliares/`, como siempre.
   árbol tiene 36 nodos). `cache_directorios` es una clase, no una función: al salir
   deja `self.stats = (scans, hits)` para poder decir en la bitácora cuánto se ahorró.
 
-## `Revisor/actualizadores/Actualiza_datos.py`
+## `Revisor_Relq/actualizadores/Actualiza_datos.py`
 
 - **Qué hace:** trae las hojas FD desde `SSCC_Desempeno*`, el consolidado tabulado y
   la prorrata de retiros, a `Cálculo_SobrecostosSSCC` y a las planillas 3, 5 y 6.
@@ -114,7 +114,7 @@ propia `Auxiliares/`, como siempre.
   alfabéticamente, faltantes en 0. El "Traer Consolidado" filtra solo las filas con
   columna `C = C.Frec`. Los `.xlsm` destino tienen que estar cerrados.
 
-## `Revisor/actualizadores/Actualiza_Data_Access.py`
+## `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`
 
 - **Qué hace:** consolida tres Excel (SSCC, CO, CCA) en la tabla `Sobrecostos` del
   `.mdb` de `01 Sobrecostos`. Es además **el motor** que reutilizan
@@ -143,7 +143,7 @@ propia `Auxiliares/`, como siempre.
   sentidos — y declarar de más es lo peor, porque el que importa el motor cree que
   puede usarla.
 
-## `Revisor/actualizadores/Actualiza_Energia.py`
+## `Revisor_Relq/actualizadores/Actualiza_Energia.py`
 
 - **Qué hace:** los dos entregables de `01.a Sobrecostos de Energia`, los dos desde
   el `02 Consolidado_Tabulado`, tomando **solo SCMT y SCPC** (columna `AB`).
@@ -161,7 +161,7 @@ propia `Auxiliares/`, como siempre.
   SCPC del tabulado, las filas viejas de SCPC quedan; V5 lo caza pero se ve como
   descuadre de monto.
 
-## `Revisor/actualizadores/Actualiza_Cuadro0.py`
+## `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`
 
 - **Qué hace:** deja datos y fórmulas del cuadro cero al día. **No** llama macros ni
   refresca la tabla dinámica: eso se hace a mano.
@@ -181,7 +181,7 @@ propia `Auxiliares/`, como siempre.
   COM; la `D` se ajusta contra la tabla `A:C`, no contra `K`; la `Q` queda vacía a
   propósito; la tasa se guarda por mes, no suelta.
 
-## `Revisor/actualizadores/Actualiza_SC_CO.py`
+## `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`
 
 - **Qué hace:** reescribe la hoja **"SC y CO"** de la planilla 5, con los SC y los CO
   de los embalses y su prorrata de instrucción directa. SC arriba, CO abajo.
@@ -202,7 +202,7 @@ propia `Auxiliares/`, como siempre.
   los SC (no viene en el origen); si no hay SC, la que ya tenía el destino; si
   tampoco, el mes de la ventana.
 
-## `Revisor/actualizadores/Actualiza_Access_P9.py`
+## `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`
 
 - **Qué hace:** carga el `.mdb` de la planilla 9 desde las planillas 3, 5 y 6.
   Reemplaza a `para ricardo.py` + `archivo_de_configuracion.yaml`. Una casilla por
@@ -231,7 +231,7 @@ propia `Auxiliares/`, como siempre.
   central **con monto** sin dueño, y eso lo caza V12. El bloque BESS del script viejo
   no se incluye.
 
-## `Revisor/actualizadores/Prorratear.py`
+## `Revisor_Relq/actualizadores/Prorratear.py`
 
 - **Qué hace:** automatiza en SQL Server lo que se hacía a mano en Management
   Studio. Está como botón en los **tres** `.mdb`.
@@ -253,7 +253,7 @@ propia `Auxiliares/`, como siempre.
   tablas existan **antes de borrar nada**. Modo SOLO MIRAR por defecto. Si falla
   después del borrado la base queda incompleta: hay que volver a correrlo.
 
-## `Revisor/actualizadores/Carga_Retiros.py`
+## `Revisor_Relq/actualizadores/Carga_Retiros.py`
 
 - **Qué hace:** carga `Retiros_h.parquet` a SQL Server. Es el único script que
   escribe en una base y no en un Excel.
@@ -275,7 +275,7 @@ propia `Auxiliares/`, como siempre.
   no existe; **el parquet no se modifica**. No la aplica si el archivo ya viene
   corrido (la hora del cambio no existe en los datos) ni si el mes está completo.
 
-## `Revisor/Reemplazos REUC/ActualizaRemplazos.py`
+## `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`
 
 - **Qué hace:** arma la tabla de empresas con RUT y la de reemplazos, y las escribe
   en la hoja `EMPRESAS` del cuadro cero. Hace bastante más de lo que dice el
@@ -328,7 +328,7 @@ código.** Corregir el documento cuando haya oportunidad:
 
 ## El módulo común
 
-### `Revisor/comun/config.py` — **hecho**
+### `Revisor_Relq/comun/config.py` — **hecho**
 
 - **Qué hace:** lee y escribe el `config.json`, indexado por `<equipo>_<usuario>`.
 - **Expone:** `clave_equipo()`, `leer(ruta)`, `leer_todo(ruta)`,
@@ -336,7 +336,7 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Reglas que no cambian:** solo se agregan o actualizan claves, nunca se borra
   nada ajeno; si el archivo existe pero no se puede interpretar **no se escribe**;
   la escritura es atómica (`.tmp` + `os.replace`).
-- **Pruebas:** `Revisor/comun/test_config.py`, 13 casos, solo stdlib.
+- **Pruebas:** `Revisor_Relq/comun/test_config.py`, 13 casos, solo stdlib.
 - **Dos bugs que se arreglaron al juntar las copias:**
   1. `ActualizaRemplazos.py` escribía el archivo entero **sin `.tmp`**, y si el
      config existía pero estaba roto lo pisaba con `{}`. O sea: un `config.json`
