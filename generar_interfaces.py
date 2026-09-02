@@ -37,7 +37,7 @@ from pathlib import Path
 # Carpetas que se recorren, en este orden. Las que no existan se saltan, y un
 # archivo ya visto no se repite: "scripts/comun" va primero solo para que el
 # modulo compartido quede arriba en el indice.
-CARPETAS = ["Revisor Reliquidación/comun", "Revisor Reliquidación"]
+CARPETAS = ["Revisor/comun", "Revisor"]
 
 # Archivos que nunca entran a INTERFACES.md. __init__.py de un paquete
 # es solo el "que es esta carpeta"; su contenido ya esta en MAPA.md.

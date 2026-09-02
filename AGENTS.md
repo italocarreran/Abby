@@ -25,18 +25,18 @@ se negocia:
 3. Abrir completo ÚNICAMENTE el archivo que se va a modificar
 ```
 
-**Dónde vive el código:** `Revisor Reliquidación/` es a la vez la carpeta del
+**Dónde vive el código:** `Revisor/` es a la vez la carpeta del
 repositorio y la carpeta de trabajo del usuario. Lo que está ahí adentro corre tal cual al
 descargarlo. Adentro:
 
-- `Revisor_Reliquidacion.py` va **solo**, en la raíz de `Revisor Reliquidación/`.
+- `Revisor_Reliquidacion.py` va **solo**, en la raíz de `Revisor/`.
 - `comun/` es el módulo compartido.
 - `actualizadores/` tiene los 8 que el Revisor lanza por botón.
 - `Reemplazos REUC/` — con ese nombre exacto, espacio y mayúsculas, porque el
   Revisor lo busca literal — tiene el noveno, con su propio `config.json`.
 
 **`config.json` es compartido** entre el Revisor y los 8 de `actualizadores/`.
-Vive en `Revisor Reliquidación/`, un nivel arriba de ellos. Un script movido a una subcarpeta
+Vive en `Revisor/`, un nivel arriba de ellos. Un script movido a una subcarpeta
 nueva **tiene que seguir resolviendo esa ruta compartida**, no la suya propia
 (`DIR_SCRIPT.parent / "config.json"`, no `DIR_SCRIPT / "config.json"`) — si no,
 cada uno termina con su copia vacía y el traspaso de rutas entre el Revisor y los
@@ -141,7 +141,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 python generar_interfaces.py            # regenera INTERFACES.md
 python generar_interfaces.py --check    # sale con 1 si quedó desactualizado
 python generar_interfaces.py --esqueleto-mapa   # bloques para los .py que faltan en MAPA.md
-python "Revisor Reliquidación/comun/test_config.py"   # pruebas del módulo común
+python Revisor/comun/test_config.py   # pruebas del módulo común
 ```
 
 Solo biblioteca estándar, Python 3.9+. **Correrlo después de cualquier cambio de
@@ -182,7 +182,7 @@ tienen bloque en `MAPA.md`.
   script es reemplazar esas cinco funciones por los envoltorios y agregar
   `from comun import config as _cfg`. Nada más.
 - **Un script de `actualizadores/` está una carpeta más lejos de `comun/` que el
-  Revisor.** `comun/` vive en `Revisor Reliquidación/`, junto al Revisor, no dentro de
+  Revisor.** `comun/` vive en `Revisor/`, junto al Revisor, no dentro de
   `actualizadores/`. Python solo agrega al `sys.path` la carpeta del propio
   script, así que `from comun import config` no la encuentra sola: hay que
   agregar la carpeta padre antes,
