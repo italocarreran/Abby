@@ -54,21 +54,42 @@ grep o por su encabezado, no leerlo entero.
 
 ## 3. Cómo se entregan los cambios
 
-El usuario **no usa git localmente**. Sube y baja archivos por la web del
-repositorio. De ahí salen tres reglas que no son opcionales:
+**Este repositorio lo editan dos asistentes con acceso de escritura por git:
+Claude y ChatGPT.** Ninguno de los dos ve lo que hace el otro en tiempo real — no
+hay notificación, no hay aviso. La única red de seguridad es esta:
 
-**Entregar archivos completos, listos para descargar y ejecutar.** Nunca un diff,
-nunca "reemplazá la línea 240 por esto". El usuario descarga el `.py` y lo corre;
-editar a mano es justamente donde se cuelan los errores.
+**Antes de tocar código, mirar `git log` (los últimos 5-10 commits).** El autor
+del commit dice quién lo hizo — los de Claude quedan firmados `Claude
+<noreply@anthropic.com>`; los que suba el usuario a mano por la web quedan a su
+nombre; un commit de ChatGPT va a tener su propia firma, distinta. Si hay un commit
+reciente que no es propio, **leerlo antes de asumir en qué estado está el repo** —
+puede haber movido o renombrado algo.
 
-**El repositorio puede estar desactualizado respecto de lo que él corre.** Después
-de un cambio, el archivo nuevo queda en su equipo hasta que lo suba. Antes de
-modificar un script, si hay señales de que cambió hace poco, preguntar si la versión
-del repo es la vigente. Y cuando confirme que un cambio funciona, recordarle subirlo.
+**Traer la rama antes de empezar, en cada sesión.** `git fetch` + `git pull` (o
+equivalente) antes del primer cambio. Trabajar sobre una copia vieja es lo que
+produce un push que pisa el trabajo del otro asistente sin que nadie se entere
+hasta después.
+
+**Entregar cambios completos y verificados, nunca a medio terminar.** Un commit
+roto o una migración a medias que otro asistente encuentra sin contexto es peor
+que no tocar nada. Si el cambio afecta a varios archivos a la vez (una
+reorganización, un módulo compartido), completarlo y verificarlo en la misma
+sesión — no dejarlo "para la próxima", porque la próxima puede ser el otro
+asistente.
 
 **Actualizar los archivos de control en la misma sesión.** Script nuevo, firma que
-cambia o decisión de diseño → va a `MAPA.md` / `AGENTS.md` antes de cerrar. Si no,
-el sistema se desincroniza y deja de servir.
+cambia, carpeta que se mueve o decisión de diseño → va a `MAPA.md` / `AGENTS.md`
+antes de cerrar. Es la única forma en que el otro asistente se entera de algo que
+no vio pasar. Si no, el sistema se desincroniza y deja de servir — para los dos.
+
+> **Si en algún momento se vuelve al flujo original** (el usuario sube y baja
+> archivos por la web, sin que un asistente tenga push directo): entregar
+> siempre el archivo completo, nunca un diff ni "reemplazá la línea 240 por
+> esto" — el usuario lo descarga y lo corre tal cual, y editar a mano es donde
+> se cuelan los errores. Y como el repo puede estar desactualizado respecto de lo
+> que el usuario corre en su equipo, conviene preguntar si la versión del repo es
+> la vigente antes de modificar un script, y recordarle subir lo que confirme que
+> funciona.
 
 ---
 
