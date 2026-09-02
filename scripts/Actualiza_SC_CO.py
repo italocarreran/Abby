@@ -151,57 +151,33 @@ RE_UNIDAD = re.compile(r"-\d+\s*$")
 # =============================================================================
 #  CONFIG COMPARTIDO
 # =============================================================================
-def get_usuario():
-    try:
-        u = os.environ.get("USERNAME") or os.environ.get("USER") or "desconocido"
-        return f"{socket.gethostname()}_{u}"
-    except Exception:
-        return "desconocido"
+# El manejo del config.json vive en comun/config.py, al lado de este script.
+# Estaba copiado en los 10 scripts y las copias se habian ido separando entre
+# si. Los nombres de siempre se conservan como envoltorios, asi que ningun
+# punto de llamada cambia. Ver MAPA.md, "El modulo comun".
+try:
+    from comun import config as _cfg
+except ImportError as e:
+    _morir("Falta la carpeta comun/",
+           "No se pudo cargar comun/config.py.\n\n"
+           "Tiene que estar la carpeta 'comun' al lado de este script, con\n"
+           "config.py adentro. Baja el repositorio completo, no los .py sueltos.\n\n"
+           f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
+
+get_usuario = _cfg.clave_equipo
+escribir_json = _cfg.escribir_json
 
 
 def leer_config():
-    try:
-        if CONFIG_PATH.exists():
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f).get(get_usuario(), {})
-    except Exception:
-        pass
-    return {}
-
-
-def escribir_json(ruta, data):
-    ruta = Path(ruta)
-    tmp = ruta.with_suffix(ruta.suffix + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, ruta)
+    return _cfg.leer(CONFIG_PATH)
 
 
 def _modificar_config(mutador):
-    """Solo agrega o actualiza claves. Si el archivo existe pero no se puede
-    interpretar NO se escribe: mejor perder un ajuste que el archivo entero."""
-    todo = {}
-    if CONFIG_PATH.exists():
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                todo = json.load(f)
-            if not isinstance(todo, dict):
-                return False
-        except Exception:
-            return False
-    try:
-        mutador(todo)
-        escribir_json(CONFIG_PATH, todo)
-        return True
-    except Exception:
-        return False
+    return _cfg.modificar(CONFIG_PATH, mutador)
 
 
 def guardar_config(data):
-    return _modificar_config(
-        lambda todo: todo.setdefault(get_usuario(), {}).update(data))
+    return _cfg.guardar(CONFIG_PATH, data)
 
 
 def abrir_en_explorador(ruta, es_archivo=False):

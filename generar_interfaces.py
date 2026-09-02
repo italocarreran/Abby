@@ -34,11 +34,16 @@ import re
 import sys
 from pathlib import Path
 
-# Carpetas que se recorren, en este orden. Las que no existan se saltan.
-CARPETAS = ["comun", "scripts", "reemplazos_reuc"]
+# Carpetas que se recorren, en este orden. Las que no existan se saltan, y un
+# archivo ya visto no se repite: "scripts/comun" va primero solo para que el
+# modulo compartido quede arriba en el indice.
+CARPETAS = ["scripts/comun", "scripts"]
 
 # Archivos que nunca entran a INTERFACES.md.
 EXCLUIDOS = {"generar_interfaces.py"}
+
+# Prefijos de archivo que tampoco entran (las pruebas no son interfaz).
+PREFIJOS_EXCLUIDOS = ("test_",)
 
 # Largo maximo del valor de una constante antes de resumirlo.
 MAX_VALOR = 90
@@ -54,7 +59,9 @@ MAX_LINEAS_ENCABEZADO = 15
 LINEAS_FIRMA_MAX = 6
 
 # Caracteres con los que estan hechas las lineas separadoras de los banners.
-CHARS_SEPARADOR = set("=-*_~#<> ")
+# Ademas de los ASCII van los de dibujo de cajas (U+2500..U+257F), que es lo
+# que usa Actualiza_datos.py para sus separadores.
+CHARS_SEPARADOR = set("=-*_~#<> ") | {chr(c) for c in range(0x2500, 0x2580)}
 
 SALIDA_POR_OMISION = "INTERFACES.md"
 
@@ -100,19 +107,30 @@ def leer_texto(ruta: Path) -> str:
     return datos.decode("utf-8", errors="replace")
 
 
+def documentable(ruta: Path) -> bool:
+    return (ruta.name not in EXCLUIDOS
+            and not ruta.name.startswith(PREFIJOS_EXCLUIDOS)
+            and "__pycache__" not in ruta.parts)
+
+
 def archivos_py(raiz: Path) -> list[Path]:
-    """Devuelve los .py a documentar, en el orden de CARPETAS y alfabetico dentro."""
+    """Los .py a documentar, en el orden de CARPETAS y alfabetico dentro.
+
+    Un archivo que ya salio en una carpeta anterior no se repite: las carpetas
+    de CARPETAS pueden estar una dentro de otra.
+    """
     encontrados: list[Path] = []
-    for carpeta in CARPETAS:
+    vistos: set[Path] = set()
+    for carpeta in list(CARPETAS) + ["."]:
         base = raiz / carpeta
         if not base.is_dir():
             continue
-        for ruta in sorted(base.rglob("*.py")):
-            if ruta.name not in EXCLUIDOS:
+        candidatos = (sorted(base.glob("*.py")) if carpeta == "."
+                      else sorted(base.rglob("*.py")))
+        for ruta in candidatos:
+            if ruta not in vistos and documentable(ruta):
+                vistos.add(ruta)
                 encontrados.append(ruta)
-    for ruta in sorted(raiz.glob("*.py")):
-        if ruta.name not in EXCLUIDOS:
-            encontrados.append(ruta)
     return encontrados
 
 
@@ -120,12 +138,34 @@ def archivos_py(raiz: Path) -> list[Path]:
 # Comentarios: separadores, banners y limpieza
 # ---------------------------------------------------------------------------
 
+def partir_banner(linea: str) -> tuple[str, bool]:
+    """Separa el titulo de un banner. Devuelve (titulo, es_banner).
+
+    Reconoce los dos estilos que hay en el repo: la fila sola de separadores
+    ("# ====="), que devuelve titulo vacio, y el que lleva el texto adentro
+    ("# -- Titulo -------"), que devuelve el titulo suelto.
+    """
+    s = linea.strip()
+    if not s:
+        return "", False
+    izq = 0
+    while izq < len(s) and s[izq] in CHARS_SEPARADOR:
+        izq += 1
+    der = len(s)
+    while der > izq and s[der - 1] in CHARS_SEPARADOR:
+        der -= 1
+    nucleo = s[izq:der].strip()
+    if not nucleo:
+        return "", len(s) >= 3
+    if izq >= 3 or (len(s) - der) >= 3:
+        return nucleo, True
+    return s, False
+
+
 def es_separador(linea: str) -> bool:
-    """True si la linea es solo una fila de =, -, *, _ o ~ (parte de un banner)."""
-    limpia = linea.strip()
-    if len(limpia) < 3:
-        return False
-    return set(limpia) <= CHARS_SEPARADOR
+    """True si la linea es solo una fila de separadores, sin texto."""
+    titulo, banner = partir_banner(linea)
+    return banner and not titulo
 
 
 def limpiar_comentario(crudas: list[str]) -> tuple[list[str], bool]:
@@ -139,11 +179,21 @@ def limpiar_comentario(crudas: list[str]) -> tuple[list[str], bool]:
 
 
 def es_banner_seccion(utiles: list[str], habia_separadores: bool) -> bool:
-    """Un titulo de seccion es una sola linea encerrada entre separadores.
+    """True si el comentario es un titulo de seccion y no una descripcion.
 
-    Ese comentario divide el archivo; no describe la funcion que viene abajo.
+    Lo es cuando queda una sola linea, y esa linea o venia encerrada entre
+    filas de separadores o los trae adentro. Ese comentario divide el archivo;
+    no describe la funcion que viene abajo.
     """
-    return habia_separadores and len([ln for ln in utiles if ln.strip()]) == 1
+    con_texto = [ln for ln in utiles if ln.strip()]
+    if len(con_texto) != 1:
+        return False
+    return habia_separadores or partir_banner(con_texto[0])[1]
+
+
+def titulo_seccion(utiles: list[str]) -> str:
+    """El texto del banner, ya sin los separadores de los costados."""
+    return partir_banner(utiles[0])[0] or utiles[0].strip()
 
 
 def es_titulo_mayusculas(linea: str) -> bool:
@@ -230,7 +280,7 @@ def descripcion(nodo, lineas: list[str]) -> tuple[str, str]:
 
     if utiles:
         if es_banner_seccion(utiles, hubo_sep):
-            return "", utiles[0].strip()
+            return "", titulo_seccion(utiles)
         return "\n".join(ln.strip() for ln in utiles).strip(), ""
 
     # Muchas funciones documentan con # dentro del cuerpo, no con docstring.
@@ -254,7 +304,7 @@ def nota_constante(lineas: list[str], lineno: int) -> tuple[str, str]:
     if not utiles:
         return "", ""
     if es_banner_seccion(utiles, hubo_sep):
-        return "", utiles[0].strip()
+        return "", titulo_seccion(utiles)
     return primera_frase(" ".join(ln.strip() for ln in utiles)), ""
 
 
@@ -283,6 +333,10 @@ def encabezado_modulo(arbol: ast.Module, lineas: list[str]) -> tuple[str, bool]:
                 break
 
     utiles, _ = limpiar_comentario(crudas)
+    # Un archivo puede arrancar directo con un banner de seccion y no tener
+    # encabezado propio (Actualiza_datos.py). Ese banner no lo describe.
+    while utiles and partir_banner(utiles[0])[1]:
+        utiles.pop(0)
     if not utiles:
         return "", False
     utiles = sin_sangria_comun(utiles)

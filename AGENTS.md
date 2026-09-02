@@ -25,6 +25,12 @@ se negocia:
 3. Abrir completo ÚNICAMENTE el archivo que se va a modificar
 ```
 
+**Dónde vive el código:** `scripts/` es a la vez la carpeta del repositorio y la
+carpeta de trabajo del usuario. Lo que está ahí adentro corre tal cual al
+descargarlo. `scripts/comun/` es el módulo compartido y `scripts/Reemplazos REUC/`
+tiene que llamarse exactamente así, con espacio y mayúsculas, porque el Revisor lo
+busca literal.
+
 **No abrir los archivos vecinos "para tener contexto".** Si de verdad hace falta uno
 más, pedirlo explícitamente y decir por qué. Leer de más es exactamente el problema
 que este repositorio resuelve.
@@ -124,6 +130,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 python generar_interfaces.py            # regenera INTERFACES.md
 python generar_interfaces.py --check    # sale con 1 si quedó desactualizado
 python generar_interfaces.py --esqueleto-mapa   # bloques para los .py que faltan en MAPA.md
+python scripts/comun/test_config.py     # pruebas del módulo común
 ```
 
 Solo biblioteca estándar, Python 3.9+. **Correrlo después de cualquier cambio de
@@ -135,8 +142,10 @@ seguir el mismo estilo** para que siga saliendo bien:
 - **Encabezado arriba de todo**, docstring o bloque `#`: los dos se usan igual. De
   ahí sale la descripción del archivo (las primeras líneas, hasta el primer
   subtítulo en MAYÚSCULAS).
-- **Banners `# === TÍTULO ===`** para separar secciones. El generador los reconoce y
-  los muestra como divisores, no como descripción de la función que viene abajo.
+- **Banners para separar secciones**, en cualquiera de los dos estilos que ya usás:
+  la fila sola (`# ===== TÍTULO =====` entre líneas de guiones) o el texto adentro
+  (`# ── Título ──────`). El generador los reconoce y los muestra como divisores, no
+  como descripción de la función que viene abajo.
 - **Comentario justo encima** de una función o constante cuando no hay docstring:
   eso es lo que se usa como descripción.
 
@@ -155,7 +164,15 @@ tienen bloque en `MAPA.md`.
   cumplen la misma función y viven dentro del repositorio.
 - **El módulo común se migra por partes, nunca de golpe.** Una pieza a la vez, un
   script a la vez, verificando que sigue corriendo antes de seguir con el próximo.
-  Empezar por el manejo del `config.json`, que está bien acotado y documentado.
+- **`comun/config.py` ya está**, con 13 pruebas en `comun/test_config.py`. Los
+  scripts migrados conservan sus nombres de siempre (`leer_config`,
+  `guardar_config`, `_modificar_config`, `escribir_json`, `get_usuario`) como
+  envoltorios de dos líneas, así que **ningún punto de llamada cambia**. Migrar un
+  script es reemplazar esas cinco funciones por los envoltorios y agregar
+  `from comun import config as _cfg`. Nada más.
+- **Al migrar una pieza, la versión que queda en `comun/` es la más defensiva de
+  las que había**, y las diferencias se anotan en el docstring del módulo. No
+  "elegir la del archivo más nuevo": hay que mirarlas todas.
 - **`docs/ESTRUCTURA_CASO_RELIQUIDACION.md` entra tal cual y es la referencia de
   dominio.** No hay que rehacerlo. Si algo del dominio cambia, se corrige ahí, no en
   una copia.

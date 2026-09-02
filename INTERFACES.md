@@ -25,16 +25,96 @@ Convenciones de esta página:
 
 ## Índice
 
+- [`scripts/comun/__init__.py`](#scriptscomun__init__py) — 9 líneas — Lo que comparten los scripts de la reliquidacion.
+- [`scripts/comun/config.py`](#scriptscomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 - [`scripts/Actualiza_Access_P9.py`](#scriptsactualiza_access_p9py) — 1131 líneas — Actualiza el Access de la planilla 9
 - [`scripts/Actualiza_Cuadro0.py`](#scriptsactualiza_cuadro0py) — 1026 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`scripts/Actualiza_Data_Access.py`](#scriptsactualiza_data_accesspy) — 1595 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
 - [`scripts/Actualiza_Energia.py`](#scriptsactualiza_energiapy) — 805 líneas — Actualizar Energia
-- [`scripts/Actualiza_SC_CO.py`](#scriptsactualiza_sc_copy) — 925 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`scripts/Actualiza_datos.py`](#scriptsactualiza_datospy) — 1340 líneas — ── Constantes configurables ────────────────────────────────────────────────
+- [`scripts/Actualiza_SC_CO.py`](#scriptsactualiza_sc_copy) — 901 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`scripts/Actualiza_datos.py`](#scriptsactualiza_datospy) — 1340 líneas
 - [`scripts/Carga_Retiros.py`](#scriptscarga_retirospy) — 886 líneas — Carga Retiros_h.parquet a SQL Server
 - [`scripts/Prorratear.py`](#scriptsprorratearpy) — 916 líneas — Prorratear: del Access a SQL Server
+- [`scripts/Reemplazos REUC/ActualizaRemplazos.py`](#scriptsreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
 - [`scripts/Revisor_Reliquidacion.py`](#scriptsrevisor_reliquidacionpy) — 6840 líneas — Revisor de entregables - CASO RELIQUIDACION
-- [`reemplazos_reuc/ActualizaRemplazos.py`](#reemplazos_reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
+
+
+---
+
+## `scripts/comun/__init__.py`
+
+> Lo que comparten los scripts de la reliquidacion.
+>
+> Se importa como `from comun import config`, que funciona porque esta carpeta
+> esta al lado de los scripts. Los que viven en una subcarpeta (Reemplazos REUC)
+> necesitan agregar la carpeta padre al sys.path antes de importar.
+>
+> Se migra DE A UNA PIEZA. Ver MAPA.md, "Lo que todavia no existe".
+
+*Sin funciones, clases ni constantes de módulo.*
+
+
+---
+
+## `scripts/comun/config.py`
+
+> Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+>
+> Esto estaba copiado en los 10 scripts, con cuatro variantes de
+> `_modificar_config` y cuatro de `get_usuario` que se fueron separando entre si.
+> Las diferencias eran casi todas cosmeticas (docstrings, type hints, nombres de
+> variable) salvo dos, que aca quedan resueltas para todos:
+>
+>   * `ActualizaRemplazos.py` escribia el archivo entero SIN pasar por un .tmp, y
+>     si el config existia pero no se podia interpretar lo pisaba con {}. O sea:
+>     un config.json roto le borraba los ajustes a todos los demas scripts. Ahora
+>     usa la misma regla que el resto, que es no escribir.
+>   * `get_usuario` tenia versiones con y sin try/except. Queda la defensiva.
+>
+> REGLAS QUE NO CAMBIAN, porque el archivo es compartido:
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `__future__`, `json`, `os`, `pathlib`, `socket`
+
+### Funciones
+
+#### `def clave_equipo() -> str`
+
+Devuelve `<equipo>_<usuario>`, que es como se indexa el config.json.
+
+No lanza: si el nombre del equipo no se puede averiguar devuelve
+"desconocido", porque quedarse sin ajustes es mejor que no arrancar.
+
+#### `def escribir_json(ruta, data) -> None`
+
+Escritura atomica: primero un .tmp y despues os.replace.
+
+Evita dejar el archivo truncado si algo falla a medio camino. Se usa
+tambien para el JSON de traspaso del revisor, no solo para el config.
+
+#### `def leer_todo(ruta) -> dict`
+
+El config.json completo, con todos los equipos. {} si no se puede leer.
+
+#### `def leer(ruta) -> dict`
+
+El bloque del equipo actual. {} si no hay archivo o esta roto.
+
+#### `def modificar(ruta, mutador) -> bool`
+
+Lee el config entero, lo modifica con `mutador(todo)` y lo reescribe.
+
+`mutador` recibe el dict completo (todos los equipos), no solo el bloque
+propio, porque algunos scripts anidan claves por mes.
+
+Devuelve True si se escribio. Devuelve False sin tocar el archivo si existe
+pero no se puede interpretar o no es un dict: es un archivo compartido y
+pisarlo le borraria los ajustes a los demas scripts.
+
+#### `def guardar(ruta, data: dict) -> bool`
+
+Agrega o actualiza claves en el bloque del equipo actual.
 
 
 ---
@@ -67,7 +147,8 @@ Convenciones de esta página:
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` | --- motor de Access, reutilizado ------------------------------------------ |
+| **— motor de Access, reutilizado —** | | |
+| `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
 | `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias.  |
 | `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
 | **— CONFIGURACION —** | | |
@@ -209,7 +290,8 @@ Devuelve (ok, resumen).
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `IDX_HOJA_3` | `2` | --- Hojas y celdas --------------------------------------------------------- |
+| **— Hojas y celdas —** | | |
+| `IDX_HOJA_3` | `2` |  |
 | `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
 | `HOJA_ORIGEN_CUADRO1` | `'01.SSCC_Recurso_Técnico'` |  |
 | `CELDA_TASA` | `'O2'` |  |
@@ -679,13 +761,7 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 
 ### Funciones
 
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
 
 #### `def guardar_config(data)`
 
@@ -743,16 +819,16 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 
 ## `scripts/Actualiza_datos.py`
 
-> ── Constantes configurables ────────────────────────────────────────────────
-
 **Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
 | Nombre | Valor | |
 |---|---|---|
-| `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` | ── Constantes configurables ──────────────────────────────────────────────── |
-| `CONFIG_PATH` | `Path(__file__).parent / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── |
+| **— Constantes configurables —** | | |
+| `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
+| **— Config por usuario/PC —** | | |
+| `CONFIG_PATH` | `Path(__file__).parent / 'config.json'` |  |
 | `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
@@ -780,9 +856,9 @@ Evita dejar el archivo truncado si algo falla a medio camino.
 Devuelve el dict del traspaso, o None si no vino o no es valido.
 Nunca lanza: si el JSON esta roto se cae al modo manual.
 
-#### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
+**— Utilidades —**
 
-── Utilidades ──────────────────────────────────────────────────────────────
+#### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
 
 #### `def normalizar(texto: str) -> str`
 
@@ -802,9 +878,9 @@ FD está un nivel arriba de 02 CASO RELIQUIDACION.
 
 04 Planilla 9/Prorrata_Retiros_AAMM…
 
-#### `def col_letra_a_num(letra: str) -> int`
+**— Lógica xlwings —**
 
-── Lógica xlwings ───────────────────────────────────────────────────────────
+#### `def col_letra_a_num(letra: str) -> int`
 
 #### `def expandir_cols(rangos: list) -> list`
 
@@ -840,9 +916,9 @@ rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
        buscar_* de siempre.
 Retorna (ok, lista_rutas_modificadas)
 
-#### `def main()`
+**— Ventana —**
 
-── Ventana ──────────────────────────────────────────────────────────────────
+#### `def main()`
 
 
 ---
@@ -1108,6 +1184,229 @@ Devuelve (ok, resumen).
 
 ---
 
+## `scripts/Reemplazos REUC/ActualizaRemplazos.py`
+
+> ActualizaRemplazos.py
+>
+> Entradas (por ahora, en la carpeta desde donde se ejecuta el script):
+> "Reemplazos forzados.xlsx"                                      Copiar del ultimo mes reliquidado y confirmar
+> "datos_reuc_reemplazos_*.xlsx"                                  descargar de la pag REUC
+> "datos_reuc_*.xlsx"                                             descargar de la pag REUC
+> "Cuadros de Pago_Balances_SEN_*_Simplificado_def.xlsb"          de PLABACOM, el más actualizado
+> "1_CUADROS_PAGO_SSCC_*.xlsm"                                    del disco T, el más actualizado
+>
+> Archivo destino (se selecciona en la ventana):
+> "0_CUADROS_RELIQUIDACIÓN SSCC_*.xlsm"  -> el del mes que estamos trabajando.
+>
+> El programa:
+>   1. Genera el archivo de salida "Reemplazos_AAAAMMDD_SSCC.xlsx" (igual que antes).
+>   2. Escribe directamente en la hoja EMPRESAS del archivo destino:
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pandas`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios.  |
+| `CONFIG_PATH` | `CARPETA_AUXILIARES / 'config.json'` |  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+| **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
+| `RAIZ_PLABACOM_DEFAULT` | `'T:\\Facturacion\\Plabacom'` |  |
+| `PATRON_BALANCES` | `'balances_sen.*simplificado.*\\.xlsb$'` | Se compara contra el nombre normalizado (minúsculas, sin tildes). |
+| **— BÚSQUEDA CONJUNTA: BALANCES SEN + 1_CUADROS_PAGO_SSCC —** | | |
+| `RAIZ_FACTURACION_DEFAULT` | `'T:\\Facturacion'` |  |
+| `NARANJO` | `'#d97706'` |  |
+| `PATRON_SSCC` | `'1_cuadros_pago_sscc.*\\.xlsm$'` |  |
+| `MESES_ES` | `lista de 12 elementos: 'enero', 'febrero', 'marzo', …` |  |
+| **— Verificación de coherencia nombre de archivo vs carpeta —** | | |
+| `MESES_ABR` | `dict de 13 claves: 'ene', 'feb', 'mar', …` |  |
+| **— DESCARGA AUTOMÁTICA DESDE REUC (playwright) —** | | |
+| `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
+| `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
+
+### Funciones
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def normalizar(texto)`
+
+#### `def buscar_archivo(ruta, patron)`
+
+Busca por glob y devuelve el más reciente (ignora temporales ~$).
+
+#### `def extraer_fecha(texto)`
+
+Busca una fecha tipo AAAAMMDD dentro de un string.
+
+#### `def extraer_fecha_aamm(texto)`
+
+Extrae fecha AAMM.
+
+#### `def fecha_aaaammdd_a_ddmmaaaa(aaaammdd)`
+
+'20260722' -> '22-07-2026'. Si no calza el formato, devuelve tal cual.
+
+#### `def col_letra_a_num(letra)`
+
+#### `def subcarpeta_que_contiene(carpeta, *fragmentos)`
+
+Devuelve la primera subcarpeta cuyo nombre normalizado contiene TODOS
+los fragmentos dados. Tolera tildes, mayúsculas y espacios de más.
+
+#### `def meses_hacia_atras(desde=None, cantidad=36)`
+
+Genera tuplas (año, mes) desde el mes actual hacia atrás.
+
+#### `def archivos_que_matchean(carpeta, patron)`
+
+#### `def archivo_en_carpeta_resultados(carpeta_version, aamm, patron_regex, log=None)`
+
+Dentro de "<version>/Publicar/01 Resultados_AAMM_.../" busca el archivo.
+Si no lo encuentra por esa ruta, hace una búsqueda recursiva de respaldo
+dentro de la carpeta de la versión. Devuelve la ruta o None.
+
+#### `def buscar_plabacom(raiz=RAIZ_PLABACOM_DEFAULT, patron_regex=PATRON_BALANCES, meses=36, log=None)`
+
+Recorre T:\Facturacion\Plabacom\<AAAA>\<AAMM>\<02 Definitivo | 01 Preliminar>
+         \Publicar\01 Resultados_AAMM_...\<archivo>
+
+Va del mes más reciente hacia atrás. En cada mes prueba primero
+"02 Definitivo" y luego "01 Preliminar". Devuelve (ruta, descripcion) o
+(None, mensaje de error).
+
+log: callback opcional para ver el detalle del recorrido.
+
+#### `def carpeta_mes_facturacion(raiz_facturacion, y, m)`
+
+T:\Facturacion\<AAAA>\<MM Mes>   (ej: 2026\06 Junio)
+Acepta que la carpeta se llame por número, por nombre, o ambos.
+
+#### `def buscar_sscc_en_version(carpeta_version, patron_regex=PATRON_SSCC, log=None)`
+
+Dentro de "<version>/SSCC/" busca 1_CUADROS_PAGO_SSCC_*.xlsm.
+
+#### `def aamm_desde_nombre(nombre)`
+
+Intenta sacar el AAMM del nombre del archivo. Reconoce dos formatos:
+  - "..._2606_..."          -> 2606
+  - "..._jun26_..."         -> 2606
+Devuelve None si no logra determinarlo.
+
+#### `def sufijo_desde_nombre(nombre)`
+
+Devuelve 'def', 'pre' o None según el sufijo del archivo.
+
+#### `def verificar_coherencia(ruta, aamm_carpeta, version_carpeta)`
+
+Compara el nombre del archivo contra la carpeta donde está.
+Devuelve una lista de avisos (vacía si todo calza).
+
+#### `def buscar_par_mensual(raiz_facturacion=RAIZ_FACTURACION_DEFAULT, meses=36, log=None)`
+
+Busca los DOS archivos exigiendo que vengan del MISMO mes y del MISMO
+proceso (Definitivo o Preliminar):
+
+    Balances SEN : <raiz>\Plabacom\<AAAA>\<AAMM>\<version>\Publicar\01 Resultados_...
+    SSCC         : <raiz>\<AAAA>\<MM Mes>\<version>\SSCC
+
+Recorre del mes más reciente hacia atrás. En cada mes prueba Definitivo y
+después Preliminar; solo acepta la combinación si ENCUENTRA LOS DOS.
+
+Devuelve (dict, info) o (None, mensaje).
+
+#### `def carpeta_auxiliares()`
+
+Carpeta Auxiliares (al lado del .py). La crea si no existe.
+
+#### `def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print)`
+
+Busca primero en carpeta_preferida (la que eligio el usuario o quedo
+guardada en config). Si ahi no esta, cae de respaldo a Auxiliares
+-- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
+dos uso, para que quede claro y no parezca que "no encuentra nada".
+
+#### `def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600, espera_descarga_seg=180)`
+
+Abre un navegador para que el usuario inicie sesion en REUC y, apenas
+la sesion queda confirmada, descarga los dos exports:
+  - datos_reuc_*.xlsx               (exportar_reuc)
+  - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
+
+Los guarda en la carpeta Auxiliares (por defecto, la que esta al lado
+del .py y es compartida por todos los usuarios).
+
+Flujo:
+  1. Espera a que el usuario termine el login (el acceso unificado
+     rebota entre dominios; solo se acepta la URL de REUC misma).
+  2. Confirma la sesion con una peticion liviana.
+  3. Descarga cada export UNA sola vez, esperando con paciencia.
+
+Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
+navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
+La clave nunca pasa por este script: se escribe directamente en la
+pagina real de REUC, dentro del navegador.
+
+Devuelve un dict {"reuc": Path, "reemplazos": Path}.
+
+#### `def ultima_fila(sheet, col_letra, desde)`
+
+Última fila con contenido en una columna (considera fórmulas).
+
+#### `def procesar_datos(carpeta_datos, archivo_cuadros, archivo_xlsb=None, archivo_xlsm=None, log=print)`
+
+Devuelve un dict con los DataFrames que se usan tanto para el archivo
+de salida como para escribir en el archivo destino.
+
+archivo_xlsb / archivo_xlsm: rutas explícitas (disco compartido). Si vienen
+en None, se buscan en la carpeta de datos como respaldo.
+
+#### `def carpeta_reemplazos_reuc(ruta_destino)`
+
+Dos niveles por encima de la carpeta del "0_CUADROS_RELIQUIDACION":
+
+    ...\SSCC\02 CASO RELIQUIDACION\00 Entregables\0_CUADROS_...xlsm
+         ^-- aca se crea "Reemplazos REUC"
+
+O sea: <carpeta del archivo>.parents[2] / "Reemplazos REUC".
+
+#### `def respaldar_fuentes(datos, carpeta, log=print)`
+
+Copia a "Reemplazos REUC" los archivos que se usaron para armar el
+resultado, para que quede todo junto y trazable. Si ya existen, se
+reemplazan.
+
+#### `def generar_archivo_salida(datos, carpeta_salida, log=print)`
+
+#### `def escribir_en_destino(ruta_destino, datos, log=print, dejar_abierto=True)`
+
+Hoja EMPRESAS del archivo destino:
+  B:C -> EMPRESA / RUT           (desde df_salida)
+  H:I -> Reemplazada / Reemplazante  (reemplazos válidos + forzados)
+Fila 1 = encabezado en ambos bloques. Se limpia el contenido antes de pegar,
+manteniendo el formato de las celdas.
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
 ## `scripts/Revisor_Reliquidacion.py`
 
 > Revisor de entregables - CASO RELIQUIDACION
@@ -1224,7 +1523,7 @@ vuelve a abrir. Se guarda en Salidas/AAMM para que sirva entre ejecuciones.
 #### `class Revisor`
 
 - `def __init__(self, root)`
-- `def log(self, msg='')` — ------------------------------------------------------------- helpers --
+- `def log(self, msg='')`
 - `def examinar(self)`
 - `def actualizar(self, motivo=None, solo_ids=None)` — Relee la carpeta: reubica los archivos, repinta fechas y recalcula la vigencia de las verificaciones. 
 - `def estado_verificador(self, vid, _visitados=None)` — OK | VENCIDA | NO CUADRA | NO SE PUDO | SIN VERIFICAR. 
@@ -1575,228 +1874,6 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 
 ---
 
-## `reemplazos_reuc/ActualizaRemplazos.py`
-
-> ActualizaRemplazos.py
->
-> Entradas (por ahora, en la carpeta desde donde se ejecuta el script):
-> "Reemplazos forzados.xlsx"                                      Copiar del ultimo mes reliquidado y confirmar
-> "datos_reuc_reemplazos_*.xlsx"                                  descargar de la pag REUC
-> "datos_reuc_*.xlsx"                                             descargar de la pag REUC
-> "Cuadros de Pago_Balances_SEN_*_Simplificado_def.xlsb"          de PLABACOM, el más actualizado
-> "1_CUADROS_PAGO_SSCC_*.xlsm"                                    del disco T, el más actualizado
->
-> Archivo destino (se selecciona en la ventana):
-> "0_CUADROS_RELIQUIDACIÓN SSCC_*.xlsm"  -> el del mes que estamos trabajando.
->
-> El programa:
->   1. Genera el archivo de salida "Reemplazos_AAAAMMDD_SSCC.xlsx" (igual que antes).
->   2. Escribe directamente en la hoja EMPRESAS del archivo destino:
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pandas`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios.  |
-| `CONFIG_PATH` | `CARPETA_AUXILIARES / 'config.json'` |  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-| **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
-| `RAIZ_PLABACOM_DEFAULT` | `'T:\\Facturacion\\Plabacom'` |  |
-| `PATRON_BALANCES` | `'balances_sen.*simplificado.*\\.xlsb$'` | Se compara contra el nombre normalizado (minúsculas, sin tildes). |
-| **— BÚSQUEDA CONJUNTA: BALANCES SEN + 1_CUADROS_PAGO_SSCC —** | | |
-| `RAIZ_FACTURACION_DEFAULT` | `'T:\\Facturacion'` |  |
-| `NARANJO` | `'#d97706'` |  |
-| `PATRON_SSCC` | `'1_cuadros_pago_sscc.*\\.xlsm$'` |  |
-| `MESES_ES` | `lista de 12 elementos: 'enero', 'febrero', 'marzo', …` |  |
-| `MESES_ABR` | `dict de 13 claves: 'ene', 'feb', 'mar', …` | ---------- Verificación de coherencia nombre de archivo vs carpeta ---------- |
-| **— DESCARGA AUTOMÁTICA DESDE REUC (playwright) —** | | |
-| `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
-| `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
-
-### Funciones
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def guardar_config(data)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def normalizar(texto)`
-
-#### `def buscar_archivo(ruta, patron)`
-
-Busca por glob y devuelve el más reciente (ignora temporales ~$).
-
-#### `def extraer_fecha(texto)`
-
-Busca una fecha tipo AAAAMMDD dentro de un string.
-
-#### `def extraer_fecha_aamm(texto)`
-
-Extrae fecha AAMM.
-
-#### `def fecha_aaaammdd_a_ddmmaaaa(aaaammdd)`
-
-'20260722' -> '22-07-2026'. Si no calza el formato, devuelve tal cual.
-
-#### `def col_letra_a_num(letra)`
-
-#### `def subcarpeta_que_contiene(carpeta, *fragmentos)`
-
-Devuelve la primera subcarpeta cuyo nombre normalizado contiene TODOS
-los fragmentos dados. Tolera tildes, mayúsculas y espacios de más.
-
-#### `def meses_hacia_atras(desde=None, cantidad=36)`
-
-Genera tuplas (año, mes) desde el mes actual hacia atrás.
-
-#### `def archivos_que_matchean(carpeta, patron)`
-
-#### `def archivo_en_carpeta_resultados(carpeta_version, aamm, patron_regex, log=None)`
-
-Dentro de "<version>/Publicar/01 Resultados_AAMM_.../" busca el archivo.
-Si no lo encuentra por esa ruta, hace una búsqueda recursiva de respaldo
-dentro de la carpeta de la versión. Devuelve la ruta o None.
-
-#### `def buscar_plabacom(raiz=RAIZ_PLABACOM_DEFAULT, patron_regex=PATRON_BALANCES, meses=36, log=None)`
-
-Recorre T:\Facturacion\Plabacom\<AAAA>\<AAMM>\<02 Definitivo | 01 Preliminar>
-         \Publicar\01 Resultados_AAMM_...\<archivo>
-
-Va del mes más reciente hacia atrás. En cada mes prueba primero
-"02 Definitivo" y luego "01 Preliminar". Devuelve (ruta, descripcion) o
-(None, mensaje de error).
-
-log: callback opcional para ver el detalle del recorrido.
-
-#### `def carpeta_mes_facturacion(raiz_facturacion, y, m)`
-
-T:\Facturacion\<AAAA>\<MM Mes>   (ej: 2026\06 Junio)
-Acepta que la carpeta se llame por número, por nombre, o ambos.
-
-#### `def buscar_sscc_en_version(carpeta_version, patron_regex=PATRON_SSCC, log=None)`
-
-Dentro de "<version>/SSCC/" busca 1_CUADROS_PAGO_SSCC_*.xlsm.
-
-#### `def aamm_desde_nombre(nombre)`
-
-Intenta sacar el AAMM del nombre del archivo. Reconoce dos formatos:
-  - "..._2606_..."          -> 2606
-  - "..._jun26_..."         -> 2606
-Devuelve None si no logra determinarlo.
-
-#### `def sufijo_desde_nombre(nombre)`
-
-Devuelve 'def', 'pre' o None según el sufijo del archivo.
-
-#### `def verificar_coherencia(ruta, aamm_carpeta, version_carpeta)`
-
-Compara el nombre del archivo contra la carpeta donde está.
-Devuelve una lista de avisos (vacía si todo calza).
-
-#### `def buscar_par_mensual(raiz_facturacion=RAIZ_FACTURACION_DEFAULT, meses=36, log=None)`
-
-Busca los DOS archivos exigiendo que vengan del MISMO mes y del MISMO
-proceso (Definitivo o Preliminar):
-
-    Balances SEN : <raiz>\Plabacom\<AAAA>\<AAMM>\<version>\Publicar\01 Resultados_...
-    SSCC         : <raiz>\<AAAA>\<MM Mes>\<version>\SSCC
-
-Recorre del mes más reciente hacia atrás. En cada mes prueba Definitivo y
-después Preliminar; solo acepta la combinación si ENCUENTRA LOS DOS.
-
-Devuelve (dict, info) o (None, mensaje).
-
-#### `def carpeta_auxiliares()`
-
-Carpeta Auxiliares (al lado del .py). La crea si no existe.
-
-#### `def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print)`
-
-Busca primero en carpeta_preferida (la que eligio el usuario o quedo
-guardada en config). Si ahi no esta, cae de respaldo a Auxiliares
--- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
-dos uso, para que quede claro y no parezca que "no encuentra nada".
-
-#### `def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600, espera_descarga_seg=180)`
-
-Abre un navegador para que el usuario inicie sesion en REUC y, apenas
-la sesion queda confirmada, descarga los dos exports:
-  - datos_reuc_*.xlsx               (exportar_reuc)
-  - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
-
-Los guarda en la carpeta Auxiliares (por defecto, la que esta al lado
-del .py y es compartida por todos los usuarios).
-
-Flujo:
-  1. Espera a que el usuario termine el login (el acceso unificado
-     rebota entre dominios; solo se acepta la URL de REUC misma).
-  2. Confirma la sesion con una peticion liviana.
-  3. Descarga cada export UNA sola vez, esperando con paciencia.
-
-Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
-navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
-La clave nunca pasa por este script: se escribe directamente en la
-pagina real de REUC, dentro del navegador.
-
-Devuelve un dict {"reuc": Path, "reemplazos": Path}.
-
-#### `def ultima_fila(sheet, col_letra, desde)`
-
-Última fila con contenido en una columna (considera fórmulas).
-
-#### `def procesar_datos(carpeta_datos, archivo_cuadros, archivo_xlsb=None, archivo_xlsm=None, log=print)`
-
-Devuelve un dict con los DataFrames que se usan tanto para el archivo
-de salida como para escribir en el archivo destino.
-
-archivo_xlsb / archivo_xlsm: rutas explícitas (disco compartido). Si vienen
-en None, se buscan en la carpeta de datos como respaldo.
-
-#### `def carpeta_reemplazos_reuc(ruta_destino)`
-
-Dos niveles por encima de la carpeta del "0_CUADROS_RELIQUIDACION":
-
-    ...\SSCC\02 CASO RELIQUIDACION\00 Entregables\0_CUADROS_...xlsm
-         ^-- aca se crea "Reemplazos REUC"
-
-O sea: <carpeta del archivo>.parents[2] / "Reemplazos REUC".
-
-#### `def respaldar_fuentes(datos, carpeta, log=print)`
-
-Copia a "Reemplazos REUC" los archivos que se usaron para armar el
-resultado, para que quede todo junto y trazable. Si ya existen, se
-reemplazan.
-
-#### `def generar_archivo_salida(datos, carpeta_salida, log=print)`
-
-#### `def escribir_en_destino(ruta_destino, datos, log=print, dejar_abierto=True)`
-
-Hoja EMPRESAS del archivo destino:
-  B:C -> EMPRESA / RUT           (desde df_salida)
-  H:I -> Reemplazada / Reemplazante  (reemplazos válidos + forzados)
-Fila 1 = encabezado en ambos bloques. Se limpia el contenido antes de pegar,
-manteniendo el formato de las celdas.
-
-**— VENTANA —**
-
-#### `def main()`
-
-
----
-
 ## Constantes definidas en más de un archivo
 
 Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. Candidatas a mudarse a `comun/`.
@@ -1805,15 +1882,15 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 |---|---|
 | `CENTRALES_EMBALSE` | `scripts/Actualiza_SC_CO.py`, `scripts/Revisor_Reliquidacion.py` |
 | `CHUNK` | `scripts/Carga_Retiros.py`, `scripts/Prorratear.py` |
-| `CONFIG_PATH` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Revisor_Reliquidacion.py`, `reemplazos_reuc/ActualizaRemplazos.py` |
+| `CONFIG_PATH` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/Revisor_Reliquidacion.py` |
 | `DIR_SCRIPT` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Revisor_Reliquidacion.py` |
 | `FUENTES` | `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_SC_CO.py` |
 | `LARGO_TEXTO` | `scripts/Carga_Retiros.py`, `scripts/Prorratear.py` |
 | `NS_REL` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
 | `NS_XL` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
 | `SERVER` | `scripts/Carga_Retiros.py`, `scripts/Prorratear.py` |
-| `TRASPASO_ORIGEN` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `reemplazos_reuc/ActualizaRemplazos.py` |
-| `TRASPASO_VERSION_MAX` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `reemplazos_reuc/ActualizaRemplazos.py` |
+| `TRASPASO_ORIGEN` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Reemplazos REUC/ActualizaRemplazos.py` |
+| `TRASPASO_VERSION_MAX` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Reemplazos REUC/ActualizaRemplazos.py` |
 | `_ENT_XML` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
 | `_NECESITA` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Energia.py` |
 | `_RE_ENT` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |

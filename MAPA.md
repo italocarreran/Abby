@@ -250,7 +250,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   no existe; **el parquet no se modifica**. No la aplica si el archivo ya viene
   corrido (la hora del cambio no existe en los datos) ni si el mes está completo.
 
-## `reemplazos_reuc/ActualizaRemplazos.py`
+## `scripts/Reemplazos REUC/ActualizaRemplazos.py`
 
 - **Qué hace:** arma la tabla de empresas con RUT y la de reemplazos, y las escribe
   en la hoja `EMPRESAS` del cuadro cero. Hace bastante más de lo que dice el
@@ -275,7 +275,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
   de las celdas.**
 - **Expone:** —
 - **Depende de:** `pandas`, `xlwings` y `playwright` (este último opcional). Su
-  **propio** `config.json`, en `reemplazos_reuc/Auxiliares/`, no el compartido.
+  **propio** `config.json`, en `Reemplazos REUC/Auxiliares/`, no el compartido.
 - **⚠️ Orden corregido:** los reemplazos forzados se aplican **antes** del cruce con
   el registro de empresas. Aplicándolos después, las filas sin RUT ya se habían
   descartado y un forzado nunca podía arreglar el nombre que no coincidía: la alerta
@@ -301,9 +301,36 @@ código.** Corregir el documento cuando haya oportunidad:
 
 ---
 
-## Lo que todavía no existe
+## El módulo común
 
-**`comun/`** — el módulo compartido. El generador detectó **15 constantes definidas
+### `scripts/comun/config.py` — **hecho**
+
+- **Qué hace:** lee y escribe el `config.json`, indexado por `<equipo>_<usuario>`.
+- **Expone:** `clave_equipo()`, `leer(ruta)`, `leer_todo(ruta)`,
+  `guardar(ruta, data)`, `modificar(ruta, mutador)`, `escribir_json(ruta, data)`.
+- **Reglas que no cambian:** solo se agregan o actualizan claves, nunca se borra
+  nada ajeno; si el archivo existe pero no se puede interpretar **no se escribe**;
+  la escritura es atómica (`.tmp` + `os.replace`).
+- **Pruebas:** `scripts/comun/test_config.py`, 13 casos, solo stdlib.
+- **Dos bugs que se arreglaron al juntar las copias:**
+  1. `ActualizaRemplazos.py` escribía el archivo entero **sin `.tmp`**, y si el
+     config existía pero estaba roto lo pisaba con `{}`. O sea: un `config.json`
+     ilegible le borraba los ajustes a los otros nueve scripts.
+  2. `get_usuario` tenía versiones con y sin `try/except`. Quedó la defensiva.
+- **Cómo migrar el resto:** reemplazar las cinco funciones del script por
+  envoltorios de dos líneas sobre `_cfg`, y agregar `from comun import config as
+  _cfg`. Los nombres viejos se conservan, así que **ningún punto de llamada
+  cambia** — y `_modificar_config` se llama directo en los 10 scripts, con
+  mutadores propios (la tasa por mes de `Actualiza_Cuadro0`, por ejemplo).
+
+| Script | Estado |
+|---|---|
+| `Actualiza_SC_CO.py` | migrado — 42 líneas menos |
+| los otros 9 | pendientes |
+
+### Lo que sigue
+
+El generador detectó **15 constantes definidas
 en más de un archivo** (la tabla completa está al final de `INTERFACES.md`). Ordenadas
 por cuánto rinde sacarlas:
 
@@ -316,14 +343,11 @@ por cuánto rinde sacarlas:
 | `CENTRALES_EMBALSE` | 2 | el caso documentado, el único que ya obligó a defenderse con una verificación |
 | `SERVER`, `DRIVER`, `CHUNK`, `LARGO_TEXTO` | 2 | la conexión a SQL Server |
 
-**El orden de migración sugerido no es `CENTRALES_EMBALSE`**, aunque sea el caso más
-famoso: es el que menos riesgo tiene de quedar mal, porque V10 lo caza. Conviene
-empezar por el **manejo del `config.json`** (`CONFIG_PATH` + `leer_config` /
-`guardar_config` / `escribir_json` / `get_usuario`), que está en los 10 archivos,
-está bien acotado y ya está documentado en la sección 9 del documento de dominio.
-
-Después, por tamaño de la ganancia: el **lector de Excel por ZIP/XML**, que son
-varios cientos de líneas idénticas entre el Revisor y `Actualiza_Data_Access`.
+**El orden de migración no es `CENTRALES_EMBALSE`**, aunque sea el caso más famoso:
+es el que menos riesgo tiene de quedar mal, porque V10 lo caza en los dos sentidos.
+La próxima pieza, por tamaño de la ganancia, es el **lector de Excel por ZIP/XML**
+(`NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` y sus funciones): son varios cientos de
+líneas idénticas entre el Revisor y `Actualiza_Data_Access`.
 
 **Este cambio toca todos los scripts a la vez, así que va por partes.** Una pieza a
 la vez, un script a la vez, verificando que sigue corriendo antes de seguir con el
