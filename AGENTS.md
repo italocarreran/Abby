@@ -114,7 +114,8 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
   los archivos llegan dimensionados para el mes anterior. Si el mes nuevo trae menos
   filas y no se limpia, quedan las viejas abajo y los totales salen inflados.
 - **El JSON de traspaso es opcional.** El revisor puede pasar
-  `Salidas/AAMM/_traspaso_actualizador.json` como único argumento; **sin argumento
+  `../00_Salidas/AAMM/_traspaso_actualizador.json` como único argumento; la carpeta
+  `00_Salidas/` vive al lado de `Revisor_Relq/`, no adentro. **Sin argumento
   cada script tiene que seguir funcionando solo**, buscando los archivos por su
   cuenta. Es la vía de escape si el revisor no está.
 

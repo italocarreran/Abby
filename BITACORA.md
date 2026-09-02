@@ -33,6 +33,17 @@
 
 ---
 
+## 2026-09-02 — ChatGPT — mueve la salida del Revisor a `00_Salidas`
+
+A pedido del usuario, el Revisor deja de crear `Salidas/` dentro de
+`Revisor_Relq/`: ahora guarda el estado, el caché y el JSON de traspaso en
+`00_Salidas/AAMM/`, carpeta hermana de `Revisor_Relq/`. Se actualizaron los
+comentarios de los consumidores del JSON, `MAPA.md`, `AGENTS.md`, el documento
+de dominio e `INTERFACES.md`. Se verificó por AST y con una ruta temporal que
+`DIR_SCRIPT.parent / "00_Salidas"` resuelve fuera de `Revisor_Relq`; también
+pasaron compilación, las 13 pruebas de config y el chequeo del generador. No
+queda trabajo pendiente de este cambio. *(commit de esta sesión)*
+
 ## 2026-09-02 — Claude — reglas obligatorias y esta bitácora
 
 El usuario va a darle a ChatGPT el mismo acceso de escritura por git que

@@ -27,7 +27,7 @@ Convenciones de esta página:
 
 - [`Revisor_Relq/comun/config.py`](#revisor_relqcomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6840 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6842 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1030 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1598 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
@@ -131,7 +131,7 @@ Agrega o actualiza claves en el bloque del equipo actual.
 |---|---|---|
 | `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios.  |
 | `CONFIG_PATH` | `CARPETA_AUXILIARES / 'config.json'` |  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en ../00_Salidas/AAMM/ y pasa su ruta como argv[1].  |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
 | `RAIZ_PLABACOM_DEFAULT` | `'T:\\Facturacion\\Plabacom'` |  |
@@ -379,7 +379,7 @@ manteniendo el formato de las celdas.
 | `C_NEUTRO` | `'SystemButtonFace'` |  |
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `DIR_SALIDAS` | `DIR_SCRIPT / 'Salidas'` |  |
+| `DIR_SALIDAS` | `DIR_SCRIPT.parent / '00_Salidas'` | La carpeta de estado es compartida con otros procesos y vive al lado de Revisor_Relq, no dentro de ella. |
 | `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
 | `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Cache de directorios Una relectura completa hacia 68 recorridos de carpeta para 13 carpetas distintas: cada nodo del arbol recorria la carpeta entera de nuevo, y encima resolver_carpeta recorria la r… |
 | `RE_COPIA` | `re.compile('(-\\s*cop(?:ia\|y)(?:\\s*\\(\\d+\\))?\|\\(\\d+\\))\\s*$')` | Sufijos que deja Windows al copiar: "archivo - copia.mdb", "archivo - copia (2).mdb", "archivo - Copy.xlsm". |
@@ -415,7 +415,7 @@ en self.stats, para poder decir en la bitacora cuanto se ahorro.
 
 #### `class Estado`
 
-Verificaciones de un mes. Se guardan en Salidas/AAMM junto al .py.
+Verificaciones de un mes. Se guardan en 00_Salidas/AAMM.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -430,7 +430,7 @@ Verificaciones de un mes. Se guardan en Salidas/AAMM junto al .py.
 
 Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
 modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-vuelve a abrir. Se guarda en Salidas/AAMM para que sirva entre ejecuciones.
+vuelve a abrir. Se guarda en 00_Salidas/AAMM para que sirva entre ejecuciones.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -473,7 +473,7 @@ ni guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
 
 #### `def dir_mes(aamm, crear=False)`
 
-Salidas/AAMM junto al .py. Solo la crea si crear=True.
+00_Salidas/AAMM junto a Revisor_Relq. Solo la crea si crear=True.
 
 #### `def escribir_json(ruta, data)`
 
@@ -1108,7 +1108,7 @@ Devuelve (ok, resumen).
 | `TABLA_ACCESS` | `'Sobrecostos'` |  |
 | `COLUMNAS_ESPERADAS` | `['Clave Año_Mes', 'Tipo_sobrecosto', 'Central', 'Hora Mensual', 'Sobrecosto']` |  |
 | `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en ../00_Salidas/AAMM/ y pasa su ruta como argv[1].  |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS.  |
 | `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
@@ -1502,7 +1502,7 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 | **— Constantes configurables —** | | |
 | `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
 | `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en ../00_Salidas/AAMM/ y pasa su ruta como argv[1].  |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
 | `MAPEO_SOBRECOSTOS_CONSOLIDADO` | `lista de 1 elementos: {'hoja_origen': 'Sobrecostos', 'cols_origen': [('A', 'G'), ('I', 'J'), ('Q', 'W')], 'fila_ini_origen': 3, 'fila_det_origen': 'A', 'hoja_destino': 'SOBRECOSTOS', 'cols_destino': [('A', 'G'), ('I', 'J'), ('K', 'Q')], 'fila_ini_destino': 7, 'fila_det_destino': 'A', 'cols_formulas': [('R', 'EB')], 'filtro_col': 'C', 'filtro_valor': 'C.Frec', 'detectar_fin_primera_vacia': True, 'ajustar_formulas': True}, …` |  |

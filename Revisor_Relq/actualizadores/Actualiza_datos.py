@@ -70,7 +70,7 @@ def guardar_config(data: dict):
         lambda todo: todo.setdefault(get_usuario(), {}).update(data))
 
 # ── Traspaso desde el Revisor ───────────────────────────────────────────────
-# El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].
+# El Revisor escribe un JSON en ../00_Salidas/AAMM/ y pasa su ruta como argv[1].
 # Sin argumento el script funciona como siempre: busca los archivos solo.
 TRASPASO_ORIGEN = "Revisor_Reliquidacion"
 TRASPASO_VERSION_MAX = 1

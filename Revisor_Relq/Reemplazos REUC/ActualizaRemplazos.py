@@ -88,7 +88,7 @@ def guardar_config(data):
 # ---------------------------------------------------------------------------
 # TRASPASO DESDE EL REVISOR
 # ---------------------------------------------------------------------------
-# El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].
+# El Revisor escribe un JSON en ../00_Salidas/AAMM/ y pasa su ruta como argv[1].
 # Sin argumento este script funciona como siempre: rutas a mano y su propio
 # config.json (el de "Reemplazos REUC/Auxiliares", que NO es el compartido).
 TRASPASO_ORIGEN = "Revisor_Reliquidacion"

@@ -84,7 +84,7 @@ Junto a los `.py`, fuera del árbol del mes:
 ├── Prorratear.py
 ├── Actualiza_Access_P9.py
 ├── config.json                       ← compartido por estos cuatro
-├── Salidas/AAMM/                     ← estado, caché y JSON de traspaso, por mes
+├── ../00_Salidas/AAMM/               ← afuera: estado, caché y JSON de traspaso, por mes
 └── Reemplazos REUC/
     ├── ActualizaRemplazos.py
     └── Auxiliares/config.json        ← el suyo, aparte del compartido
@@ -1372,7 +1372,8 @@ en una sola línea la fila se sale de la pantalla.
 
 ### El JSON de traspaso
 
-El revisor escribe `Salidas/AAMM/_traspaso_actualizador.json` y le pasa esa ruta como
+El revisor escribe `00_Salidas/AAMM/_traspaso_actualizador.json` (en la carpeta
+`00_Salidas`, hermana de `Revisor_Relq`) y le pasa esa ruta como
 único argumento. **Sin argumento, cada script funciona como siempre** y busca los
 archivos por su cuenta: es la vía de escape si el revisor no está.
 
