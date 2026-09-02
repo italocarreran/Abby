@@ -1,0 +1,164 @@
+# AGENTS.md — cómo se trabaja en este repositorio
+
+> Documento vivo. Si en una sesión se descubre algo que la siguiente necesita saber,
+> se agrega acá antes de cerrar.
+>
+> Léelo completo. Es corto a propósito.
+
+---
+
+## 1. Qué es este repositorio
+
+Los scripts en Python con los que se hace la **reliquidación de SSCC**: un revisor,
+varios actualizadores, un prorrateador y cargadores de datos. Son interdependientes
+y comparten un `config.json`.
+
+El repositorio no existe para "guardar el código". Existe para que un asistente
+pueda entender el sistema **sin leerlo entero**. De ahí sale la única regla que no
+se negocia:
+
+## 2. Regla de expansión
+
+```
+1. Leer MAPA.md                       (dos páginas: qué hace cada script)
+2. Leer de INTERFACES.md SOLO las entradas que hacen falta
+3. Abrir completo ÚNICAMENTE el archivo que se va a modificar
+```
+
+**No abrir los archivos vecinos "para tener contexto".** Si de verdad hace falta uno
+más, pedirlo explícitamente y decir por qué. Leer de más es exactamente el problema
+que este repositorio resuelve.
+
+Para el dominio (dónde vive cada dato: hoja, celda, columna, tabla) está
+`docs/ESTRUCTURA_CASO_RELIQUIDACION.md`. Es largo: buscar la sección puntual con
+grep o por su encabezado, no leerlo entero.
+
+---
+
+## 3. Cómo se entregan los cambios
+
+El usuario **no usa git localmente**. Sube y baja archivos por la web del
+repositorio. De ahí salen tres reglas que no son opcionales:
+
+**Entregar archivos completos, listos para descargar y ejecutar.** Nunca un diff,
+nunca "reemplazá la línea 240 por esto". El usuario descarga el `.py` y lo corre;
+editar a mano es justamente donde se cuelan los errores.
+
+**El repositorio puede estar desactualizado respecto de lo que él corre.** Después
+de un cambio, el archivo nuevo queda en su equipo hasta que lo suba. Antes de
+modificar un script, si hay señales de que cambió hace poco, preguntar si la versión
+del repo es la vigente. Y cuando confirme que un cambio funciona, recordarle subirlo.
+
+**Actualizar los archivos de control en la misma sesión.** Script nuevo, firma que
+cambia o decisión de diseño → va a `MAPA.md` / `AGENTS.md` antes de cerrar. Si no,
+el sistema se desincroniza y deja de servir.
+
+---
+
+## 4. Convenciones de los scripts
+
+Estas ya están establecidas en el código existente. **Todo script nuevo las respeta.**
+
+- **Ventana de escritorio (tkinter)** para elegir rutas y archivos, con selectores
+  tipo "examinar", indicador visual de si el archivo requerido está o no, y click en
+  la ruta para abrir la carpeta.
+- **Las rutas se recuerdan entre ejecuciones** en `config.json`, indexado por
+  `<host>_<usuario>`. Se escribe de forma **atómica** (`.tmp` + `os.replace`) y **no
+  se escribe** si el archivo existe pero no se puede interpretar: mejor perder un
+  ajuste que el archivo entero. Solo se agregan o actualizan claves propias, nunca
+  se borra nada ajeno.
+- **Log de progreso** con timer y barra, visible durante toda la corrida.
+- **Los `.xlsm` se modifican preservando las macros** (xlwings / COM). Los destinos
+  tienen que estar cerrados antes de correr; al terminar el archivo queda guardado y
+  abierto en Excel a propósito.
+- **Leer sin abrir Excel cuando solo se lee**: abrir el `.xlsx`/`.xlsm` como ZIP y
+  escanear el XML. Levantar Excel por COM en la unidad de red T: cuesta minutos por
+  archivo. Si el escaneo falla o el archivo no es OOXML, se cae a xlwings solo.
+  `cfg["lectura_rapida"] = False` fuerza el camino viejo. Los archivos que se
+  **escriben** siguen yendo por xlwings.
+- **Descartar copias de Windows** al buscar por patrón: nombres que terminen en
+  `- copia`, `- copia (2)`, `- Copy`, `(2)`, y los temporales `~$`. Una copia más
+  nueva le gana al original si no se filtran.
+- **Modo SOLO MIRAR**, marcado por defecto, en todo script que escriba en una base
+  de datos.
+- **Comparar nombres normalizados** (sin tildes, sin espacios ni guiones bajos, en
+  mayúsculas) siempre que se comparen centrales o empresas. `El Toro-1`, `EL_TORO-1`
+  y `ELTORO-1` son la misma central. Ojo: la ñ no se arregla quitando tildes —
+  descomponer `Año` da `ANO` y `Anio` da `ANIO`, hay que tratarlos como iguales.
+- **Por COM las fórmulas se escriben en inglés y con coma**
+  (`=LET(x,UNIQUE(VSTACK(...)),FILTER(...))`), aunque en pantalla se vean en español
+  con punto y coma. Escribirlas en español por esa vía falla.
+- **Limpiar antes de escribir.** Reliquidar es reciclar el cuadro de un mes pasado:
+  los archivos llegan dimensionados para el mes anterior. Si el mes nuevo trae menos
+  filas y no se limpia, quedan las viejas abajo y los totales salen inflados.
+- **El JSON de traspaso es opcional.** El revisor puede pasar
+  `Salidas/AAMM/_traspaso_actualizador.json` como único argumento; **sin argumento
+  cada script tiene que seguir funcionando solo**, buscando los archivos por su
+  cuenta. Es la vía de escape si el revisor no está.
+
+Hay una skill del usuario, `ventana-xlwings-cl`, que tiene el patrón de ventana +
+xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
+
+---
+
+## 5. Trampas conocidas (ya costaron caro una vez)
+
+| Trampa | Regla |
+|---|---|
+| `CENTRALES_EMBALSE` está duplicada en `Actualiza_SC_CO.py` y `Revisor_Reliquidacion.py` | Al tocarla hay que cambiarla en **los dos**, con el nombre exacto del origen. V10 caza la desincronización en ambos sentidos, pero se ve como descuadre de monto. |
+| Capacidad nueva en `Actualiza_Data_Access.py` | Sumarla a `CAPACIDADES`. Si no, el script que la importa se cae con un `TypeError` raro en vez de decir "copiá el archivo actualizado". Peor si la capacidad es un **filtro**: no falla nada y entran datos de más. |
+| Columnas que no llevan fórmula | La `Q` de la hoja #3 del cuadro cero y la `AC` de la hoja "SC y CO" están vacías **a propósito**. Nunca hacer un AutoFill corrido que las pise: hay que tratar los bloques por separado. El actualizador y el verificador usan la misma partición. |
+| La `D` de la hoja #3 | Va contra la tabla `A:C`, **no** contra `K`. `K` junta las empresas de `A` y de `F`, así que casi siempre es más larga. |
+| `Clave Año_Mes` del origen de la planilla 9 | Viene mal (siempre `23xx`). Se pisa con el mes sacado del **nombre de los archivos**. |
+| Orden de los pasos de `Actualiza_Cuadro0.py` | Es la cadena de dependencias, no una preferencia. Correrlos por separado deja el libro a medio calcular **sin ninguna señal**. |
+| `Actualiza_Cuadro0.py` con cálculo automático | Va en **manual** de punta a punta, con recálculo explícito en los cuatro puntos donde hace falta. `L5`/`M5` son `SUMAR.SI` de columna entera repetidos por empresa. |
+| Sufijo de revisión distinto entre archivos | Un `.mdb` en `R01P` con el resto en `R01D` no es error del árbol, pero suele explicar descuadres de monto. |
+| Copiar un maestro a su copia | `shutil.copy2`, que conserva la fecha. Con `copy()` a secas el revisor la sigue marcando en amarillo, porque compara por fecha. |
+| El `~$` de Excel | No sirve para saber si un libro está abierto: Excel lo deja huérfano cuando se cae. Comprobar que se pueda escribir abriéndolo en `r+b`. |
+
+---
+
+## 6. INTERFACES.md se genera, no se escribe
+
+```
+python generar_interfaces.py            # regenera INTERFACES.md
+python generar_interfaces.py --check    # sale con 1 si quedó desactualizado
+python generar_interfaces.py --esqueleto-mapa   # bloques para los .py que faltan en MAPA.md
+```
+
+Solo biblioteca estándar, Python 3.9+. **Correrlo después de cualquier cambio de
+firma** y subir el `INTERFACES.md` resultante junto con el `.py`.
+
+El generador además avisa de dos cosas que conviene mirar: constantes definidas en
+más de un archivo (la clase de error de `CENTRALES_EMBALSE`) y archivos `.py` que
+todavía no tienen bloque en `MAPA.md`.
+
+---
+
+## 7. Decisiones ya tomadas
+
+- **No usar servidores MCP de indexado de código** (`codebase-memory` y similares):
+  corren sobre una copia local del repositorio, que el usuario no tiene, y su índice
+  queda en una sola máquina y un solo cliente. El usuario trabaja con dos asistentes
+  en paralelo y los dos tienen que ver el mismo estado. `MAPA.md` e `INTERFACES.md`
+  cumplen la misma función y viven dentro del repositorio.
+- **El módulo común se migra por partes, nunca de golpe.** Una pieza a la vez, un
+  script a la vez, verificando que sigue corriendo antes de seguir con el próximo.
+  Empezar por el manejo del `config.json`, que está bien acotado y documentado.
+- **`docs/ESTRUCTURA_CASO_RELIQUIDACION.md` entra tal cual y es la referencia de
+  dominio.** No hay que rehacerlo. Si algo del dominio cambia, se corrige ahí, no en
+  una copia.
+- **Los `.py` todavía no están en el repositorio** (ver `MAPA.md`, sección de estado).
+  Los bloques del mapa están escritos desde el documento de dominio y hay que
+  validarlos contra el código cuando llegue.
+
+---
+
+## 8. Al cerrar cada sesión
+
+- [ ] ¿Entregué archivos completos, listos para descargar y ejecutar?
+- [ ] ¿Corrí `generar_interfaces.py` si cambió alguna firma?
+- [ ] ¿`MAPA.md` refleja los cambios de hoy?
+- [ ] ¿`AGENTS.md` necesita una línea nueva por algo que se decidió hoy?
+- [ ] ¿Le recordé subir al repositorio lo que confirmó que funciona?
+- [ ] ¿Quedó anotado lo que quedó a medias y cuál es el siguiente paso?
