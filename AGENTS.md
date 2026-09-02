@@ -55,32 +55,16 @@ grep o por su encabezado, no leerlo entero.
 ## 3. Cómo se entregan los cambios
 
 **Este repositorio lo editan dos asistentes con acceso de escritura por git:
-Claude y ChatGPT.** Ninguno de los dos ve lo que hace el otro en tiempo real — no
-hay notificación, no hay aviso. La única red de seguridad es esta:
+Claude y ChatGPT.** Ninguno de los dos ve lo que hace el otro en tiempo real.
 
-**Antes de tocar código, mirar `git log` (los últimos 5-10 commits).** El autor
-del commit dice quién lo hizo — los de Claude quedan firmados `Claude
-<noreply@anthropic.com>`; los que suba el usuario a mano por la web quedan a su
-nombre; un commit de ChatGPT va a tener su propia firma, distinta. Si hay un commit
-reciente que no es propio, **leerlo antes de asumir en qué estado está el repo** —
-puede haber movido o renombrado algo.
+La lista concreta de qué hacer al empezar, mientras se trabaja y antes de
+cerrar está en **`REGLAS.md`** — es obligatoria, no un resumen de esta
+sección. Se lee entera, siempre, antes que este archivo. No se duplica acá
+para no tener dos copias de la misma lista desincronizándose con el tiempo.
 
-**Traer la rama antes de empezar, en cada sesión.** `git fetch` + `git pull` (o
-equivalente) antes del primer cambio. Trabajar sobre una copia vieja es lo que
-produce un push que pisa el trabajo del otro asistente sin que nadie se entere
-hasta después.
-
-**Entregar cambios completos y verificados, nunca a medio terminar.** Un commit
-roto o una migración a medias que otro asistente encuentra sin contexto es peor
-que no tocar nada. Si el cambio afecta a varios archivos a la vez (una
-reorganización, un módulo compartido), completarlo y verificarlo en la misma
-sesión — no dejarlo "para la próxima", porque la próxima puede ser el otro
-asistente.
-
-**Actualizar los archivos de control en la misma sesión.** Script nuevo, firma que
-cambia, carpeta que se mueve o decisión de diseño → va a `MAPA.md` / `AGENTS.md`
-antes de cerrar. Es la única forma en que el otro asistente se entera de algo que
-no vio pasar. Si no, el sistema se desincroniza y deja de servir — para los dos.
+`BITACORA.md` es el registro de qué se hizo en cada sesión y qué quedó
+pendiente — lo que un `git log` no cuenta. Toda sesión que cambia algo real
+le agrega una entrada, según `REGLAS.md`.
 
 > **Si en algún momento se vuelve al flujo original** (el usuario sube y baja
 > archivos por la web, sin que un asistente tenga push directo): entregar
@@ -221,11 +205,9 @@ tienen bloque en `MAPA.md`.
 
 ---
 
-## 8. Al cerrar cada sesión
+## 8. Al empezar y al cerrar cada sesión
 
-- [ ] ¿Entregué archivos completos, listos para descargar y ejecutar?
-- [ ] ¿Corrí `generar_interfaces.py` si cambió alguna firma?
-- [ ] ¿`MAPA.md` refleja los cambios de hoy?
-- [ ] ¿`AGENTS.md` necesita una línea nueva por algo que se decidió hoy?
-- [ ] ¿Le recordé subir al repositorio lo que confirmó que funciona?
-- [ ] ¿Quedó anotado lo que quedó a medias y cuál es el siguiente paso?
+El checklist obligatorio — `git log`, `BITACORA.md`, `git pull` al empezar;
+`INTERFACES.md`, `MAPA.md`, la entrada en `BITACORA.md`, commit y push al
+cerrar — está en **`REGLAS.md`**. Se sigue siempre, sin excepción; no se
+repite acá.

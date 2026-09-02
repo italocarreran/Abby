@@ -13,13 +13,19 @@ esperan.
 Lo que no se sube y aparece solo al usarlo: `config.json`, `Salidas/` y
 `Reemplazos REUC/Auxiliares/config.json`.
 
-## Si sos un asistente y entrás por primera vez
+## Si sos un asistente y entrás — Claude, ChatGPT, el que sea
 
-Leé **`AGENTS.md`** entero — es corto y trae la regla de expansión, las convenciones
-del código y las trampas conocidas. Después:
+**Leé `REGLAS.md` primero, entero, siempre — antes que cualquier otra cosa de
+esta tabla.** Es obligatorio: dos asistentes distintos pueden estar editando
+este repositorio, y esas reglas son lo único que evita que uno pise el
+trabajo del otro sin enterarse.
+
+Después, `AGENTS.md` entero — es corto y trae la regla de expansión, las
+convenciones del código y las trampas conocidas. Después:
 
 | Querés… | Leé |
 |---|---|
+| saber qué se hizo en sesiones anteriores y qué quedó pendiente | `BITACORA.md` |
 | entender el sistema | `MAPA.md` — un bloque por script, dos páginas |
 | conectar código nuevo con el existente | `INTERFACES.md` — firmas sin cuerpos |
 | saber en qué hoja/celda/columna vive un dato | `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` (buscá la sección, no lo leas entero) |
@@ -28,6 +34,8 @@ del código y las trampas conocidas. Después:
 ## Estructura
 
 ```
+REGLAS.md                       obligatorio — leer primero, siempre
+BITACORA.md                     registro de sesiones, qué quedó pendiente
 AGENTS.md                       cómo se trabaja acá (documento vivo)
 MAPA.md                         qué hace cada script y de qué depende
 INTERFACES.md                   generado — firmas, constantes y dependencias
