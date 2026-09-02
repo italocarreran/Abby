@@ -12,7 +12,10 @@ from pathlib import Path
 import json, subprocess, sys, re, socket, os, traceback, unicodedata, time
 
 # ── Config por usuario/PC ───────────────────────────────────────────────────
-CONFIG_PATH = Path(__file__).parent / "config.json"
+# config.json es compartido con el Revisor y el resto de los actualizadores,
+# que viven un nivel arriba (en scripts/, junto al Revisor). No es
+# Path(__file__).parent porque este script esta en actualizadores/.
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 
 def get_usuario() -> str:
     try:

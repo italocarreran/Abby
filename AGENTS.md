@@ -27,9 +27,20 @@ se negocia:
 
 **Dónde vive el código:** `scripts/` es a la vez la carpeta del repositorio y la
 carpeta de trabajo del usuario. Lo que está ahí adentro corre tal cual al
-descargarlo. `scripts/comun/` es el módulo compartido y `scripts/Reemplazos REUC/`
-tiene que llamarse exactamente así, con espacio y mayúsculas, porque el Revisor lo
-busca literal.
+descargarlo. Adentro:
+
+- `Revisor_Reliquidacion.py` va **solo**, en la raíz de `scripts/`.
+- `comun/` es el módulo compartido.
+- `actualizadores/` tiene los 8 que el Revisor lanza por botón.
+- `Reemplazos REUC/` — con ese nombre exacto, espacio y mayúsculas, porque el
+  Revisor lo busca literal — tiene el noveno, con su propio `config.json`.
+
+**`config.json` es compartido** entre el Revisor y los 8 de `actualizadores/`.
+Vive en `scripts/`, un nivel arriba de ellos. Un script movido a una subcarpeta
+nueva **tiene que seguir resolviendo esa ruta compartida**, no la suya propia
+(`DIR_SCRIPT.parent / "config.json"`, no `DIR_SCRIPT / "config.json"`) — si no,
+cada uno termina con su copia vacía y el traspaso de rutas entre el Revisor y los
+actualizadores se rompe en silencio, sin ningún error visible.
 
 **No abrir los archivos vecinos "para tener contexto".** Si de verdad hace falta uno
 más, pedirlo explícitamente y decir por qué. Leer de más es exactamente el problema
@@ -170,6 +181,13 @@ tienen bloque en `MAPA.md`.
   envoltorios de dos líneas, así que **ningún punto de llamada cambia**. Migrar un
   script es reemplazar esas cinco funciones por los envoltorios y agregar
   `from comun import config as _cfg`. Nada más.
+- **Un script de `actualizadores/` está una carpeta más lejos de `comun/` que el
+  Revisor.** `comun/` vive en `scripts/`, junto al Revisor, no dentro de
+  `actualizadores/`. Python solo agrega al `sys.path` la carpeta del propio
+  script, así que `from comun import config` no la encuentra sola: hay que
+  agregar la carpeta padre antes,
+  `sys.path.insert(0, str(DIR_SCRIPT.parent))`. Ver cómo lo hace
+  `actualizadores/Actualiza_SC_CO.py`.
 - **Al migrar una pieza, la versión que queda en `comun/` es la más defensiva de
   las que había**, y las diferencias se anotan en el docstring del módulo. No
   "elegir la del archivo más nuevo": hay que mirarlas todas.

@@ -25,33 +25,17 @@ Convenciones de esta página:
 
 ## Índice
 
-- [`scripts/comun/__init__.py`](#scriptscomun__init__py) — 9 líneas — Lo que comparten los scripts de la reliquidacion.
 - [`scripts/comun/config.py`](#scriptscomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
-- [`scripts/Actualiza_Access_P9.py`](#scriptsactualiza_access_p9py) — 1131 líneas — Actualiza el Access de la planilla 9
-- [`scripts/Actualiza_Cuadro0.py`](#scriptsactualiza_cuadro0py) — 1026 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`scripts/Actualiza_Data_Access.py`](#scriptsactualiza_data_accesspy) — 1595 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-- [`scripts/Actualiza_Energia.py`](#scriptsactualiza_energiapy) — 805 líneas — Actualizar Energia
-- [`scripts/Actualiza_SC_CO.py`](#scriptsactualiza_sc_copy) — 901 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`scripts/Actualiza_datos.py`](#scriptsactualiza_datospy) — 1340 líneas
-- [`scripts/Carga_Retiros.py`](#scriptscarga_retirospy) — 886 líneas — Carga Retiros_h.parquet a SQL Server
-- [`scripts/Prorratear.py`](#scriptsprorratearpy) — 916 líneas — Prorratear: del Access a SQL Server
 - [`scripts/Reemplazos REUC/ActualizaRemplazos.py`](#scriptsreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
 - [`scripts/Revisor_Reliquidacion.py`](#scriptsrevisor_reliquidacionpy) — 6840 líneas — Revisor de entregables - CASO RELIQUIDACION
-
-
----
-
-## `scripts/comun/__init__.py`
-
-> Lo que comparten los scripts de la reliquidacion.
->
-> Se importa como `from comun import config`, que funciona porque esta carpeta
-> esta al lado de los scripts. Los que viven en una subcarpeta (Reemplazos REUC)
-> necesitan agregar la carpeta padre al sys.path antes de importar.
->
-> Se migra DE A UNA PIEZA. Ver MAPA.md, "Lo que todavia no existe".
-
-*Sin funciones, clases ni constantes de módulo.*
+- [`scripts/actualizadores/Actualiza_Access_P9.py`](#scriptsactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
+- [`scripts/actualizadores/Actualiza_Cuadro0.py`](#scriptsactualizadoresactualiza_cuadro0py) — 1030 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`scripts/actualizadores/Actualiza_Data_Access.py`](#scriptsactualizadoresactualiza_data_accesspy) — 1598 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+- [`scripts/actualizadores/Actualiza_Energia.py`](#scriptsactualizadoresactualiza_energiapy) — 809 líneas — Actualizar Energia
+- [`scripts/actualizadores/Actualiza_SC_CO.py`](#scriptsactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`scripts/actualizadores/Actualiza_datos.py`](#scriptsactualizadoresactualiza_datospy) — 1343 líneas
+- [`scripts/actualizadores/Carga_Retiros.py`](#scriptsactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
+- [`scripts/actualizadores/Prorratear.py`](#scriptsactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
 
 
 ---
@@ -115,1071 +99,6 @@ pisarlo le borraria los ajustes a los demas scripts.
 #### `def guardar(ruta, data: dict) -> bool`
 
 Agrega o actualiza claves en el bloque del equipo actual.
-
-
----
-
-## `scripts/Actualiza_Access_P9.py`
-
-> Actualiza el Access de la planilla 9
-> (Ocupar_este_para_Reliquidacion_AAMM_*.mdb)
-> Reemplaza a "para ricardo.py" + archivo_de_configuracion.yaml.
->
-> Actualiza DOS tablas:
->
->   Sobrecostos      (Clave Año_Mes, Tipo_sobrecosto, Central, Hora Mensual,
->                     Sobrecosto), desde cuatro bloques de las planillas 3, 5 y 6
->   Central_Empresa  (Central, Empresa), desde tres hojas de propietarios
->
-> DE DONDE SALE CADA DATO  —  replicado del script original
-> Sobrecostos (4 bloques de 5 columnas cada uno):
->
->  | Fuente   | Archivo | Hoja                        | Cols    | Datos desde |
->  |----------|---------|-----------------------------|---------|-------------|
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| **— motor de Access, reutilizado —** | | |
-| `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
-| `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias.  |
-| `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
-| **— CONFIGURACION —** | | |
-| `TABLA_SOB` | `'Sobrecostos'` |  |
-| `TABLA_CE` | `'Central_Empresa'` |  |
-| `IDX_CLAVE` | `0` | Indices DENTRO del bloque de 5 columnas (0-based), segun el orden de la tabla: 0 Clave Año_Mes \| 1 Tipo_sobrecosto \| 2 Central \| 3 Hora Mensual \| 4 Sobrecosto |
-| `IDX_CENTRAL` | `2` |  |
-| `IDX_MONTO` | `4` |  |
-| `RE_AAMM` | `re.compile('[_\\s](\\d{4})[_\\s]*[Rr]\\d')` | La Clave Año_Mes viene MAL desde el origen: siempre trae 23xx aunque el mes sea otro (2405 llega como 2305).  |
-| `ENCABEZADOS_ESPERADOS` | `('clave', 'tipo', 'central', 'hora', 'pago')` | Encabezados que se esperan, solo para avisar si el archivo cambio. |
-| `PLANILLAS` | `dict de 3 claves: 'p3', 'p5', 'p6', …` | Todo se organiza POR PLANILLA: una casilla por planilla, y al marcarla se actualizan sus bloques de Sobrecostos Y sus propietarios.  |
-| `ORDEN_PL` | `['p3', 'p5', 'p6']` |  |
-| `CARPETA_P9` | `'04 Planilla 9'` |  |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-
-### Funciones
-
-#### `def aamm_de_nombre(ruta)`
-
-El AAMM del nombre de un archivo: '..._2502_R01P.xlsm' -> 2502.
-None si no se puede sacar.
-
-#### `def detectar_aamm(rutas, log)`
-
-El AAMM comun a los archivos. Si no coinciden entre si, lo dice: son
-archivos de meses distintos y eso es un problema en si mismo.
-
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-#### `def guardar_config(data)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-#### `def leer_propietarios(ruta, cfg, log)`
-
-(Central, Empresa) de una hoja de propietarios, SIN abrir Excel.
-
-El largo lo manda la columna de la CENTRAL: se corta en su primera celda
-vacia aunque la de empresa siga con datos. En CONSUMOS_PROPIOS las dos
-columnas no son contiguas (B y H) y HAY centrales sin propietario, que se
-conservan con la empresa en None.
-
-#### `def revisar_encabezados(ruta, cfg, log)`
-
-Lee la fila de encabezado del bloque y avisa si no se parece a lo
-esperado. No corta el proceso: los datos se leen por POSICION, asi que un
-encabezado distinto no rompe nada, pero conviene saberlo.
-
-#### `def cargar_central_empresa(ruta_mdb, filas, solo_lectura, log)`
-
-Vacia Central_Empresa y carga UNA fila por central.
-
-filas: lista de (central, empresa, origen). El origen es solo para poder
-decir de que planilla vino cada una cuando hay conflicto.
-Devuelve (ok, n_insertadas, n_sin_dueno).
-
-Transaccion unica: si algo falla, se revierte y la tabla queda como estaba.
-Las centrales SIN propietario se cargan igual, con la empresa en NULL: son
-datos validos. El Revisor comprueba despues si alguna de esas tiene plata.
-
-#### `def clave_central(t)`
-
-Normaliza el nombre de una central para comparar: sin tildes, sin espacios
-ni guiones bajos, en mayusculas. Asi 'El Toro-1', 'EL_TORO-1' y 'ELTORO-1'
-son la misma.
-
-Es MAS estricto que la comparacion de Access (que ignora mayusculas pero no
-espacios), y eso conviene: evita mandar dos filas que el indice unico
-consideraria iguales. La misma funcion esta en el Revisor.
-
-#### `def columnas_tabla_de(cur, tabla)`
-
-Nombres de columna de una tabla cualquiera del Access.
-
-#### `def guardar_excel_dump(ruta_mdb, tabla, encabezados, filas, log)`
-
-Guarda en un Excel lo que se cargo, al lado del .mdb.
-
-Es el equivalente del df_ricardo_salida.xlsx del script viejo, pero con el
-nombre de la tabla y del mes, y junto al Access en vez del directorio de
-trabajo del momento.
-
-#### `def ejecutar(rutas, seleccion, solo_lectura, guardar_dump, log, progreso, aamm=None)`
-
-seleccion: lista de planillas ('p3','p5','p6'). Por cada una se cargan sus
-bloques de Sobrecostos Y sus propietarios.
-
-aamm: el mes que se escribe en la Clave Año_Mes de TODAS las filas. Si no
-viene, se saca del nombre de los archivos. Nunca se usa el valor del origen,
-que viene mal (siempre 23xx).
-
-Devuelve (ok, resumen).
-
-**— VENTANA —**
-
-#### `def main()`
-
-
----
-
-## `scripts/Actualiza_Cuadro0.py`
-
-> Actualiza Cuadro 0   (0_CUADROS_RELIQUIDACION SSCC)
-> ALCANCE: deja los DATOS y las FORMULAS al dia, nada mas.
->     - pega la tabla del 1_CUADROS
->     - la tasa de O2, si se le da una
->     - reescribe las listas de empresas (K de la hoja #3, I de 01.SSCC)
->     - estira o corta las formulas de L:P, R:U, A:G y J:K
-> NO llama a Cuadro de pagos, NO llama a Actualiza Rango y NO refresca la tabla
-> dinamica de CPRT: eso se hace a mano en Excel despues de correr esto. La
-> dinamica cuelga de una Power Query ("Consulta - TEE") que depende de un libro
-> externo, y automatizarla escondia los errores en vez de resolverlos.
->
-> ES EL ARCHIVO QUE SE VA A PAGO, asi que cada paso queda escrito en el log con
-> lo que habia antes y lo que quedo despues.
->
-> COMO ESTA ARMADO EL LIBRO  (lo que hay que entender antes de tocar nada)
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| **— Hojas y celdas —** | | |
-| `IDX_HOJA_3` | `2` |  |
-| `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
-| `HOJA_ORIGEN_CUADRO1` | `'01.SSCC_Recurso_Técnico'` |  |
-| `CELDA_TASA` | `'O2'` |  |
-| `ORIGEN_TABLA` | `('I', 'K')` | Tabla que se pega del 1_CUADROS: I9:K de su hoja -> A5:C de la hoja #3 |
-| `ORIGEN_TABLA_FILA` | `9` |  |
-| `DESTINO_TABLA` | `('A', 'C')` |  |
-| `DESTINO_TABLA_FILA` | `5` |  |
-| `BLOQUES_TABLA` | `[('D', 'D')]` | La D de la hoja #3 es una formula que acompaña a la tabla A:C: D5 = B5 + C5 (el neto por empresa: lo que paga mas lo que recibe) O sea que su largo lo manda la TABLA PEGADA, no la lista K.  |
-| `FILA_K` | `5` | --- Formulas que se escriben ---------------------------------------------- IMPORTANTE: por COM las formulas se escriben en INGLES y con COMA como separador, aunque en pantalla se vean en espanol con… |
-| `FORMULA_K` | `'=LET(x,UNIQUE(VSTACK(F{f}:F{tope},A{f}:A{tope})),FILTER(x,(x<>0)*(x<>"")))'` |  |
-| `TOPE_K` | `1000` |  |
-| `FILA_I` | `9` |  |
-| `FORMULA_I` | `'=LET(x,UNIQUE(C{f}:C{tope}),FILTER(x,(x<>0)*(x<>"")))'` |  |
-| `TOPE_I` | `4345` |  |
-| `BLOQUES` | `lista de 3 elementos: ('#3', 5, [('L', 'P'), ('R', 'U')], 'K'), ('SSCC', 9, [('A', 'G')], 'K'), ('SSCC', 9, [('J', 'K')], 'I'), …` | --- Bloques de formulas que hay que estirar o cortar ---------------------- (hoja, primera_fila, [(col_ini, col_fin), ...], que define el largo) "K" -> tantas filas como empresas haya en K de la hoja… |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-
-### Funciones
-
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-#### `def guardar_config(data)`
-
-#### `def leer_tasa_guardada(cfg, aamm)`
-
-(valor, fecha) de la tasa guardada para ese mes, o (None, None).
-
-Se guarda POR MES a proposito: la tasa es del periodo. Guardada suelta, el
-mes siguiente arrastraria la del anterior sin que se note.
-
-#### `def guardar_tasa(aamm, valor)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
-
-#### `def buscar_hoja(wb, nombre)`
-
-Busca la hoja tolerando tildes y mayusculas.
-
-#### `def col_num(letra)`
-
-#### `def ultima_fila(sh, col, desde=1)`
-
-Ultima fila con ALGO en la columna, mirando de abajo hacia arriba.
-Cuenta las cadenas vacias como contenido: para el desbordamiento un "" es
-tan estorbo como un numero.
-
-#### `def recalcular(app, log, motivo)`
-
-Recalcula UNA vez y dice cuanto tardo.
-
-El libro se queda en calculo MANUAL de punta a punta. Con automatico, cada
-AutoFill dispara un recalculo completo, y las formulas de aca son caras: L5
-es =SUMIF(A:A,K5,D:D), un SUMIF de COLUMNA ENTERA repetido por cada empresa,
-y J9/K9 evaluan su SUMIF dos veces (una en la condicion y otra en el
-resultado). Recalcular cuatro veces a proposito, en vez de una por cada
-escritura, es la diferencia entre segundos y minutos.
-
-Se cronometra y queda en el log: si algun mes se pone lento, se ve donde.
-
-#### `def fmt_tiempo(seg)`
-
-#### `def paso_pegar_tabla(sh1, sh3, log)`
-
-I9:K del cuadro 1 -> A5:C de la hoja #3. Solo valores.
-
-#### `def paso_tasa(sh3, valor, log)`
-
-#### `def paso_formula_desbordada(sh, celda, formula, col, fila, log, etiqueta)`
-
-Limpia la columna y escribe la formula. Devuelve la ultima fila ocupada.
-
-Limpiar PRIMERO es obligatorio: cualquier celda no vacia debajo hace que la
-formula desbordada tire #DESBORDAMIENTO, y al reliquidar el archivo llega
-con los datos del mes anterior.
-
-#### `def paso_estirar(sh, fila_ini, bloques, hasta, log)`
-
-Deja las formulas de esos bloques cubriendo exactamente hasta 'hasta'.
-
-#### `def paso_validar_signos(sh, log)`
-
-AVISO, no corta. Comprueba lo mismo que valida CuadroPago antes de armar
-la matriz: en la tabla I:K, todo numero de la columna J (paga) tiene que ser
-NEGATIVO y todo numero de la K (recibe) POSITIVO.
-
-Se avisa aca porque CuadroPago ATRAPA su propio error: muestra un MsgBox y
-sale con Exit Sub sin escribir la matriz. Corriendola a mano se ve el cartel,
-pero conviene saber de antemano si va a fallar. Devuelve True si esta OK.
-
-#### `def ejecutar(rutas, op, log, progreso)`
-
-Corre la secuencia completa. Lo unico opcional es la tasa, porque puede
-llegar al final del mes, y guardar.
-
-op: {"tasa": float o None para no tocarla, "guardar": bool}
-Devuelve (ok, resumen).
-
-**— VENTANA —**
-
-#### `def main()`
-
-
----
-
-## `scripts/Actualiza_Data_Access.py`
-
-> Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-> de tres archivos Excel con macros (.xlsm).
->
-> Estructura de carpetas esperada:
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `decimal`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `FUENTES` | `dict de 3 claves: 'SSCC', 'CO', 'CCA', …` | base: de donde cuelga la "carpeta" de cada fuente.  |
-| `ORDEN_FUENTES` | `['SSCC', 'CO', 'CCA']` |  |
-| `CAPACIDADES` | `frozenset({'fuentes_externas', 'filtro_por_valores', 'borrar_todo', 'cols_no_cero', 'forz…` | Capacidades que este modulo le ofrece a quien lo importe (Actualiza_Energia.py).  |
-| `TABLA_ACCESS` | `'Sobrecostos'` |  |
-| `COLUMNAS_ESPERADAS` | `['Clave Año_Mes', 'Tipo_sobrecosto', 'Central', 'Hora Mensual', 'Sobrecosto']` |  |
-| `CONFIG_PATH` | `Path(__file__).parent / 'config.json'` |  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS.  |
-| `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
-| `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
-| `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
-
-### Funciones
-
-**— CONFIG POR PC/USUARIO —**
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-Escritura atomica: primero un .tmp y despues os.replace.
-Evita dejar el archivo truncado si algo falla a medio camino.
-
-#### `def guardar_config(data)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-**— UTILIDADES —**
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def normalizar(texto)`
-
-#### `def buscar_carpeta(base, nombre)`
-
-Busca una subcarpeta comparando nombres normalizados (tildes/mayusculas).
-
-#### `def buscar_archivo(carpeta, patron_regex, extensiones=('.xlsm', '.xlsx', '.xlsb'))`
-
-Archivo mas reciente cuyo nombre normalizado calza con el patron.
-
-#### `def col_letra(n)`
-
-4 -> "D".  Al reves de col_letra_a_num.
-
-#### `def col_letra_a_num(letra)`
-
-#### `def fmt_tiempo(seg)`
-
-#### `def es_vacio(v)`
-
-#### `def es_cero(v)`
-
-**— LECTURA DE EXCEL (xlwings, solo lectura) —**
-
-#### `def buscar_hoja(wb, nombre)`
-
-#### `def ultima_fila(sheet, col_num, desde)`
-
-Ultima fila con contenido en una columna, usando .formula (capta formulas).
-
-#### `def leer_bloque(sheet, f1, c1, f2, c2)`
-
-Devuelve siempre una lista de filas (listas).
-
-#### `def es_zip_excel(ruta)`
-
-#### `def ubicar_hoja_xml(z, hoja)`
-
-Dentro del zip de un .xlsx/.xlsm, devuelve (ruta_del_xml, lista_de_hojas).
-ruta_del_xml es None si la hoja no existe.
-
-#### `def expandir_columnas(rango)`
-
-'CF:CI' -> ['CF','CG','CH','CI'].  'CD' -> ['CD'].
-
-#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
-
-Lee columnas completas de un .xlsx/.xlsm escaneando el XML por trozos.
-Devuelve {"COL": {fila: valor}} con los valores ya calculados, o None.
-Igual que en el resto, se lee SOLO el resultado y nunca el nodo <f>.
-
-#### `def desescapar_xml(b)`
-
-Convierte el texto crudo del XML de Excel a texto de verdad.
-
-Hay que manejar las referencias NUMERICAS (&#243; = o con tilde), no solo las
-cinco entidades con nombre: los nombres de empresa chilenos vienen llenos de
-tildes y ñ, y algunos escritores de Excel las guardan asi. Si no se
-desescapan, "Enel Generaci&#243;n" y "Enel Generación" no se parecen en nada
-al comparar, y el cuadro de pago reporta un descuadre que no existe.
-
-Se resuelve en UNA pasada a proposito. Reemplazar "&amp;" primero y despues
-"&lt;" convertiria "&amp;lt;" (un literal "&lt;") en "<", que es otra cosa.
-
-#### `def leer_matriz_rapida(ruta, cfg, log)`
-
-La matriz de la fuente leyendo el ZIP, sin Excel. None si no se pudo.
-
-#### `def leer_fuente(app, ruta_xlsm, cfg, log)`
-
-La matriz de 5 columnas de una fuente, ya filtrada.
-
-Primero intenta el lector rapido (ZIP + XML, sin Excel). Si el archivo no es
-un .xlsx/.xlsm o algo falla, cae a xlwings.
-
-`app` puede ser una instancia de xlwings, None, o una FUNCION que la crea al
-llamarla. Lo ultimo es lo que usa proceso(): asi Excel se abre solo si de
-verdad hace falta, que con planillas normales no pasa nunca.
-
-#### `def driver_access()`
-
-El nombre del driver ODBC de Access. Lanza con un mensaje util si no hay.
-
-El mensaje LISTA los drivers que pyodbc si ve, y dice que Python se esta
-usando. Sin eso no se puede distinguir entre "no hay ningun driver ODBC"
-(instalacion rota o pyodbc mal), "hay drivers pero ninguno de Access"
-(falta el Access Database Engine) y "hay uno de Access pero de otra
-arquitectura" (Office de 32 bits con Python de 64).
-
-Tambien importa cuando el mismo script funciono antes en el mismo PC: casi
-siempre significa que se lanzo con OTRO Python (otra instalacion, otro
-entorno virtual, o pythonw vs python), y por eso se muestra el ejecutable.
-
-#### `def conectar_access(ruta_mdb)`
-
-#### `def columnas_tabla(cur)`
-
-Devuelve [(nombre, tipo_python)] de la tabla, en orden.
-
-#### `def mapear_columnas(cols_tabla, log)`
-
-Elige las 5 columnas destino: por nombre si calzan, si no las 5 primeras.
-
-#### `def a_numero(valor)`
-
-Convierte a int/float lo que venga (numero, o texto con formato chileno/ingles).
-Devuelve None si no se puede.
-
-#### `def clave_a_numero(valor)`
-
-La columna 'Clave Año_Mes' SIEMPRE se entrega como numero (AAAAMM).
-Acepta 202506, '202506', '2025-06', '06/2025', ' 202.506 ' o una fecha.
-
-#### `def coercionar(valor, tipo)`
-
-Adapta el valor leido de Excel al tipo de la columna en Access.
-
-#### `def coercionar_clave(valor, tipo)`
-
-Igual que coercionar pero forzando la clave a numero, sea cual sea el tipo destino.
-
-#### `def armar_lote(filas, destino, log)`
-
-Convierte las filas leidas a los tipos del Access. La columna 1 (clave) va a numero.
-Devuelve (lote, excluidas).
-
-#### `def clave_tipo(t)`
-
-Clave homogenea para comparar tipos entre el Access y los Excel.
-
-#### `def estado_access(cur, col_tipo, col_valor, con_suma=True)`
-
-{clave_tipo: {'n': filas, 'suma': monto o None}} agrupado por Tipo_sobrecosto.
-
-#### `def fmt_int(n, signo=False)`
-
-#### `def fmt_monto(v, signo=False)`
-
-#### `def resumen_cambios(antes, despues, log, proyectado=False)`
-
-Detalle de diferencias por tipo y total, antes vs despues (o proyectado).
-
-#### `def proceso(ruta_mdb, archivos, seleccion, solo_lectura, log, progreso, fuentes=None, borrar_todo=False)`
-
-archivos: {clave: ruta_xlsm}; seleccion: lista de claves a actualizar.
-
-fuentes: diccionario de configuracion de las fuentes. Por omision el FUENTES
-de este modulo (SSCC/CO/CCA); Actualiza_Energia.py y Actualiza_Access_P9.py
-pasan el suyo para reusar todo este motor de Access sin duplicarlo.
-
-borrar_todo: vaciar la tabla entera en vez de borrar solo los
-Tipo_sobrecosto que vienen en los Excel. Lo usa el .mdb de la planilla 9,
-que se arma COMPLETO desde sus fuentes; ahi el borrado por tipo dejaria
-filas viejas si un tipo desaparece del origen. El vaciado ocurre UNA sola
-vez, antes de insertar (ver ya_vaciada mas abajo).
-
-Si se agrega un parametro nuevo aca, hay que sumarlo tambien a CAPACIDADES,
-o los scripts que lo usen se caen con un TypeError en vez de decir "copia el
-archivo actualizado".
-
-**— VENTANA —**
-
-#### `def actualizar_color_label(lbl, valor, es_archivo=False)`
-
-#### `def main()`
-
-
----
-
-## `scripts/Actualiza_Energia.py`
-
-> Actualizar Energia
-> Actualiza los dos entregables de "01.a Sobrecostos de Energia" a partir del
-> "02 Consolidado_Tabulado", hoja "Sobrecostos":
->
->   1) 03b ENTRADA_SOB_AAMM_*.mdb   (tabla [Sobrecostos] del Access)
->   2) Consolidado_AAMM_*.xlsm      (hoja "Sobrecostos")
->
-> En los dos casos se toman SOLO las filas cuyo Tipo sobrecosto es SCMT o SCPC,
-> que es justo lo que el revisor comprueba en V5 y V6.
->
-> El motor de Access se reutiliza de Actualiza_Data_Access.py en vez de
-> copiarlo: es el mismo destino (tabla [Sobrecostos], mismas 5 columnas, misma
-> regla de "borrar solo los tipos que trae el Excel"). Los dos .py tienen que
-> estar en la misma carpeta.
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
-| `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
-| `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
-| `FILA_DATOS_TABULADO` | `3` | CONFIGURACION El encabezado del "02 Consolidado_Tabulado" (hoja Sobrecostos) esta en la fila 2, asi que los datos arrancan en la 3.  |
-| `TIPOS` | `('SCMT', 'SCPC')` | Tipos que se traen.  |
-| `HOJA_ORIGEN` | `'Sobrecostos'` |  |
-| `HOJA_DESTINO_CONSOLIDADO` | `'Sobrecostos'` |  |
-| `FUENTES_ENERGIA` | `dict de 1 claves: 'MDB', …` | ---- 1) Access ------------------------------------------------------------- Columnas AA:AE del tabulado, que ya vienen en el mismo orden que la tabla: AA Clave Año_Mes \| AB Tipo sobrecosto \| AC Cent… |
-| `BLOQUES_CONSOLIDADO` | `[('A', 'G'), ('I', 'J'), ('H', 'H')]` | ---- 2) Consolidado_AAMM --------------------------------------------------- Bloques de origen EN ESTE ORDEN -> se pegan corridos en A:J del destino.  |
-| `COL_FILTRO_CONSOLIDADO` | `'AB'` |  |
-| `COL_DESTINO_INI` | `'A'` |  |
-| `FILA_DESTINO_INI` | `2` |  |
-| `N_COLS_CONSOLIDADO` | `10` |  |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-
-### Funciones
-
-**— CONFIG COMPARTIDO  (mismo config.json que el Revisor y los otros dos) —**
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-#### `def guardar_config(data)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-#### `def buscar_tabulado(carpeta_reliq)`
-
-01 Sobrecostos/<Detalles diarios>/02 Consolidado_Tabulado_AAMM_*
-
-#### `def carpeta_energia(carpeta_reliq)`
-
-#### `def buscar_mdb_energia(carpeta_reliq)`
-
-#### `def buscar_consolidado_energia(carpeta_reliq)`
-
-#### `def actualizar_consolidado(app_xw, ruta_tabulado, ruta_destino, log, progreso=None)`
-
-Pega en el Consolidado_AAMM las filas SCMT/SCPC del tabulado.
-Devuelve la cantidad de filas escritas.
-
-#### `def ejecutar(rutas, hacer_mdb, hacer_consolidado, solo_prueba, log, progreso)`
-
-rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
-
-**— VENTANA —**
-
-#### `def main()`
-
-
----
-
-## `scripts/Actualiza_SC_CO.py`
-
-> Actualiza la hoja "SC y CO" de la planilla 5_
-> Pega los SC y los CO de los EMBALSES, con su prorrata de instruccion directa.
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Revisor_Reliquidacion.py.  |
-| **— Configuracion de origenes y destino —** | | |
-| `HOJA_DESTINO` | `'SC y CO'` |  |
-| `FILA_DESTINO` | `9` |  |
-| `COLS_ID` | `('C', 'G')` | Bloque de identificacion (C:G) y de prorrata (I:X), y las formulas (Y:AF). |
-| `COLS_PRO` | `('I', 'X')` |  |
-| `BLOQUES_FORMULA` | `[('Y', 'AB'), ('AD', 'AF')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a proposito.  |
-| `COL_TIPO` | `'D'` |  |
-| `COL_CLAVE` | `'C'` |  |
-| `COL_CENTRAL` | `'E'` |  |
-| `N_ID` | `5` |  |
-| `N_PRO` | `16` |  |
-| `TIPO_SC` | `'SCCF'` |  |
-| `TIPO_CO` | `'CO'` |  |
-| `FUENTES` | `dict de 2 claves: 'SC', 'CO', …` |  |
-| `ORDEN` | `['SC', 'CO']` |  |
-| `RE_UNIDAD` | `re.compile('-\\d+\\s*$')` | Una central "-numero" que no este en la lista es sospechosa: el sufijo indica unidad, y las unidades son justamente lo que tienen los embalses. |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-
-### Funciones
-
-#### `def leer_config()`
-
-#### `def guardar_config(data)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
-
-#### `def clave_central(t)`
-
-Normaliza un nombre de central para comparar: sin tildes, sin espacios ni
-guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
-
-#### `def buscar_hoja(wb, nombre)`
-
-#### `def col_num(letra)`
-
-#### `def col_letra(n)`
-
-#### `def ultima_fila(sh, col, desde=1)`
-
-#### `def fmt_tiempo(seg)`
-
-#### `def leer_fuente(app, ruta, cfg, log)`
-
-Devuelve (filas_id, filas_pro, avisos).
-
-filas_id: lista de listas de 5 valores (C:G). Si la fuente no trae la Clave
-          Año_Mes, el primer valor queda en None y se completa despues.
-filas_pro: lista de listas de 16 valores (I:X), alineada con filas_id.
-
-#### `def leer_bloque_destino(sh, tipo, log)`
-
-Lee del propio destino las filas de un tipo (SCCF o CO).
-
-Sirve para conservar el bloque que el usuario NO eligio actualizar: como los
-dos bloques van uno debajo del otro, hay que reescribirlos juntos.
-
-#### `def ejecutar(rutas, hacer, aamm_respaldo, log, progreso)`
-
-hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
-
-**— VENTANA —**
-
-#### `def main()`
-
-
----
-
-## `scripts/Actualiza_datos.py`
-
-**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| **— Constantes configurables —** | | |
-| `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
-| **— Config por usuario/PC —** | | |
-| `CONFIG_PATH` | `Path(__file__).parent / 'config.json'` |  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-| `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
-| `MAPEO_SOBRECOSTOS_CONSOLIDADO` | `lista de 1 elementos: {'hoja_origen': 'Sobrecostos', 'cols_origen': [('A', 'G'), ('I', 'J'), ('Q', 'W')], 'fila_ini_origen': 3, 'fila_det_origen': 'A', 'hoja_destino': 'SOBRECOSTOS', 'cols_destino': [('A', 'G'), ('I', 'J'), ('K', 'Q')], 'fila_ini_destino': 7, 'fila_det_destino': 'A', 'cols_formulas': [('R', 'EB')], 'filtro_col': 'C', 'filtro_valor': 'C.Frec', 'detectar_fin_primera_vacia': True, 'ajustar_formulas': True}, …` |  |
-| `MAPEO_P3_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CPF_FD', 'cols_destino': [('D', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'D', 'cols_formulas': [('A', 'B'), ('N', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CSF_FD', 'cols_destino': [('E', 'K')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('M', 'N'), ('P', 'X')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CTF_FD', 'cols_destino': [('E', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('N', 'P'), ('R', 'Y')]}, …` |  |
-| `MAPEO_P5_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('B', 'J')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CTF', 'cols_destino': [('B', 'I')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, …` |  |
-| `MAPEO_P6_FD` | `lista de 1 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('B', 'B'), ('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': []}, …` |  |
-| `PRORRATA_CONFIG` | `dict de 9 claves: 'hoja_origen', 'fila_ini_origen', 'col_hora', …` | ── Configuración Prorrata (pivot tabla→matriz) ────────────────────────────── Origen: hoja PRORRATA_HORARIA_TABULAR, fila 2 en adelante Col A: Hora Mensual \| Col B: Suministrador \| Col C: Prorrata_ho… |
-
-### Funciones
-
-#### `def get_usuario() -> str`
-
-#### `def leer_config() -> dict`
-
-#### `def escribir_json(ruta, data)`
-
-Escritura atomica: primero un .tmp y despues os.replace.
-Evita dejar el archivo truncado si algo falla a medio camino.
-
-#### `def guardar_config(data: dict)`
-
-#### `def leer_traspaso(argv: list) -> dict | None`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-**— Utilidades —**
-
-#### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
-
-#### `def normalizar(texto: str) -> str`
-
-#### `def buscar_sscc_desempeno(carpeta_reliq: Path) -> Path | None`
-
-FD está un nivel arriba de 02 CASO RELIQUIDACION.
-
-#### `def buscar_consolidado(carpeta_reliq: Path) -> Path | None`
-
-01 Sobrecostos/Detalles diarios/02 Consolidado_Tabulado_AAMM…
-
-#### `def buscar_sobrecostos_xlsm(carpeta_reliq: Path) -> Path | None`
-
-#### `def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None`
-
-#### `def buscar_prorrata(carpeta_reliq: Path) -> Path | None`
-
-04 Planilla 9/Prorrata_Retiros_AAMM…
-
-**— Lógica xlwings —**
-
-#### `def col_letra_a_num(letra: str) -> int`
-
-#### `def expandir_cols(rangos: list) -> list`
-
-#### `def ultima_fila(sheet, col_letra: str, desde: int) -> int`
-
-Última fila con valor O fórmula en la columna, desde 'desde'.
-
-#### `def sheet_last_row_col(sheet, col_num: int, desde: int) -> int`
-
-Última fila con valor o fórmula en columna por número, desde 'desde'.
-
-#### `def ultima_fila_usedrange(sheet, fila_ini: int) -> int`
-
-Última fila usada en la hoja según UsedRange (incluye fórmulas y formatos).
-
-#### `def fmt_tiempo(segundos)`
-
-#### `def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func=None)`
-
-Aplica una lista de mapeos entre wb_o (origen) y wb_d (destino).
-
-#### `def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_func=None)`
-
-Transforma tabla larga (Hora,Suministrador,Valor) a matriz pivote en destino.
-
-#### `def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str, hacer_fd: bool, hacer_otro: bool, log_func=print, progreso_func=None, rutas: dict | None=None) -> tuple[bool, list]`
-
-planilla: 'sc' | 'p3' | 'p5' | 'p6'
-hacer_fd: actualizar FD
-hacer_otro: para sc=Consolidado; p3/p5/p6=Prorrata (próximamente)
-rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
-       cual y NO se vuelve a buscar el archivo; las que falten caen al
-       buscar_* de siempre.
-Retorna (ok, lista_rutas_modificadas)
-
-**— Ventana —**
-
-#### `def main()`
-
-
----
-
-## `scripts/Carga_Retiros.py`
-
-> Carga Retiros_h.parquet a SQL Server
-> Version con ventana del script original. Lo que hace es lo mismo:
->     1. lee el parquet
->     2. BORRA del servidor los periodos que trae el parquet (o la tabla entera)
->     3. carga por trozos
->     4. verifica que la cuenta cuadre
->
-> ESTO ESCRIBE EN UNA BASE DE DATOS Y BORRA FILAS. Por eso:
->   - antes de borrar muestra exactamente que va a borrar y pide confirmacion
->   - hay un modo SOLO MIRAR que hace los conteos y no toca nada
->   - todo queda en el log con las cuentas antes y despues
->
-> SI FALLA A MITAD DE LA CARGA: el borrado ya se hizo y quedan filas a medias.
-> No es grave: volver a correrlo borra ese periodo otra vez y recarga. Lo que NO
-> hay que hacer es dejarlo asi, porque la tabla queda con datos incompletos.
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| **— Configuracion —** | | |
-| `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
-| `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
-| `TABLA` | `'Retiros'` |  |
-| `SERVER` | `'SRV-DTE'` |  |
-| `DRIVER` | `'ODBC Driver 17 for SQL Server'` |  |
-| `BASES` | `['02_RETIROS', '14_RETIROS_RELIQUIDACION']` | Las bases entre las que se puede elegir.  |
-| `CHUNK` | `50000` |  |
-| `LARGO_TEXTO` | `255` | Largo de las columnas de texto SI HAY QUE CREAR la tabla.  |
-| `COL_PERIODO` | `'Clave Año_Mes'` | Los nombres de columna NO se escriben igual en todos lados: el parquet a veces trae "Clave Año_Mes" (con espacio y ñ) y a veces "Clave_Anio_Mes" o "Clave_anio_mes", y la tabla de SQL Server tiene el… |
-| `COL_SUMINISTRADOR` | `'Suministrador'` |  |
-| `COL_HORA` | `'Hora Mensual'` |  |
-| `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe.  |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-
-### Funciones
-
-#### `def clave_col(t)`
-
-Normaliza un nombre de columna para comparar.
-
-Sin tildes, sin espacios ni guiones bajos, en mayusculas. Y ademas trata
-"ANIO" como "ANO", que es lo que hace falta de verdad: la Ñ no se resuelve
-quitando tildes. Descomponer "Año" da "ANO" y "Anio" da "ANIO", y sin este
-paso no coincidirian, que es justo el caso que falla:
-    'Clave Año_Mes'  ==  'Clave_Anio_Mes'  ==  'clave_anio_mes'
-
-#### `def resolver_columna(columnas, objetivo)`
-
-El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
-
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-#### `def guardar_config(data)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
-
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
-
-#### `def fmt_tiempo(seg)`
-
-#### `def fmt_n(n)`
-
-12345 -> '12.345'  (separador de miles chileno).
-
-#### `def buscar_parquet(carpeta_reliq)`
-
-El Retiros_h.parquet dentro de '04 Planilla 9'.
-
-#### `def aplicar_cambio_hora(df, col_hora, hora_cambio, log)`
-
-Empuja una hora hacia arriba todo lo que este DESDE hora_cambio.
-
-En el mes del cambio de primavera la hora `hora_cambio` no existe. Si el
-archivo viene corrido (1..719), lo que esta guardado como 145 es en realidad
-la 146, lo que esta como 146 es la 147, y asi. Sumando 1 desde ahi queda
-1..144 y 146..720, con la 145 ausente, que es lo correcto.
-
-Devuelve (df, aplicado, motivo).
-
-COMO SE DETECTA SI YA VIENE APLICADO: mirando si la hora del cambio EXISTE
-en los datos.
-  - si existe  -> todavia no se aplico, hay que empujar
-  - si no esta -> ya se aplico (o no hay retiros a esa hora), no se toca
-Es la comprobacion correcta porque el desplazamiento es justamente lo que
-deja ese hueco: no se puede aplicar dos veces sin que se note.
-
-#### `def ejecutar(ruta_parquet, base_datos, hora_cambio, log, progreso)`
-
-Carga el parquet en la tabla, vaciandola antes.
-
-hora_cambio: None, o la hora mensual del cambio de horario de primavera.
-Si viene, se empuja una hora todo lo que este desde ahi (ver
-aplicar_cambio_hora). El parquet NO se toca.
-
-Devuelve (ok, resumen).
-
-**— VENTANA —**
-
-#### `def main()`
-
-
----
-
-## `scripts/Prorratear.py`
-
-> Prorratear: del Access a SQL Server
-> Automatiza lo que hoy se hace a mano en SQL Server Management Studio:
->
->   1. Borrar de la base de sobrecostos las tablas:
->        Central_Empresa, Pago_Retiro_reporte_tabla, Sobrecostos, TIPOS
->   2. Importarlas del Access (el "Tasks -> Import Data"):
->        Central_Empresa_Actualizada  ->  Central_Empresa
->          (el .mdb de la planilla 9 no la tiene: ahi la tabla ya se llama
->           Central_Empresa y se copia tal cual)
->        Sobrecostos                  ->  Sobrecostos
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| **— Configuracion —** | | |
-| `SERVER` | `'SRV-DTE'` |  |
-| `DRIVER_SQL` | `'ODBC Driver 17 for SQL Server'` |  |
-| `ESCENARIOS` | `dict de 2 claves: 'normal', 'reliq', …` | Los dos escenarios.  |
-| `ORDEN_ESC` | `['normal', 'reliq']` |  |
-| `TABLAS_A_BORRAR` | `['Central_Empresa', 'Pago_Retiro_reporte_tabla', 'Sobrecostos', 'TIPOS']` | Tablas que se borran antes de importar, en la base de sobrecostos. |
-| `IMPORTAR` | `lista de 3 elementos: {'destino': 'Central_Empresa', 'origen': ['Central_Empresa_Actualizada', 'Central_Empresa']}, {'destino': 'Sobrecostos', 'origen': ['Sobrecostos']}, {'destino': 'TIPOS', 'origen': ['TIPOS']}, …` | Que se copia del Access.  |
-| `COL_CLAVE_ACCESS` | `'Clave Año_Mes'` | Columnas del periodo, para comprobar que los retiros y los sobrecostos sean del MISMO mes antes de prorratear. |
-| `COL_CLAVE_RETIROS` | `'Clave_Anio_Mes'` |  |
-| `TABLA_RETIROS` | `'Retiros'` |  |
-| `VISTA_PAGO` | `'10_Pago_retiros'` |  |
-| `TABLA_REPORTE` | `'Pago_Retiro_reporte_tabla'` |  |
-| `SQL_REPORTE` | `'\nSELECT Tipo_sobrecosto, Concepto, Barra, Suministrador, Retiro, clave, Tipo,\n SUM(pag…` |  |
-| `CHUNK` | `20000` |  |
-| `LARGO_TEXTO` | `255` | Largo de las columnas de texto al crear las tablas.  |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
-
-### Funciones
-
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
-#### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-#### `def guardar_config(data)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-El dict del traspaso, o None. Nunca lanza: si el JSON esta roto se cae al
-modo manual.
-
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
-
-#### `def fmt_tiempo(seg)`
-
-#### `def fmt_n(n)`
-
-#### `def driver_access()`
-
-#### `def tablas_access(ruta_mdb)`
-
-Nombres de las tablas de usuario del .mdb.
-
-#### `def elegir_origen(disponibles, candidatos)`
-
-El primer candidato que exista, comparando sin mayusculas ni tildes.
-
-#### `def objeto_existe(cn, nombre, text, tipos=('U',))`
-
-True si el objeto existe en la base conectada.
-
-OJO con el tipo: en OBJECT_ID(nombre, tipo) la 'U' es TABLA DE USUARIO y la
-'V' es VISTA. Preguntando por 'U' una vista devuelve NULL aunque exista,
-que es justo lo que pasaba con 10_Pago_retiros.
-
-Se consulta sys.objects, que no obliga a elegir un tipo y ademas permite
-preguntar por varios de una.
-
-#### `def tabla_existe(cn, nombre, text)`
-
-Solo tablas: es lo que se puede borrar con DROP TABLE.
-
-#### `def vista_o_tabla_existe(cn, nombre, text)`
-
-Vista o tabla. La 10_Pago_retiros es una VISTA, pero si algun dia fuera
-una tabla el paso final funcionaria igual, asi que se aceptan las dos.
-
-#### `def contar(cn, nombre, text)`
-
-#### `def tipos_sql(df)`
-
-(tipos, avisos) para crear la tabla en SQL Server.
-
-Hace falta porque to_sql, sin decirle nada, crea las columnas de texto como
-NVARCHAR(MAX). Y NVARCHAR(MAX) **no se puede indexar**: un join sobre esa
-columna obliga al servidor a recorrer la tabla entera. El asistente
-"Import Data" de Management Studio crea longitudes concretas, y por eso las
-tablas que hizo el asistente andan mas rapido que las que haria to_sql a
-secas.
-
-El texto va en NVARCHAR(255), igual que lo que crea el asistente y que lo
-que tienen hoy las tablas. Solo se agranda si algun dato no entra.
-
-#### `def periodos_access(ruta_mdb, tabla, columna)`
-
-Los Clave Año_Mes que hay en una tabla del .mdb.
-
-#### `def periodos_retiros(base_retiros, text, create_engine)`
-
-Los Clave_Anio_Mes que hay hoy en la tabla Retiros de esa base.
-
-#### `def ejecutar(ruta_mdb, escenario, solo_mirar, log, progreso)`
-
-Devuelve (ok, resumen).
-
-**— VENTANA —**
-
-#### `def main()`
 
 
 ---
@@ -1874,24 +793,1088 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 
 ---
 
+## `scripts/actualizadores/Actualiza_Access_P9.py`
+
+> Actualiza el Access de la planilla 9
+> (Ocupar_este_para_Reliquidacion_AAMM_*.mdb)
+> Reemplaza a "para ricardo.py" + archivo_de_configuracion.yaml.
+>
+> Actualiza DOS tablas:
+>
+>   Sobrecostos      (Clave Año_Mes, Tipo_sobrecosto, Central, Hora Mensual,
+>                     Sobrecosto), desde cuatro bloques de las planillas 3, 5 y 6
+>   Central_Empresa  (Central, Empresa), desde tres hojas de propietarios
+>
+> DE DONDE SALE CADA DATO  —  replicado del script original
+> Sobrecostos (4 bloques de 5 columnas cada uno):
+>
+>  | Fuente   | Archivo | Hoja                        | Cols    | Datos desde |
+>  |----------|---------|-----------------------------|---------|-------------|
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| **— motor de Access, reutilizado —** | | |
+| `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
+| `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias.  |
+| `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
+| **— CONFIGURACION —** | | |
+| `TABLA_SOB` | `'Sobrecostos'` |  |
+| `TABLA_CE` | `'Central_Empresa'` |  |
+| `IDX_CLAVE` | `0` | Indices DENTRO del bloque de 5 columnas (0-based), segun el orden de la tabla: 0 Clave Año_Mes \| 1 Tipo_sobrecosto \| 2 Central \| 3 Hora Mensual \| 4 Sobrecosto |
+| `IDX_CENTRAL` | `2` |  |
+| `IDX_MONTO` | `4` |  |
+| `RE_AAMM` | `re.compile('[_\\s](\\d{4})[_\\s]*[Rr]\\d')` | La Clave Año_Mes viene MAL desde el origen: siempre trae 23xx aunque el mes sea otro (2405 llega como 2305).  |
+| `ENCABEZADOS_ESPERADOS` | `('clave', 'tipo', 'central', 'hora', 'pago')` | Encabezados que se esperan, solo para avisar si el archivo cambio. |
+| `PLANILLAS` | `dict de 3 claves: 'p3', 'p5', 'p6', …` | Todo se organiza POR PLANILLA: una casilla por planilla, y al marcarla se actualizan sus bloques de Sobrecostos Y sus propietarios.  |
+| `ORDEN_PL` | `['p3', 'p5', 'p6']` |  |
+| `CARPETA_P9` | `'04 Planilla 9'` |  |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+
+### Funciones
+
+#### `def aamm_de_nombre(ruta)`
+
+El AAMM del nombre de un archivo: '..._2502_R01P.xlsm' -> 2502.
+None si no se puede sacar.
+
+#### `def detectar_aamm(rutas, log)`
+
+El AAMM comun a los archivos. Si no coinciden entre si, lo dice: son
+archivos de meses distintos y eso es un problema en si mismo.
+
+**— CONFIG COMPARTIDO —**
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def escribir_json(ruta, data)`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+#### `def leer_propietarios(ruta, cfg, log)`
+
+(Central, Empresa) de una hoja de propietarios, SIN abrir Excel.
+
+El largo lo manda la columna de la CENTRAL: se corta en su primera celda
+vacia aunque la de empresa siga con datos. En CONSUMOS_PROPIOS las dos
+columnas no son contiguas (B y H) y HAY centrales sin propietario, que se
+conservan con la empresa en None.
+
+#### `def revisar_encabezados(ruta, cfg, log)`
+
+Lee la fila de encabezado del bloque y avisa si no se parece a lo
+esperado. No corta el proceso: los datos se leen por POSICION, asi que un
+encabezado distinto no rompe nada, pero conviene saberlo.
+
+#### `def cargar_central_empresa(ruta_mdb, filas, solo_lectura, log)`
+
+Vacia Central_Empresa y carga UNA fila por central.
+
+filas: lista de (central, empresa, origen). El origen es solo para poder
+decir de que planilla vino cada una cuando hay conflicto.
+Devuelve (ok, n_insertadas, n_sin_dueno).
+
+Transaccion unica: si algo falla, se revierte y la tabla queda como estaba.
+Las centrales SIN propietario se cargan igual, con la empresa en NULL: son
+datos validos. El Revisor comprueba despues si alguna de esas tiene plata.
+
+#### `def clave_central(t)`
+
+Normaliza el nombre de una central para comparar: sin tildes, sin espacios
+ni guiones bajos, en mayusculas. Asi 'El Toro-1', 'EL_TORO-1' y 'ELTORO-1'
+son la misma.
+
+Es MAS estricto que la comparacion de Access (que ignora mayusculas pero no
+espacios), y eso conviene: evita mandar dos filas que el indice unico
+consideraria iguales. La misma funcion esta en el Revisor.
+
+#### `def columnas_tabla_de(cur, tabla)`
+
+Nombres de columna de una tabla cualquiera del Access.
+
+#### `def guardar_excel_dump(ruta_mdb, tabla, encabezados, filas, log)`
+
+Guarda en un Excel lo que se cargo, al lado del .mdb.
+
+Es el equivalente del df_ricardo_salida.xlsx del script viejo, pero con el
+nombre de la tabla y del mes, y junto al Access en vez del directorio de
+trabajo del momento.
+
+#### `def ejecutar(rutas, seleccion, solo_lectura, guardar_dump, log, progreso, aamm=None)`
+
+seleccion: lista de planillas ('p3','p5','p6'). Por cada una se cargan sus
+bloques de Sobrecostos Y sus propietarios.
+
+aamm: el mes que se escribe en la Clave Año_Mes de TODAS las filas. Si no
+viene, se saca del nombre de los archivos. Nunca se usa el valor del origen,
+que viene mal (siempre 23xx).
+
+Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Actualiza_Cuadro0.py`
+
+> Actualiza Cuadro 0   (0_CUADROS_RELIQUIDACION SSCC)
+> ALCANCE: deja los DATOS y las FORMULAS al dia, nada mas.
+>     - pega la tabla del 1_CUADROS
+>     - la tasa de O2, si se le da una
+>     - reescribe las listas de empresas (K de la hoja #3, I de 01.SSCC)
+>     - estira o corta las formulas de L:P, R:U, A:G y J:K
+> NO llama a Cuadro de pagos, NO llama a Actualiza Rango y NO refresca la tabla
+> dinamica de CPRT: eso se hace a mano en Excel despues de correr esto. La
+> dinamica cuelga de una Power Query ("Consulta - TEE") que depende de un libro
+> externo, y automatizarla escondia los errores en vez de resolverlos.
+>
+> ES EL ARCHIVO QUE SE VA A PAGO, asi que cada paso queda escrito en el log con
+> lo que habia antes y lo que quedo despues.
+>
+> COMO ESTA ARMADO EL LIBRO  (lo que hay que entender antes de tocar nada)
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| **— Hojas y celdas —** | | |
+| `IDX_HOJA_3` | `2` |  |
+| `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
+| `HOJA_ORIGEN_CUADRO1` | `'01.SSCC_Recurso_Técnico'` |  |
+| `CELDA_TASA` | `'O2'` |  |
+| `ORIGEN_TABLA` | `('I', 'K')` | Tabla que se pega del 1_CUADROS: I9:K de su hoja -> A5:C de la hoja #3 |
+| `ORIGEN_TABLA_FILA` | `9` |  |
+| `DESTINO_TABLA` | `('A', 'C')` |  |
+| `DESTINO_TABLA_FILA` | `5` |  |
+| `BLOQUES_TABLA` | `[('D', 'D')]` | La D de la hoja #3 es una formula que acompaña a la tabla A:C: D5 = B5 + C5 (el neto por empresa: lo que paga mas lo que recibe) O sea que su largo lo manda la TABLA PEGADA, no la lista K.  |
+| `FILA_K` | `5` | --- Formulas que se escriben ---------------------------------------------- IMPORTANTE: por COM las formulas se escriben en INGLES y con COMA como separador, aunque en pantalla se vean en espanol con… |
+| `FORMULA_K` | `'=LET(x,UNIQUE(VSTACK(F{f}:F{tope},A{f}:A{tope})),FILTER(x,(x<>0)*(x<>"")))'` |  |
+| `TOPE_K` | `1000` |  |
+| `FILA_I` | `9` |  |
+| `FORMULA_I` | `'=LET(x,UNIQUE(C{f}:C{tope}),FILTER(x,(x<>0)*(x<>"")))'` |  |
+| `TOPE_I` | `4345` |  |
+| `BLOQUES` | `lista de 3 elementos: ('#3', 5, [('L', 'P'), ('R', 'U')], 'K'), ('SSCC', 9, [('A', 'G')], 'K'), ('SSCC', 9, [('J', 'K')], 'I'), …` | --- Bloques de formulas que hay que estirar o cortar ---------------------- (hoja, primera_fila, [(col_ini, col_fin), ...], que define el largo) "K" -> tantas filas como empresas haya en K de la hoja… |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+
+### Funciones
+
+**— CONFIG COMPARTIDO —**
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def escribir_json(ruta, data)`
+
+#### `def guardar_config(data)`
+
+#### `def leer_tasa_guardada(cfg, aamm)`
+
+(valor, fecha) de la tasa guardada para ese mes, o (None, None).
+
+Se guarda POR MES a proposito: la tasa es del periodo. Guardada suelta, el
+mes siguiente arrastraria la del anterior sin que se note.
+
+#### `def guardar_tasa(aamm, valor)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+**— UTILIDADES —**
+
+#### `def normalizar(t)`
+
+#### `def buscar_hoja(wb, nombre)`
+
+Busca la hoja tolerando tildes y mayusculas.
+
+#### `def col_num(letra)`
+
+#### `def ultima_fila(sh, col, desde=1)`
+
+Ultima fila con ALGO en la columna, mirando de abajo hacia arriba.
+Cuenta las cadenas vacias como contenido: para el desbordamiento un "" es
+tan estorbo como un numero.
+
+#### `def recalcular(app, log, motivo)`
+
+Recalcula UNA vez y dice cuanto tardo.
+
+El libro se queda en calculo MANUAL de punta a punta. Con automatico, cada
+AutoFill dispara un recalculo completo, y las formulas de aca son caras: L5
+es =SUMIF(A:A,K5,D:D), un SUMIF de COLUMNA ENTERA repetido por cada empresa,
+y J9/K9 evaluan su SUMIF dos veces (una en la condicion y otra en el
+resultado). Recalcular cuatro veces a proposito, en vez de una por cada
+escritura, es la diferencia entre segundos y minutos.
+
+Se cronometra y queda en el log: si algun mes se pone lento, se ve donde.
+
+#### `def fmt_tiempo(seg)`
+
+#### `def paso_pegar_tabla(sh1, sh3, log)`
+
+I9:K del cuadro 1 -> A5:C de la hoja #3. Solo valores.
+
+#### `def paso_tasa(sh3, valor, log)`
+
+#### `def paso_formula_desbordada(sh, celda, formula, col, fila, log, etiqueta)`
+
+Limpia la columna y escribe la formula. Devuelve la ultima fila ocupada.
+
+Limpiar PRIMERO es obligatorio: cualquier celda no vacia debajo hace que la
+formula desbordada tire #DESBORDAMIENTO, y al reliquidar el archivo llega
+con los datos del mes anterior.
+
+#### `def paso_estirar(sh, fila_ini, bloques, hasta, log)`
+
+Deja las formulas de esos bloques cubriendo exactamente hasta 'hasta'.
+
+#### `def paso_validar_signos(sh, log)`
+
+AVISO, no corta. Comprueba lo mismo que valida CuadroPago antes de armar
+la matriz: en la tabla I:K, todo numero de la columna J (paga) tiene que ser
+NEGATIVO y todo numero de la K (recibe) POSITIVO.
+
+Se avisa aca porque CuadroPago ATRAPA su propio error: muestra un MsgBox y
+sale con Exit Sub sin escribir la matriz. Corriendola a mano se ve el cartel,
+pero conviene saber de antemano si va a fallar. Devuelve True si esta OK.
+
+#### `def ejecutar(rutas, op, log, progreso)`
+
+Corre la secuencia completa. Lo unico opcional es la tasa, porque puede
+llegar al final del mes, y guardar.
+
+op: {"tasa": float o None para no tocarla, "guardar": bool}
+Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Actualiza_Data_Access.py`
+
+> Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+> de tres archivos Excel con macros (.xlsm).
+>
+> Estructura de carpetas esperada:
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `decimal`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `FUENTES` | `dict de 3 claves: 'SSCC', 'CO', 'CCA', …` | base: de donde cuelga la "carpeta" de cada fuente.  |
+| `ORDEN_FUENTES` | `['SSCC', 'CO', 'CCA']` |  |
+| `CAPACIDADES` | `frozenset({'fuentes_externas', 'filtro_por_valores', 'borrar_todo', 'cols_no_cero', 'forz…` | Capacidades que este modulo le ofrece a quien lo importe (Actualiza_Energia.py).  |
+| `TABLA_ACCESS` | `'Sobrecostos'` |  |
+| `COLUMNAS_ESPERADAS` | `['Clave Año_Mes', 'Tipo_sobrecosto', 'Central', 'Hora Mensual', 'Sobrecosto']` |  |
+| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS.  |
+| `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
+| `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
+| `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
+
+### Funciones
+
+**— CONFIG POR PC/USUARIO —**
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def escribir_json(ruta, data)`
+
+Escritura atomica: primero un .tmp y despues os.replace.
+Evita dejar el archivo truncado si algo falla a medio camino.
+
+#### `def guardar_config(data)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+**— UTILIDADES —**
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def normalizar(texto)`
+
+#### `def buscar_carpeta(base, nombre)`
+
+Busca una subcarpeta comparando nombres normalizados (tildes/mayusculas).
+
+#### `def buscar_archivo(carpeta, patron_regex, extensiones=('.xlsm', '.xlsx', '.xlsb'))`
+
+Archivo mas reciente cuyo nombre normalizado calza con el patron.
+
+#### `def col_letra(n)`
+
+4 -> "D".  Al reves de col_letra_a_num.
+
+#### `def col_letra_a_num(letra)`
+
+#### `def fmt_tiempo(seg)`
+
+#### `def es_vacio(v)`
+
+#### `def es_cero(v)`
+
+**— LECTURA DE EXCEL (xlwings, solo lectura) —**
+
+#### `def buscar_hoja(wb, nombre)`
+
+#### `def ultima_fila(sheet, col_num, desde)`
+
+Ultima fila con contenido en una columna, usando .formula (capta formulas).
+
+#### `def leer_bloque(sheet, f1, c1, f2, c2)`
+
+Devuelve siempre una lista de filas (listas).
+
+#### `def es_zip_excel(ruta)`
+
+#### `def ubicar_hoja_xml(z, hoja)`
+
+Dentro del zip de un .xlsx/.xlsm, devuelve (ruta_del_xml, lista_de_hojas).
+ruta_del_xml es None si la hoja no existe.
+
+#### `def expandir_columnas(rango)`
+
+'CF:CI' -> ['CF','CG','CH','CI'].  'CD' -> ['CD'].
+
+#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
+
+Lee columnas completas de un .xlsx/.xlsm escaneando el XML por trozos.
+Devuelve {"COL": {fila: valor}} con los valores ya calculados, o None.
+Igual que en el resto, se lee SOLO el resultado y nunca el nodo <f>.
+
+#### `def desescapar_xml(b)`
+
+Convierte el texto crudo del XML de Excel a texto de verdad.
+
+Hay que manejar las referencias NUMERICAS (&#243; = o con tilde), no solo las
+cinco entidades con nombre: los nombres de empresa chilenos vienen llenos de
+tildes y ñ, y algunos escritores de Excel las guardan asi. Si no se
+desescapan, "Enel Generaci&#243;n" y "Enel Generación" no se parecen en nada
+al comparar, y el cuadro de pago reporta un descuadre que no existe.
+
+Se resuelve en UNA pasada a proposito. Reemplazar "&amp;" primero y despues
+"&lt;" convertiria "&amp;lt;" (un literal "&lt;") en "<", que es otra cosa.
+
+#### `def leer_matriz_rapida(ruta, cfg, log)`
+
+La matriz de la fuente leyendo el ZIP, sin Excel. None si no se pudo.
+
+#### `def leer_fuente(app, ruta_xlsm, cfg, log)`
+
+La matriz de 5 columnas de una fuente, ya filtrada.
+
+Primero intenta el lector rapido (ZIP + XML, sin Excel). Si el archivo no es
+un .xlsx/.xlsm o algo falla, cae a xlwings.
+
+`app` puede ser una instancia de xlwings, None, o una FUNCION que la crea al
+llamarla. Lo ultimo es lo que usa proceso(): asi Excel se abre solo si de
+verdad hace falta, que con planillas normales no pasa nunca.
+
+#### `def driver_access()`
+
+El nombre del driver ODBC de Access. Lanza con un mensaje util si no hay.
+
+El mensaje LISTA los drivers que pyodbc si ve, y dice que Python se esta
+usando. Sin eso no se puede distinguir entre "no hay ningun driver ODBC"
+(instalacion rota o pyodbc mal), "hay drivers pero ninguno de Access"
+(falta el Access Database Engine) y "hay uno de Access pero de otra
+arquitectura" (Office de 32 bits con Python de 64).
+
+Tambien importa cuando el mismo script funciono antes en el mismo PC: casi
+siempre significa que se lanzo con OTRO Python (otra instalacion, otro
+entorno virtual, o pythonw vs python), y por eso se muestra el ejecutable.
+
+#### `def conectar_access(ruta_mdb)`
+
+#### `def columnas_tabla(cur)`
+
+Devuelve [(nombre, tipo_python)] de la tabla, en orden.
+
+#### `def mapear_columnas(cols_tabla, log)`
+
+Elige las 5 columnas destino: por nombre si calzan, si no las 5 primeras.
+
+#### `def a_numero(valor)`
+
+Convierte a int/float lo que venga (numero, o texto con formato chileno/ingles).
+Devuelve None si no se puede.
+
+#### `def clave_a_numero(valor)`
+
+La columna 'Clave Año_Mes' SIEMPRE se entrega como numero (AAAAMM).
+Acepta 202506, '202506', '2025-06', '06/2025', ' 202.506 ' o una fecha.
+
+#### `def coercionar(valor, tipo)`
+
+Adapta el valor leido de Excel al tipo de la columna en Access.
+
+#### `def coercionar_clave(valor, tipo)`
+
+Igual que coercionar pero forzando la clave a numero, sea cual sea el tipo destino.
+
+#### `def armar_lote(filas, destino, log)`
+
+Convierte las filas leidas a los tipos del Access. La columna 1 (clave) va a numero.
+Devuelve (lote, excluidas).
+
+#### `def clave_tipo(t)`
+
+Clave homogenea para comparar tipos entre el Access y los Excel.
+
+#### `def estado_access(cur, col_tipo, col_valor, con_suma=True)`
+
+{clave_tipo: {'n': filas, 'suma': monto o None}} agrupado por Tipo_sobrecosto.
+
+#### `def fmt_int(n, signo=False)`
+
+#### `def fmt_monto(v, signo=False)`
+
+#### `def resumen_cambios(antes, despues, log, proyectado=False)`
+
+Detalle de diferencias por tipo y total, antes vs despues (o proyectado).
+
+#### `def proceso(ruta_mdb, archivos, seleccion, solo_lectura, log, progreso, fuentes=None, borrar_todo=False)`
+
+archivos: {clave: ruta_xlsm}; seleccion: lista de claves a actualizar.
+
+fuentes: diccionario de configuracion de las fuentes. Por omision el FUENTES
+de este modulo (SSCC/CO/CCA); Actualiza_Energia.py y Actualiza_Access_P9.py
+pasan el suyo para reusar todo este motor de Access sin duplicarlo.
+
+borrar_todo: vaciar la tabla entera en vez de borrar solo los
+Tipo_sobrecosto que vienen en los Excel. Lo usa el .mdb de la planilla 9,
+que se arma COMPLETO desde sus fuentes; ahi el borrado por tipo dejaria
+filas viejas si un tipo desaparece del origen. El vaciado ocurre UNA sola
+vez, antes de insertar (ver ya_vaciada mas abajo).
+
+Si se agrega un parametro nuevo aca, hay que sumarlo tambien a CAPACIDADES,
+o los scripts que lo usen se caen con un TypeError en vez de decir "copia el
+archivo actualizado".
+
+**— VENTANA —**
+
+#### `def actualizar_color_label(lbl, valor, es_archivo=False)`
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Actualiza_Energia.py`
+
+> Actualizar Energia
+> Actualiza los dos entregables de "01.a Sobrecostos de Energia" a partir del
+> "02 Consolidado_Tabulado", hoja "Sobrecostos":
+>
+>   1) 03b ENTRADA_SOB_AAMM_*.mdb   (tabla [Sobrecostos] del Access)
+>   2) Consolidado_AAMM_*.xlsm      (hoja "Sobrecostos")
+>
+> En los dos casos se toman SOLO las filas cuyo Tipo sobrecosto es SCMT o SCPC,
+> que es justo lo que el revisor comprueba en V5 y V6.
+>
+> El motor de Access se reutiliza de Actualiza_Data_Access.py en vez de
+> copiarlo: es el mismo destino (tabla [Sobrecostos], mismas 5 columnas, misma
+> regla de "borrar solo los tipos que trae el Excel"). Los dos .py tienen que
+> estar en la misma carpeta.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
+| `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
+| `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
+| `FILA_DATOS_TABULADO` | `3` | CONFIGURACION El encabezado del "02 Consolidado_Tabulado" (hoja Sobrecostos) esta en la fila 2, asi que los datos arrancan en la 3.  |
+| `TIPOS` | `('SCMT', 'SCPC')` | Tipos que se traen.  |
+| `HOJA_ORIGEN` | `'Sobrecostos'` |  |
+| `HOJA_DESTINO_CONSOLIDADO` | `'Sobrecostos'` |  |
+| `FUENTES_ENERGIA` | `dict de 1 claves: 'MDB', …` | ---- 1) Access ------------------------------------------------------------- Columnas AA:AE del tabulado, que ya vienen en el mismo orden que la tabla: AA Clave Año_Mes \| AB Tipo sobrecosto \| AC Cent… |
+| `BLOQUES_CONSOLIDADO` | `[('A', 'G'), ('I', 'J'), ('H', 'H')]` | ---- 2) Consolidado_AAMM --------------------------------------------------- Bloques de origen EN ESTE ORDEN -> se pegan corridos en A:J del destino.  |
+| `COL_FILTRO_CONSOLIDADO` | `'AB'` |  |
+| `COL_DESTINO_INI` | `'A'` |  |
+| `FILA_DESTINO_INI` | `2` |  |
+| `N_COLS_CONSOLIDADO` | `10` |  |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+
+### Funciones
+
+**— CONFIG COMPARTIDO  (mismo config.json que el Revisor y los otros dos) —**
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def escribir_json(ruta, data)`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+#### `def buscar_tabulado(carpeta_reliq)`
+
+01 Sobrecostos/<Detalles diarios>/02 Consolidado_Tabulado_AAMM_*
+
+#### `def carpeta_energia(carpeta_reliq)`
+
+#### `def buscar_mdb_energia(carpeta_reliq)`
+
+#### `def buscar_consolidado_energia(carpeta_reliq)`
+
+#### `def actualizar_consolidado(app_xw, ruta_tabulado, ruta_destino, log, progreso=None)`
+
+Pega en el Consolidado_AAMM las filas SCMT/SCPC del tabulado.
+Devuelve la cantidad de filas escritas.
+
+#### `def ejecutar(rutas, hacer_mdb, hacer_consolidado, solo_prueba, log, progreso)`
+
+rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Actualiza_SC_CO.py`
+
+> Actualiza la hoja "SC y CO" de la planilla 5_
+> Pega los SC y los CO de los EMBALSES, con su prorrata de instruccion directa.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Revisor_Reliquidacion.py.  |
+| **— Configuracion de origenes y destino —** | | |
+| `HOJA_DESTINO` | `'SC y CO'` |  |
+| `FILA_DESTINO` | `9` |  |
+| `COLS_ID` | `('C', 'G')` | Bloque de identificacion (C:G) y de prorrata (I:X), y las formulas (Y:AF). |
+| `COLS_PRO` | `('I', 'X')` |  |
+| `BLOQUES_FORMULA` | `[('Y', 'AB'), ('AD', 'AF')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a proposito.  |
+| `COL_TIPO` | `'D'` |  |
+| `COL_CLAVE` | `'C'` |  |
+| `COL_CENTRAL` | `'E'` |  |
+| `N_ID` | `5` |  |
+| `N_PRO` | `16` |  |
+| `TIPO_SC` | `'SCCF'` |  |
+| `TIPO_CO` | `'CO'` |  |
+| `FUENTES` | `dict de 2 claves: 'SC', 'CO', …` |  |
+| `ORDEN` | `['SC', 'CO']` |  |
+| `RE_UNIDAD` | `re.compile('-\\d+\\s*$')` | Una central "-numero" que no este en la lista es sospechosa: el sufijo indica unidad, y las unidades son justamente lo que tienen los embalses. |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+
+### Funciones
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+**— UTILIDADES —**
+
+#### `def normalizar(t)`
+
+#### `def clave_central(t)`
+
+Normaliza un nombre de central para comparar: sin tildes, sin espacios ni
+guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
+
+#### `def buscar_hoja(wb, nombre)`
+
+#### `def col_num(letra)`
+
+#### `def col_letra(n)`
+
+#### `def ultima_fila(sh, col, desde=1)`
+
+#### `def fmt_tiempo(seg)`
+
+#### `def leer_fuente(app, ruta, cfg, log)`
+
+Devuelve (filas_id, filas_pro, avisos).
+
+filas_id: lista de listas de 5 valores (C:G). Si la fuente no trae la Clave
+          Año_Mes, el primer valor queda en None y se completa despues.
+filas_pro: lista de listas de 16 valores (I:X), alineada con filas_id.
+
+#### `def leer_bloque_destino(sh, tipo, log)`
+
+Lee del propio destino las filas de un tipo (SCCF o CO).
+
+Sirve para conservar el bloque que el usuario NO eligio actualizar: como los
+dos bloques van uno debajo del otro, hay que reescribirlos juntos.
+
+#### `def ejecutar(rutas, hacer, aamm_respaldo, log, progreso)`
+
+hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Actualiza_datos.py`
+
+**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| **— Constantes configurables —** | | |
+| `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
+| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+| `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
+| `MAPEO_SOBRECOSTOS_CONSOLIDADO` | `lista de 1 elementos: {'hoja_origen': 'Sobrecostos', 'cols_origen': [('A', 'G'), ('I', 'J'), ('Q', 'W')], 'fila_ini_origen': 3, 'fila_det_origen': 'A', 'hoja_destino': 'SOBRECOSTOS', 'cols_destino': [('A', 'G'), ('I', 'J'), ('K', 'Q')], 'fila_ini_destino': 7, 'fila_det_destino': 'A', 'cols_formulas': [('R', 'EB')], 'filtro_col': 'C', 'filtro_valor': 'C.Frec', 'detectar_fin_primera_vacia': True, 'ajustar_formulas': True}, …` |  |
+| `MAPEO_P3_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CPF_FD', 'cols_destino': [('D', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'D', 'cols_formulas': [('A', 'B'), ('N', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CSF_FD', 'cols_destino': [('E', 'K')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('M', 'N'), ('P', 'X')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CTF_FD', 'cols_destino': [('E', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('N', 'P'), ('R', 'Y')]}, …` |  |
+| `MAPEO_P5_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('B', 'J')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CTF', 'cols_destino': [('B', 'I')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, …` |  |
+| `MAPEO_P6_FD` | `lista de 1 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('B', 'B'), ('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': []}, …` |  |
+| `PRORRATA_CONFIG` | `dict de 9 claves: 'hoja_origen', 'fila_ini_origen', 'col_hora', …` | ── Configuración Prorrata (pivot tabla→matriz) ────────────────────────────── Origen: hoja PRORRATA_HORARIA_TABULAR, fila 2 en adelante Col A: Hora Mensual \| Col B: Suministrador \| Col C: Prorrata_ho… |
+
+### Funciones
+
+#### `def get_usuario() -> str`
+
+#### `def leer_config() -> dict`
+
+#### `def escribir_json(ruta, data)`
+
+Escritura atomica: primero un .tmp y despues os.replace.
+Evita dejar el archivo truncado si algo falla a medio camino.
+
+#### `def guardar_config(data: dict)`
+
+#### `def leer_traspaso(argv: list) -> dict | None`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+**— Utilidades —**
+
+#### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
+
+#### `def normalizar(texto: str) -> str`
+
+#### `def buscar_sscc_desempeno(carpeta_reliq: Path) -> Path | None`
+
+FD está un nivel arriba de 02 CASO RELIQUIDACION.
+
+#### `def buscar_consolidado(carpeta_reliq: Path) -> Path | None`
+
+01 Sobrecostos/Detalles diarios/02 Consolidado_Tabulado_AAMM…
+
+#### `def buscar_sobrecostos_xlsm(carpeta_reliq: Path) -> Path | None`
+
+#### `def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None`
+
+#### `def buscar_prorrata(carpeta_reliq: Path) -> Path | None`
+
+04 Planilla 9/Prorrata_Retiros_AAMM…
+
+**— Lógica xlwings —**
+
+#### `def col_letra_a_num(letra: str) -> int`
+
+#### `def expandir_cols(rangos: list) -> list`
+
+#### `def ultima_fila(sheet, col_letra: str, desde: int) -> int`
+
+Última fila con valor O fórmula en la columna, desde 'desde'.
+
+#### `def sheet_last_row_col(sheet, col_num: int, desde: int) -> int`
+
+Última fila con valor o fórmula en columna por número, desde 'desde'.
+
+#### `def ultima_fila_usedrange(sheet, fila_ini: int) -> int`
+
+Última fila usada en la hoja según UsedRange (incluye fórmulas y formatos).
+
+#### `def fmt_tiempo(segundos)`
+
+#### `def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func=None)`
+
+Aplica una lista de mapeos entre wb_o (origen) y wb_d (destino).
+
+#### `def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_func=None)`
+
+Transforma tabla larga (Hora,Suministrador,Valor) a matriz pivote en destino.
+
+#### `def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str, hacer_fd: bool, hacer_otro: bool, log_func=print, progreso_func=None, rutas: dict | None=None) -> tuple[bool, list]`
+
+planilla: 'sc' | 'p3' | 'p5' | 'p6'
+hacer_fd: actualizar FD
+hacer_otro: para sc=Consolidado; p3/p5/p6=Prorrata (próximamente)
+rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
+       cual y NO se vuelve a buscar el archivo; las que falten caen al
+       buscar_* de siempre.
+Retorna (ok, lista_rutas_modificadas)
+
+**— Ventana —**
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Carga_Retiros.py`
+
+> Carga Retiros_h.parquet a SQL Server
+> Version con ventana del script original. Lo que hace es lo mismo:
+>     1. lee el parquet
+>     2. BORRA del servidor los periodos que trae el parquet (o la tabla entera)
+>     3. carga por trozos
+>     4. verifica que la cuenta cuadre
+>
+> ESTO ESCRIBE EN UNA BASE DE DATOS Y BORRA FILAS. Por eso:
+>   - antes de borrar muestra exactamente que va a borrar y pide confirmacion
+>   - hay un modo SOLO MIRAR que hace los conteos y no toca nada
+>   - todo queda en el log con las cuentas antes y despues
+>
+> SI FALLA A MITAD DE LA CARGA: el borrado ya se hizo y quedan filas a medias.
+> No es grave: volver a correrlo borra ese periodo otra vez y recarga. Lo que NO
+> hay que hacer es dejarlo asi, porque la tabla queda con datos incompletos.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| **— Configuracion —** | | |
+| `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
+| `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
+| `TABLA` | `'Retiros'` |  |
+| `SERVER` | `'SRV-DTE'` |  |
+| `DRIVER` | `'ODBC Driver 17 for SQL Server'` |  |
+| `BASES` | `['02_RETIROS', '14_RETIROS_RELIQUIDACION']` | Las bases entre las que se puede elegir.  |
+| `CHUNK` | `50000` |  |
+| `LARGO_TEXTO` | `255` | Largo de las columnas de texto SI HAY QUE CREAR la tabla.  |
+| `COL_PERIODO` | `'Clave Año_Mes'` | Los nombres de columna NO se escriben igual en todos lados: el parquet a veces trae "Clave Año_Mes" (con espacio y ñ) y a veces "Clave_Anio_Mes" o "Clave_anio_mes", y la tabla de SQL Server tiene el… |
+| `COL_SUMINISTRADOR` | `'Suministrador'` |  |
+| `COL_HORA` | `'Hora Mensual'` |  |
+| `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe.  |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+
+### Funciones
+
+#### `def clave_col(t)`
+
+Normaliza un nombre de columna para comparar.
+
+Sin tildes, sin espacios ni guiones bajos, en mayusculas. Y ademas trata
+"ANIO" como "ANO", que es lo que hace falta de verdad: la Ñ no se resuelve
+quitando tildes. Descomponer "Año" da "ANO" y "Anio" da "ANIO", y sin este
+paso no coincidirian, que es justo el caso que falla:
+    'Clave Año_Mes'  ==  'Clave_Anio_Mes'  ==  'clave_anio_mes'
+
+#### `def resolver_columna(columnas, objetivo)`
+
+El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
+
+**— CONFIG COMPARTIDO —**
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def escribir_json(ruta, data)`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+Devuelve el dict del traspaso, o None si no vino o no es valido.
+Nunca lanza: si el JSON esta roto se cae al modo manual.
+
+**— UTILIDADES —**
+
+#### `def normalizar(t)`
+
+#### `def fmt_tiempo(seg)`
+
+#### `def fmt_n(n)`
+
+12345 -> '12.345'  (separador de miles chileno).
+
+#### `def buscar_parquet(carpeta_reliq)`
+
+El Retiros_h.parquet dentro de '04 Planilla 9'.
+
+#### `def aplicar_cambio_hora(df, col_hora, hora_cambio, log)`
+
+Empuja una hora hacia arriba todo lo que este DESDE hora_cambio.
+
+En el mes del cambio de primavera la hora `hora_cambio` no existe. Si el
+archivo viene corrido (1..719), lo que esta guardado como 145 es en realidad
+la 146, lo que esta como 146 es la 147, y asi. Sumando 1 desde ahi queda
+1..144 y 146..720, con la 145 ausente, que es lo correcto.
+
+Devuelve (df, aplicado, motivo).
+
+COMO SE DETECTA SI YA VIENE APLICADO: mirando si la hora del cambio EXISTE
+en los datos.
+  - si existe  -> todavia no se aplico, hay que empujar
+  - si no esta -> ya se aplico (o no hay retiros a esa hora), no se toca
+Es la comprobacion correcta porque el desplazamiento es justamente lo que
+deja ese hueco: no se puede aplicar dos veces sin que se note.
+
+#### `def ejecutar(ruta_parquet, base_datos, hora_cambio, log, progreso)`
+
+Carga el parquet en la tabla, vaciandola antes.
+
+hora_cambio: None, o la hora mensual del cambio de horario de primavera.
+Si viene, se empuja una hora todo lo que este desde ahi (ver
+aplicar_cambio_hora). El parquet NO se toca.
+
+Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `scripts/actualizadores/Prorratear.py`
+
+> Prorratear: del Access a SQL Server
+> Automatiza lo que hoy se hace a mano en SQL Server Management Studio:
+>
+>   1. Borrar de la base de sobrecostos las tablas:
+>        Central_Empresa, Pago_Retiro_reporte_tabla, Sobrecostos, TIPOS
+>   2. Importarlas del Access (el "Tasks -> Import Data"):
+>        Central_Empresa_Actualizada  ->  Central_Empresa
+>          (el .mdb de la planilla 9 no la tiene: ahi la tabla ya se llama
+>           Central_Empresa y se copia tal cual)
+>        Sobrecostos                  ->  Sobrecostos
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| **— Configuracion —** | | |
+| `SERVER` | `'SRV-DTE'` |  |
+| `DRIVER_SQL` | `'ODBC Driver 17 for SQL Server'` |  |
+| `ESCENARIOS` | `dict de 2 claves: 'normal', 'reliq', …` | Los dos escenarios.  |
+| `ORDEN_ESC` | `['normal', 'reliq']` |  |
+| `TABLAS_A_BORRAR` | `['Central_Empresa', 'Pago_Retiro_reporte_tabla', 'Sobrecostos', 'TIPOS']` | Tablas que se borran antes de importar, en la base de sobrecostos. |
+| `IMPORTAR` | `lista de 3 elementos: {'destino': 'Central_Empresa', 'origen': ['Central_Empresa_Actualizada', 'Central_Empresa']}, {'destino': 'Sobrecostos', 'origen': ['Sobrecostos']}, {'destino': 'TIPOS', 'origen': ['TIPOS']}, …` | Que se copia del Access.  |
+| `COL_CLAVE_ACCESS` | `'Clave Año_Mes'` | Columnas del periodo, para comprobar que los retiros y los sobrecostos sean del MISMO mes antes de prorratear. |
+| `COL_CLAVE_RETIROS` | `'Clave_Anio_Mes'` |  |
+| `TABLA_RETIROS` | `'Retiros'` |  |
+| `VISTA_PAGO` | `'10_Pago_retiros'` |  |
+| `TABLA_REPORTE` | `'Pago_Retiro_reporte_tabla'` |  |
+| `SQL_REPORTE` | `'\nSELECT Tipo_sobrecosto, Concepto, Barra, Suministrador, Retiro, clave, Tipo,\n SUM(pag…` |  |
+| `CHUNK` | `20000` |  |
+| `LARGO_TEXTO` | `255` | Largo de las columnas de texto al crear las tablas.  |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `TRASPASO_VERSION_MAX` | `1` |  |
+
+### Funciones
+
+**— CONFIG COMPARTIDO —**
+
+#### `def get_usuario()`
+
+#### `def leer_config()`
+
+#### `def escribir_json(ruta, data)`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+El dict del traspaso, o None. Nunca lanza: si el JSON esta roto se cae al
+modo manual.
+
+**— UTILIDADES —**
+
+#### `def normalizar(t)`
+
+#### `def fmt_tiempo(seg)`
+
+#### `def fmt_n(n)`
+
+#### `def driver_access()`
+
+#### `def tablas_access(ruta_mdb)`
+
+Nombres de las tablas de usuario del .mdb.
+
+#### `def elegir_origen(disponibles, candidatos)`
+
+El primer candidato que exista, comparando sin mayusculas ni tildes.
+
+#### `def objeto_existe(cn, nombre, text, tipos=('U',))`
+
+True si el objeto existe en la base conectada.
+
+OJO con el tipo: en OBJECT_ID(nombre, tipo) la 'U' es TABLA DE USUARIO y la
+'V' es VISTA. Preguntando por 'U' una vista devuelve NULL aunque exista,
+que es justo lo que pasaba con 10_Pago_retiros.
+
+Se consulta sys.objects, que no obliga a elegir un tipo y ademas permite
+preguntar por varios de una.
+
+#### `def tabla_existe(cn, nombre, text)`
+
+Solo tablas: es lo que se puede borrar con DROP TABLE.
+
+#### `def vista_o_tabla_existe(cn, nombre, text)`
+
+Vista o tabla. La 10_Pago_retiros es una VISTA, pero si algun dia fuera
+una tabla el paso final funcionaria igual, asi que se aceptan las dos.
+
+#### `def contar(cn, nombre, text)`
+
+#### `def tipos_sql(df)`
+
+(tipos, avisos) para crear la tabla en SQL Server.
+
+Hace falta porque to_sql, sin decirle nada, crea las columnas de texto como
+NVARCHAR(MAX). Y NVARCHAR(MAX) **no se puede indexar**: un join sobre esa
+columna obliga al servidor a recorrer la tabla entera. El asistente
+"Import Data" de Management Studio crea longitudes concretas, y por eso las
+tablas que hizo el asistente andan mas rapido que las que haria to_sql a
+secas.
+
+El texto va en NVARCHAR(255), igual que lo que crea el asistente y que lo
+que tienen hoy las tablas. Solo se agranda si algun dato no entra.
+
+#### `def periodos_access(ruta_mdb, tabla, columna)`
+
+Los Clave Año_Mes que hay en una tabla del .mdb.
+
+#### `def periodos_retiros(base_retiros, text, create_engine)`
+
+Los Clave_Anio_Mes que hay hoy en la tabla Retiros de esa base.
+
+#### `def ejecutar(ruta_mdb, escenario, solo_mirar, log, progreso)`
+
+Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
 ## Constantes definidas en más de un archivo
 
 Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. Candidatas a mudarse a `comun/`.
 
 | Constante | Archivos |
 |---|---|
-| `CENTRALES_EMBALSE` | `scripts/Actualiza_SC_CO.py`, `scripts/Revisor_Reliquidacion.py` |
-| `CHUNK` | `scripts/Carga_Retiros.py`, `scripts/Prorratear.py` |
-| `CONFIG_PATH` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/Revisor_Reliquidacion.py` |
-| `DIR_SCRIPT` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Revisor_Reliquidacion.py` |
-| `FUENTES` | `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_SC_CO.py` |
-| `LARGO_TEXTO` | `scripts/Carga_Retiros.py`, `scripts/Prorratear.py` |
-| `NS_REL` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
-| `NS_XL` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
-| `SERVER` | `scripts/Carga_Retiros.py`, `scripts/Prorratear.py` |
-| `TRASPASO_ORIGEN` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Reemplazos REUC/ActualizaRemplazos.py` |
-| `TRASPASO_VERSION_MAX` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Cuadro0.py`, `scripts/Actualiza_Data_Access.py`, `scripts/Actualiza_Energia.py`, `scripts/Actualiza_SC_CO.py`, `scripts/Actualiza_datos.py`, `scripts/Carga_Retiros.py`, `scripts/Prorratear.py`, `scripts/Reemplazos REUC/ActualizaRemplazos.py` |
-| `_ENT_XML` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
-| `_NECESITA` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Energia.py` |
-| `_RE_ENT` | `scripts/Actualiza_Data_Access.py`, `scripts/Revisor_Reliquidacion.py` |
-| `_TIENE` | `scripts/Actualiza_Access_P9.py`, `scripts/Actualiza_Energia.py` |
+| `CENTRALES_EMBALSE` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_SC_CO.py` |
+| `CHUNK` | `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `CONFIG_PATH` | `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Actualiza_datos.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `DIR_SCRIPT` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `FUENTES` | `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_SC_CO.py` |
+| `LARGO_TEXTO` | `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `NS_REL` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
+| `NS_XL` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
+| `SERVER` | `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `TRASPASO_ORIGEN` | `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Actualiza_datos.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `TRASPASO_VERSION_MAX` | `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Actualiza_datos.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
+| `_ENT_XML` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
+| `_NECESITA` | `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Energia.py` |
+| `_RE_ENT` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
+| `_TIENE` | `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Energia.py` |

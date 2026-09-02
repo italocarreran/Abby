@@ -27,7 +27,11 @@ import json, subprocess, sys, re, socket, os, traceback, unicodedata, time
 import threading, queue
 
 DIR_SCRIPT = Path(__file__).resolve().parent
-CONFIG_PATH = DIR_SCRIPT / "config.json"
+
+# config.json es compartido con el Revisor y el resto de los actualizadores,
+# que viven un nivel arriba (en scripts/, junto al Revisor). No es
+# DIR_SCRIPT / "config.json" porque este script esta en actualizadores/.
+CONFIG_PATH = DIR_SCRIPT.parent / "config.json"
 
 # ---------------------------------------------------------------------------
 #  Configuracion

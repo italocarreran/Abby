@@ -34,15 +34,28 @@ INTERFACES.md            generado — firmas, constantes y dependencias
 generar_interfaces.py    el generador de INTERFACES.md
 docs/                    referencia de dominio
 scripts/                 ← LA CARPETA DE TRABAJO
-├── comun/               lo compartido, con sus pruebas
-├── Revisor_Reliquidacion.py
-├── Actualiza_*.py, Carga_Retiros.py, Prorratear.py
-└── Reemplazos REUC/     su propio config, en Auxiliares/
+├── Revisor_Reliquidacion.py   solo, en la raíz — es el que se abre siempre
+├── comun/                     lo compartido, con sus pruebas
+├── actualizadores/            los 8 que el Revisor lanza por botón
+│   ├── Actualiza_datos.py
+│   ├── Actualiza_Data_Access.py    el motor que reutilizan Energia y P9
+│   ├── Actualiza_Energia.py
+│   ├── Actualiza_Cuadro0.py
+│   ├── Actualiza_SC_CO.py
+│   ├── Actualiza_Access_P9.py
+│   ├── Carga_Retiros.py
+│   └── Prorratear.py
+└── Reemplazos REUC/           el noveno, aparte porque tiene su propio config
+    └── ActualizaRemplazos.py
 ```
 
-El nombre `Reemplazos REUC`, con espacio y mayúsculas, **no es un descuido**: el
-Revisor lo busca así, literal, en `DIR_SCRIPT / "Reemplazos REUC/..."`. Cambiarlo
-rompe el botón "Actualizar reemplazos".
+Dos cosas que **no son un descuido** y no conviene reordenar a mano:
+
+- `Reemplazos REUC`, con espacio y mayúsculas: el Revisor lo busca así, literal.
+- `config.json` vive en `scripts/`, **compartido** entre el Revisor y los 8 de
+  `actualizadores/`. Si movés uno de esos 8 a otra carpeta, tiene que seguir
+  apuntando a ese mismo archivo (no crearse el suyo propio), o el traspaso de
+  rutas entre el Revisor y los actualizadores se rompe sin avisar.
 
 ## Después de tocar cualquier `.py`
 

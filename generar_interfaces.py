@@ -39,8 +39,9 @@ from pathlib import Path
 # modulo compartido quede arriba en el indice.
 CARPETAS = ["scripts/comun", "scripts"]
 
-# Archivos que nunca entran a INTERFACES.md.
-EXCLUIDOS = {"generar_interfaces.py"}
+# Archivos que nunca entran a INTERFACES.md. __init__.py de un paquete
+# es solo el "que es esta carpeta"; su contenido ya esta en MAPA.md.
+EXCLUIDOS = {"generar_interfaces.py", "__init__.py"}
 
 # Prefijos de archivo que tampoco entran (las pruebas no son interfaz).
 PREFIJOS_EXCLUIDOS = ("test_",)

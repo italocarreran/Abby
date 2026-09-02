@@ -156,7 +156,10 @@ TABLA_ACCESS = "Sobrecostos"
 COLUMNAS_ESPERADAS = ["Clave Año_Mes", "Tipo_sobrecosto", "Central",
                       "Hora Mensual", "Sobrecosto"]
 
-CONFIG_PATH = Path(__file__).parent / "config.json"
+# config.json es compartido con el Revisor y el resto de los actualizadores,
+# que viven un nivel arriba (en scripts/, junto al Revisor). No es
+# Path(__file__).parent porque este script esta en actualizadores/.
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 
 
 # ---------------------------------------------------------------------------

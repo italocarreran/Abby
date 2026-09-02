@@ -1021,37 +1021,37 @@ def _texto_carpeta(nodo):
 # El valor es una LISTA porque una fila puede tener mas de un actualizador: el
 # cuadro cero tiene dos, los reemplazos y los pasos del cuadro.
 ACTUALIZADORES = {
-    "a_calc_sscc_01": [dict(script="Actualiza_datos.py", planilla="sc")],
-    "a_3_p9":         [dict(script="Actualiza_datos.py", planilla="p3")],
+    "a_calc_sscc_01": [dict(script="actualizadores/Actualiza_datos.py", planilla="sc")],
+    "a_3_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p3")],
     # Escribe en SQL Server, no en un Excel. Va como actualizador igual: abre su
     # ventana, recibe la ruta por el JSON y el revisor no queda dueno del proceso.
-    "a_retiros_parq": [dict(script="Carga_Retiros.py", texto="Cargar retiros")],
+    "a_retiros_parq": [dict(script="actualizadores/Carga_Retiros.py", texto="Cargar retiros")],
 
     # El .mdb de la planilla 9 se arma desde las planillas 3, 5, 6 (y 11).
-    "a_ocupar":       [dict(script="Actualiza_Access_P9.py",
+    "a_ocupar":       [dict(script="actualizadores/Actualiza_Access_P9.py",
                             texto="Actualizar data"),
                        # Prorratear va en los TRES .mdb: sirve cualquiera.
-                       dict(script="Prorratear.py", texto="Prorratear")],
+                       dict(script="actualizadores/Prorratear.py", texto="Prorratear")],
     "a_5_p9": [
-        dict(script="Actualiza_datos.py", planilla="p5"),
+        dict(script="actualizadores/Actualiza_datos.py", planilla="p5"),
         # La hoja "SC y CO" no la toca Actualiza_datos.py: va aparte.
-        dict(script="Actualiza_SC_CO.py", texto='Actualizar "SC y CO"'),
+        dict(script="actualizadores/Actualiza_SC_CO.py", texto='Actualizar "SC y CO"'),
     ],
-    "a_6_p9":         [dict(script="Actualiza_datos.py", planilla="p6")],
-    "a_mdb_sscc":     [dict(script="Actualiza_Data_Access.py"),
-                       dict(script="Prorratear.py", texto="Prorratear")],
+    "a_6_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p6")],
+    "a_mdb_sscc":     [dict(script="actualizadores/Actualiza_Data_Access.py"),
+                       dict(script="actualizadores/Prorratear.py", texto="Prorratear")],
     # Los dos de Energia abren la MISMA ventana, con los dos casilleros en
     # blanco: desde ahi se elige actualizar el Access, el Consolidado o los dos.
-    "a_mdb_sob":      [dict(script="Actualiza_Energia.py"),
-                       dict(script="Prorratear.py", texto="Prorratear")],
-    "a_consolidado":  [dict(script="Actualiza_Energia.py")],
+    "a_mdb_sob":      [dict(script="actualizadores/Actualiza_Energia.py"),
+                       dict(script="actualizadores/Prorratear.py", texto="Prorratear")],
+    "a_consolidado":  [dict(script="actualizadores/Actualiza_Energia.py")],
     "a_0_cuadros": [
         # Reemplazos REUC vive en su propia subcarpeta y tiene su propio
         # config.json (dentro de "Reemplazos REUC/Auxiliares"), no el compartido.
         dict(script="Reemplazos REUC/ActualizaRemplazos.py",
              texto="Actualizar reemplazos"),
         # Los pasos del propio cuadro: tabla, tasa, formulas, macros, dinamica.
-        dict(script="Actualiza_Cuadro0.py", texto="Actualizar cuadro 0"),
+        dict(script="actualizadores/Actualiza_Cuadro0.py", texto="Actualizar cuadro 0"),
     ],
 }
 
