@@ -25,22 +25,22 @@ Convenciones de esta página:
 
 ## Índice
 
-- [`scripts/comun/config.py`](#scriptscomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
-- [`scripts/Reemplazos REUC/ActualizaRemplazos.py`](#scriptsreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
-- [`scripts/Revisor_Reliquidacion.py`](#scriptsrevisor_reliquidacionpy) — 6840 líneas — Revisor de entregables - CASO RELIQUIDACION
-- [`scripts/actualizadores/Actualiza_Access_P9.py`](#scriptsactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
-- [`scripts/actualizadores/Actualiza_Cuadro0.py`](#scriptsactualizadoresactualiza_cuadro0py) — 1030 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`scripts/actualizadores/Actualiza_Data_Access.py`](#scriptsactualizadoresactualiza_data_accesspy) — 1598 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-- [`scripts/actualizadores/Actualiza_Energia.py`](#scriptsactualizadoresactualiza_energiapy) — 809 líneas — Actualizar Energia
-- [`scripts/actualizadores/Actualiza_SC_CO.py`](#scriptsactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`scripts/actualizadores/Actualiza_datos.py`](#scriptsactualizadoresactualiza_datospy) — 1343 líneas
-- [`scripts/actualizadores/Carga_Retiros.py`](#scriptsactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
-- [`scripts/actualizadores/Prorratear.py`](#scriptsactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
+- [`Revisor Reliquidación/comun/config.py`](#revisor-reliquidacióncomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+- [`Revisor Reliquidación/Reemplazos REUC/ActualizaRemplazos.py`](#revisor-reliquidaciónreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
+- [`Revisor Reliquidación/Revisor_Reliquidacion.py`](#revisor-reliquidaciónrevisor_reliquidacionpy) — 6840 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`](#revisor-reliquidaciónactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
+- [`Revisor Reliquidación/actualizadores/Actualiza_Cuadro0.py`](#revisor-reliquidaciónactualizadoresactualiza_cuadro0py) — 1030 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py`](#revisor-reliquidaciónactualizadoresactualiza_data_accesspy) — 1598 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+- [`Revisor Reliquidación/actualizadores/Actualiza_Energia.py`](#revisor-reliquidaciónactualizadoresactualiza_energiapy) — 809 líneas — Actualizar Energia
+- [`Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py`](#revisor-reliquidaciónactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor Reliquidación/actualizadores/Actualiza_datos.py`](#revisor-reliquidaciónactualizadoresactualiza_datospy) — 1343 líneas
+- [`Revisor Reliquidación/actualizadores/Carga_Retiros.py`](#revisor-reliquidaciónactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
+- [`Revisor Reliquidación/actualizadores/Prorratear.py`](#revisor-reliquidaciónactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
 
 
 ---
 
-## `scripts/comun/config.py`
+## `Revisor Reliquidación/comun/config.py`
 
 > Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 >
@@ -103,7 +103,7 @@ Agrega o actualiza claves en el bloque del equipo actual.
 
 ---
 
-## `scripts/Reemplazos REUC/ActualizaRemplazos.py`
+## `Revisor Reliquidación/Reemplazos REUC/ActualizaRemplazos.py`
 
 > ActualizaRemplazos.py
 >
@@ -326,7 +326,7 @@ manteniendo el formato de las celdas.
 
 ---
 
-## `scripts/Revisor_Reliquidacion.py`
+## `Revisor Reliquidación/Revisor_Reliquidacion.py`
 
 > Revisor de entregables - CASO RELIQUIDACION
 > Ventana que replica la estructura de carpetas de "02 CASO RELIQUIDACION" y permite:
@@ -793,7 +793,7 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 
 ---
 
-## `scripts/actualizadores/Actualiza_Access_P9.py`
+## `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`
 
 > Actualiza el Access de la planilla 9
 > (Ocupar_este_para_Reliquidacion_AAMM_*.mdb)
@@ -936,7 +936,7 @@ Devuelve (ok, resumen).
 
 ---
 
-## `scripts/actualizadores/Actualiza_Cuadro0.py`
+## `Revisor Reliquidación/actualizadores/Actualiza_Cuadro0.py`
 
 > Actualiza Cuadro 0   (0_CUADROS_RELIQUIDACION SSCC)
 > ALCANCE: deja los DATOS y las FORMULAS al dia, nada mas.
@@ -1087,7 +1087,7 @@ Devuelve (ok, resumen).
 
 ---
 
-## `scripts/actualizadores/Actualiza_Data_Access.py`
+## `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py`
 
 > Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
 > de tres archivos Excel con macros (.xlsm).
@@ -1308,7 +1308,7 @@ archivo actualizado".
 
 ---
 
-## `scripts/actualizadores/Actualiza_Energia.py`
+## `Revisor Reliquidación/actualizadores/Actualiza_Energia.py`
 
 > Actualizar Energia
 > Actualiza los dos entregables de "01.a Sobrecostos de Energia" a partir del
@@ -1397,7 +1397,7 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 
 ---
 
-## `scripts/actualizadores/Actualiza_SC_CO.py`
+## `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py`
 
 > Actualiza la hoja "SC y CO" de la planilla 5_
 > Pega los SC y los CO de los EMBALSES, con su prorrata de instruccion directa.
@@ -1491,7 +1491,7 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 
 ---
 
-## `scripts/actualizadores/Actualiza_datos.py`
+## `Revisor Reliquidación/actualizadores/Actualiza_datos.py`
 
 **Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
 
@@ -1596,7 +1596,7 @@ Retorna (ok, lista_rutas_modificadas)
 
 ---
 
-## `scripts/actualizadores/Carga_Retiros.py`
+## `Revisor Reliquidación/actualizadores/Carga_Retiros.py`
 
 > Carga Retiros_h.parquet a SQL Server
 > Version con ventana del script original. Lo que hace es lo mismo:
@@ -1723,7 +1723,7 @@ Devuelve (ok, resumen).
 
 ---
 
-## `scripts/actualizadores/Prorratear.py`
+## `Revisor Reliquidación/actualizadores/Prorratear.py`
 
 > Prorratear: del Access a SQL Server
 > Automatiza lo que hoy se hace a mano en SQL Server Management Studio:
@@ -1863,18 +1863,18 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 
 | Constante | Archivos |
 |---|---|
-| `CENTRALES_EMBALSE` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_SC_CO.py` |
-| `CHUNK` | `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `CONFIG_PATH` | `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Actualiza_datos.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `DIR_SCRIPT` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `FUENTES` | `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_SC_CO.py` |
-| `LARGO_TEXTO` | `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `NS_REL` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
-| `NS_XL` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
-| `SERVER` | `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `TRASPASO_ORIGEN` | `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Actualiza_datos.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `TRASPASO_VERSION_MAX` | `scripts/Reemplazos REUC/ActualizaRemplazos.py`, `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Cuadro0.py`, `scripts/actualizadores/Actualiza_Data_Access.py`, `scripts/actualizadores/Actualiza_Energia.py`, `scripts/actualizadores/Actualiza_SC_CO.py`, `scripts/actualizadores/Actualiza_datos.py`, `scripts/actualizadores/Carga_Retiros.py`, `scripts/actualizadores/Prorratear.py` |
-| `_ENT_XML` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
-| `_NECESITA` | `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Energia.py` |
-| `_RE_ENT` | `scripts/Revisor_Reliquidacion.py`, `scripts/actualizadores/Actualiza_Data_Access.py` |
-| `_TIENE` | `scripts/actualizadores/Actualiza_Access_P9.py`, `scripts/actualizadores/Actualiza_Energia.py` |
+| `CENTRALES_EMBALSE` | `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py` |
+| `CHUNK` | `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `CONFIG_PATH` | `Revisor Reliquidación/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`, `Revisor Reliquidación/actualizadores/Actualiza_Cuadro0.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py`, `Revisor Reliquidación/actualizadores/Actualiza_Energia.py`, `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py`, `Revisor Reliquidación/actualizadores/Actualiza_datos.py`, `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `DIR_SCRIPT` | `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`, `Revisor Reliquidación/actualizadores/Actualiza_Cuadro0.py`, `Revisor Reliquidación/actualizadores/Actualiza_Energia.py`, `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py`, `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `FUENTES` | `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py`, `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py` |
+| `LARGO_TEXTO` | `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `NS_REL` | `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py` |
+| `NS_XL` | `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py` |
+| `SERVER` | `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `TRASPASO_ORIGEN` | `Revisor Reliquidación/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`, `Revisor Reliquidación/actualizadores/Actualiza_Cuadro0.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py`, `Revisor Reliquidación/actualizadores/Actualiza_Energia.py`, `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py`, `Revisor Reliquidación/actualizadores/Actualiza_datos.py`, `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `TRASPASO_VERSION_MAX` | `Revisor Reliquidación/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`, `Revisor Reliquidación/actualizadores/Actualiza_Cuadro0.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py`, `Revisor Reliquidación/actualizadores/Actualiza_Energia.py`, `Revisor Reliquidación/actualizadores/Actualiza_SC_CO.py`, `Revisor Reliquidación/actualizadores/Actualiza_datos.py`, `Revisor Reliquidación/actualizadores/Carga_Retiros.py`, `Revisor Reliquidación/actualizadores/Prorratear.py` |
+| `_ENT_XML` | `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py` |
+| `_NECESITA` | `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`, `Revisor Reliquidación/actualizadores/Actualiza_Energia.py` |
+| `_RE_ENT` | `Revisor Reliquidación/Revisor_Reliquidacion.py`, `Revisor Reliquidación/actualizadores/Actualiza_Data_Access.py` |
+| `_TIENE` | `Revisor Reliquidación/actualizadores/Actualiza_Access_P9.py`, `Revisor Reliquidación/actualizadores/Actualiza_Energia.py` |

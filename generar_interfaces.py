@@ -37,7 +37,7 @@ from pathlib import Path
 # Carpetas que se recorren, en este orden. Las que no existan se saltan, y un
 # archivo ya visto no se repite: "scripts/comun" va primero solo para que el
 # modulo compartido quede arriba en el indice.
-CARPETAS = ["scripts/comun", "scripts"]
+CARPETAS = ["Revisor Reliquidación/comun", "Revisor Reliquidación"]
 
 # Archivos que nunca entran a INTERFACES.md. __init__.py de un paquete
 # es solo el "que es esta carpeta"; su contenido ya esta en MAPA.md.
@@ -454,8 +454,15 @@ def analizar(ruta: Path, raiz: Path, incluir_privadas: bool) -> dict:
 # ---------------------------------------------------------------------------
 
 def ancla_github(titulo: str) -> str:
-    """Ancla que GitHub genera para un encabezado `titulo` entre backticks."""
-    limpio = re.sub(r"[^a-z0-9 _-]", "", titulo.lower().replace("`", ""))
+    """Ancla que GitHub genera para un encabezado `titulo` entre backticks.
+
+    GitHub conserva las letras con tilde (son letras, no puntuacion): solo saca
+    los signos y el "/" de las rutas. Por eso NO se puede filtrar con un regex
+    ASCII tipo [^a-z0-9]: eso le borraria la tilde a "Reliquidación" y el link
+    del indice quedaria apuntando a un ancla que no existe.
+    """
+    limpio = titulo.lower().replace("`", "")
+    limpio = "".join(c for c in limpio if c.isalnum() or c in " _-")
     return limpio.replace(" ", "-")
 
 
