@@ -41,8 +41,9 @@
       código real (arriba).
 
 - [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1, 2 y 3 terminadas y
-      verificadas; falta la Tarea 4 (tema oscuro, experimental). Borrar ese plan
-      cuando esté todo aplicado.
+      verificadas con pruebas de comportamiento reales (no solo lectura de
+      código). Falta la Tarea 4 (tema oscuro, experimental) para poder borrar
+      el plan.
 - [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
       `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
 - [ ] Los comparadores tienen su propia copia de `leer_config` /
@@ -51,6 +52,39 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — Claude — verifica la Tarea 3 con pruebas de comportamiento reales
+
+Codex resolvió los tres bugs de mayor gravedad del plan (3.1, 3.2, 3.3) y dejó
+anotado el 3.4 (duplicación) sin migrar, tal como pedía la sección 9. No se
+tocó nada de `Revisor_Relq/`, dentro de alcance.
+
+**No alcanzaba con leer el código** — esta vez se instaló `pandas` (no estaba
+en este entorno) y se corrieron pruebas de comportamiento reales, con hilos de
+verdad y datos sintéticos, no solo AST:
+
+- **3.1 (threading):** una `App` mínima simulada, con `queue.Queue` y
+  `_bombear_cola` reales. Un hilo real llamó a `log()` 50 veces; confirmado que
+  la cola acumuló los 50 mensajes **sin tocar el widget ni una vez** desde el
+  hilo, y que `self.txt.insert` recién se llamó al vaciar la cola desde el
+  hilo principal.
+- **3.2 (Excel):** confirmado por código que ningún bloque de continuación de
+  hoja tiene `break`/`continue` que descarte filas — los dos motores
+  (`xlsxwriter` 0-indexado y `openpyxl` 1-indexado) abren hoja nueva y siguen,
+  cada uno respetando su propio encabezado (`fila = 1` vs `fila = 2`, correcto
+  por la diferencia de indexado, no un descuido).
+- **3.3 (`hora_mes`):** `acumulado_por_dia` con `pandas` de verdad, tres casos:
+  mes completo de 744 horas (no avisa), mes con el día 15 completo faltante
+  (avisa "dias no contiguos (faltan: [15])"), y un día con la hora inicial
+  corrida a 2 (avisa "hora inicial distinta de 1"). Los tres dieron exactamente
+  lo esperado.
+
+Verificación mecánica también: sintaxis de los 14 `.py`, 13+13 pruebas de
+`comun/`, `generar_interfaces.py --check`.
+
+Con esto, **Tareas 1, 2 y 3 del plan quedan aplicadas y verificadas**. Falta
+solo la Tarea 4 (tema oscuro, experimental) para poder borrar
+`docs/PLAN_comparadores.md`.
 
 ## 2026-09-03 — ChatGPT — Tarea 3: corrige los bugs de los comparadores
 
