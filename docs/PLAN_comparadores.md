@@ -267,7 +267,11 @@ Reglas que tienen que quedar en el código:
 - La comparación tolerante de nombres usa la misma normalización que ya usa el
   repo (sin tildes, sin espacios de más, en mayúsculas). Hay ejemplos en
   `comun/config.py` y en los comparadores (`normalizar_suave`, `subcarpeta`).
-- `crear=True` crea siempre la **canónica**, con `parents=True, exist_ok=True`.
+- `crear=True` crea la **canónica** solo si no hay ya una variante escrita
+  distinto en ese año. **Si la hay, se usa esa también para escribir** — si
+  no, el mes queda partido en dos carpetas y el estado se lee de una y se
+  escribe en la otra. *(Corregido después de la Tarea 1: la primera versión
+  de este plan decía "crea siempre la canónica", y estaba mal.)*
 
 ### 5.2 Pruebas: `Revisor_Relq/comun/test_salidas.py`
 

@@ -26,7 +26,7 @@ Convenciones de esta página:
 ## Índice
 
 - [`Revisor_Relq/comun/config.py`](#revisor_relqcomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
-- [`Revisor_Relq/comun/salidas.py`](#revisor_relqcomunsalidaspy) — 117 líneas — Rutas compartidas de ``00_Salidas``.
+- [`Revisor_Relq/comun/salidas.py`](#revisor_relqcomunsalidaspy) — 143 líneas — Rutas compartidas de ``00_Salidas``.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6852 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
@@ -146,9 +146,21 @@ Con ``crear=True`` crea siempre la ruta canonica ``AAAA/MM Mes``. Para un
 valor no valido (incluido ``sin_mes``) conserva la ruta plana historica.
 Las carpetas planas AAMM del formato anterior nunca se devuelven.
 
+#### `def normalizar_anio(anio) -> Optional[str]`
+
+Convierte ``'24'`` o ``'2024'`` en ``'2024'``; None si no se reconoce.
+
+La ventana de los comparadores acepta el anio escrito de las dos formas
+(``meses_del_anio`` ya lo hace), asi que la carpeta tiene que salir igual
+en los dos casos. Sin esto, escribir "25" armaria ``00_Salidas/25/``.
+
 #### `def carpeta_comparador(dir_salidas, anio, nombre) -> Path`
 
-Devuelve una carpeta de comparador dentro del año indicado.
+Devuelve una carpeta de comparador dentro del anio indicado.
+
+Acepta el anio con 2 o 4 digitos. Lanza ValueError si no se reconoce: es
+preferible fallar fuerte a dejar los parquet de un anio en una carpeta con
+otro nombre, que despues nadie encuentra.
 
 #### `def carpetas_legado(dir_salidas) -> List[Path]`
 

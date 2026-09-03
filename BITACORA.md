@@ -64,6 +64,33 @@
 
 ---
 
+## 2026-09-03 — Claude — verifica la Tarea 1 y corrige dos cosas
+
+Codex hizo la Tarea 1 bien: partió del commit al día (`3842447`), tocó solo lo
+que correspondía y **no tocó los comparadores**, como pedía el plan. Verificado
+por cuenta propia y no solo por su reporte: sus 9 pruebas, las 13 de config, el
+chequeo del generador, la sintaxis del Revisor, y que `dir_mes("2407")` y
+`dir_mes("sin_mes")` den las rutas exactas que pedía la sección 5.6.
+
+Al leer `comun/salidas.py` aparecieron dos cosas que las pruebas no cubrían:
+
+1. **`crear=True` partía el mes en dos carpetas.** Si el usuario ya había
+   escrito `2024/7 Julio` a mano, la lectura iba a esa carpeta pero la primera
+   escritura creaba `07 Julio` al lado: el estado se leía de una y se escribía
+   en la otra, sin ningún aviso. **La culpa es de la especificación, no de
+   Codex** — el plan decía textual "crear=True crea siempre la canónica".
+   Corregido: si ya hay una variante, se usa esa también para escribir.
+   Reemplazada la prueba `test_crear_usa_siempre_la_canonica`, que afirmaba el
+   comportamiento viejo, dejando anotado por qué cambió.
+2. **`carpeta_comparador` no normalizaba el año.** La ventana de los
+   comparadores acepta el año con 2 o 4 dígitos (`meses_del_anio` ya lo hace),
+   así que escribir "25" habría armado `00_Salidas/25/_comparador`. Habría
+   aparecido recién en la Tarea 2, con los parquet de un año en una carpeta con
+   otro nombre. Agregado `normalizar_anio`, y `carpeta_comparador` ahora lanza
+   `ValueError` con un año irreconocible en vez de inventar una carpeta.
+
+Cinco pruebas nuevas para los dos casos. `comun/salidas.py` queda en 13 pruebas.
+
 ## 2026-09-03 — ChatGPT — Tarea 1: `00_Salidas` por año y mes
 
 Se creó `Revisor_Relq/comun/salidas.py` como única fuente para convertir AAMM

@@ -83,12 +83,12 @@ def carpeta_mes(dir_salidas, aamm, crear=False) -> Path:
 
     anio, mes = partes
     canonica = raiz / anio / f"{mes:02d} {MESES[mes - 1]}"
-    if crear:
-        canonica.mkdir(parents=True, exist_ok=True)
-        return canonica
     if canonica.exists():
         return canonica
 
+    # Si el usuario ya escribio la carpeta de otra forma ("7 Julio"), se usa
+    # esa TAMBIEN para escribir. Crear la canonica al lado partiria el mes en
+    # dos carpetas: el estado se leeria de una y se escribiria en la otra.
     carpeta_del_anio = raiz / anio
     if carpeta_del_anio.is_dir():
         variantes = sorted(
@@ -98,12 +98,38 @@ def carpeta_mes(dir_salidas, aamm, crear=False) -> Path:
         )
         if variantes:
             return variantes[0]
+
+    if crear:
+        canonica.mkdir(parents=True, exist_ok=True)
     return canonica
 
 
+def normalizar_anio(anio) -> Optional[str]:
+    """Convierte ``'24'`` o ``'2024'`` en ``'2024'``; None si no se reconoce.
+
+    La ventana de los comparadores acepta el anio escrito de las dos formas
+    (``meses_del_anio`` ya lo hace), asi que la carpeta tiene que salir igual
+    en los dos casos. Sin esto, escribir "25" armaria ``00_Salidas/25/``.
+    """
+    texto = str(anio or "").strip()
+    if re.fullmatch(r"\d{4}", texto):
+        return texto
+    if re.fullmatch(r"\d{2}", texto):
+        return "20" + texto
+    return None
+
+
 def carpeta_comparador(dir_salidas, anio, nombre) -> Path:
-    """Devuelve una carpeta de comparador dentro del año indicado."""
-    return Path(dir_salidas) / str(anio).strip() / str(nombre)
+    """Devuelve una carpeta de comparador dentro del anio indicado.
+
+    Acepta el anio con 2 o 4 digitos. Lanza ValueError si no se reconoce: es
+    preferible fallar fuerte a dejar los parquet de un anio en una carpeta con
+    otro nombre, que despues nadie encuentra.
+    """
+    normal = normalizar_anio(anio)
+    if normal is None:
+        raise ValueError(f"anio no reconocido: {anio!r}")
+    return Path(dir_salidas) / normal / str(nombre)
 
 
 def carpetas_legado(dir_salidas) -> List[Path]:
