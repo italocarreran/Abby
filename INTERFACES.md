@@ -29,17 +29,17 @@ Convenciones de esta página:
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
 - [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6863 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6884 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1136 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1031 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1599 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
 - [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 810 líneas — Actualizar Energia
-- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 899 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1344 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 891 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 921 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2578 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1893 líneas — Comparador_Tabulado.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2590 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1905 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -453,7 +453,7 @@ manteniendo el formato de las celdas.
 > Para .mdb se necesita el "Microsoft Access Driver (*.mdb, *.accdb)" con la misma
 > arquitectura (32/64 bits) que el Python que ejecuta el script.
 
-**Importa:** `__comun__`, `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1524,7 +1524,7 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1996,7 +1996,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2093,7 +2093,7 @@ Un archivo o carpeta, con lo que hace falta ya leido.
 - `def confirmar_todo(self)`
 - `def consolidar(self, meses=None, forzar=False)`
 - `def rearmar_vista(self, meses=None)`
-- `def exportar(self)` — Excel por mes en 00_Salidas/AAAA/MM Mes + consolidado anual en _comparador.
+- `def exportar(self)` — Excel por mes en 00_Salidas/AAAA/MM Mes + consolidado anual directo en AAAA.
 
 ### Funciones
 
@@ -2304,7 +2304,8 @@ Si el mes entra al consolidado anual. Por defecto si.
 
 #### `def dir_resultados_anuales(anio)`
 
-Carpeta anual que contiene solo los Excel entregables.
+00_Salidas/AAAA, directo bajo el anio: 00_Salidas solo tiene resultados,
+el estado y los datos intermedios del comparador viven en __config__.
 
 #### `def path_excel_mes(aamm)`
 
@@ -2312,7 +2313,7 @@ El Excel propio del mes, en su carpeta 00_Salidas/AAAA/MM Mes.
 
 #### `def path_excel_anual(anio_aa)`
 
-El consolidado con todos los meses disponibles, en _comparador.
+El consolidado con todos los meses disponibles, directo bajo el anio.
 
 #### `def firma_vistas(meses)`
 
@@ -2413,7 +2414,7 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2696,7 +2697,8 @@ Calcula acumulados y avisa si la secuencia horaria puede desalinearse.
 
 #### `def dir_resultados_anuales(anio)`
 
-Carpeta anual que contiene solo los Excel entregables.
+00_Salidas/AAAA, directo bajo el anio: 00_Salidas solo tiene resultados,
+el estado y los datos intermedios del comparador viven en __config__.
 
 #### `def path_excel_mes(aamm)`
 

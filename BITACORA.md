@@ -17,20 +17,26 @@
 
 ## Pendientes abiertos ahora mismo
 
-- [ ] **Aplicar `docs/PLAN_reorganizacion_config.md`** — mover `comun/` a
-      `__comun__/` (hermana, se sube al repo) y sacar todos los `.json` del
-      repo a `__config__/` (hermana, NO se sube — la usuaria la arma a mano
-      con la misma estructura `AAAA/MM Mes` que `00_Salidas`). `00_Salidas/`
-      queda solo con los `.xlsx` finales. Plan en 3 tareas, cada una con su
-      verificación — ver el archivo para el detalle exacto. Mientras esto no
-      esté aplicado, varios de los pendientes de abajo (el módulo se llama
-      `comun/config.py`, rutas de `00_Salidas` para estado) van a quedar
-      obsoletos apenas se aplique: no corregirlos dos veces, corregirlos ya
-      con el nombre y la ruta nueva cuando se toquen esos archivos.
+- [ ] **La usuaria tiene que armar `__config__/` a mano** (no se sube al
+      repo, está gitignoreada), con la misma estructura `AAAA/MM Mes` que
+      `00_Salidas`, migrando ahí sus `config.json`,
+      `_revisor_verificaciones.json`, `_revisor_cache_valores.json`,
+      `_traspaso_actualizador.json`, `estado.json`, `rutas.json`, `parquet/`
+      y `vistas/` existentes — el código no los mueve solo. El propio
+      `config.json` compartido va en `__config__/config.json` y el de
+      `ActualizaRemplazos.py` en `__config__/reemplazos_reuc.json`.
+- [ ] Queda abierta una pregunta chica, no decidida con la usuaria: los dos
+      comparadores guardan sus respaldos de los últimos 5 Excel anuales en
+      `00_Salidas/AAAA/respaldos/` (los dos comparadores comparten esa misma
+      carpeta, sin colisión porque el nombre del archivo ya distingue cuál es
+      cuál). No es exactamente un "resultado", pero tampoco es state/caché —
+      se dejó ahí a criterio propio al corregir la Tarea 2. Confirmar con la
+      usuaria si eso también debería vivir en `__config__/AAAA/_comparador*/`
+      en vez de en `00_Salidas/`.
 - [ ] El usuario no probó todavía ningún actualizador real de punta a punta
       (solo los verificadores del Revisor, que funcionan bien). Falta correr
       al menos uno contra archivos reales.
-- [ ] Migrar los 7 actualizadores que faltan a `comun/config.py` — solo
+- [ ] Migrar los 7 actualizadores que faltan a `__comun__/config.py` — solo
       `Actualiza_SC_CO.py` está migrado. Uno a la vez, verificando que sigue
       corriendo antes de seguir con el próximo (ver `MAPA.md` → "El módulo
       común").
@@ -54,12 +60,10 @@
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
-- [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
-      `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
 - [ ] Los comparadores tienen su propia copia de `leer_config` /
-      `guardar_config` / `escribir_json_atomico`. Migrarlas a `comun/config.py`
-      como ya se hizo con `Actualiza_SC_CO.py` — **no** dentro de las tareas
-      del plan, después y por separado.
+      `guardar_config` / `escribir_json_atomico`. Migrarlas a
+      `__comun__/config.py` como ya se hizo con `Actualiza_SC_CO.py` —
+      después y por separado.
 
 ---
 
@@ -143,6 +147,70 @@ No se migran archivos locales viejos automáticamente: el usuario indicó que va
 ordenarlos. Verificado con compilación de todos los Python, 13+13+3 pruebas de los
 módulos comunes, chequeo del generador y una prueba estructural de las doce rutas
 de configuración. No queda pendiente de esta reorganización.
+
+---
+
+## 2026-09-03 — Claude — verifica la reorganización de ChatGPT y corrige dos regresiones reales
+
+ChatGPT aplicó la reorganización sin ver `docs/PLAN_reorganizacion_config.md`
+(bifurcó de un commit anterior a que ese plan se subiera) — hizo su propia
+lectura del pedido de la usuaria, en una rama aparte
+(`codex/reorganizar-estructura-de-carpetas-y-archivos`). Se revisó línea por
+línea contra los dos, el plan y el pedido original, y se corrió cada prueba
+de comportamiento real posible en este entorno (no solo lectura de código),
+antes de mergear a esta rama.
+
+**Lo que estaba bien, verificado de verdad:** los 10 `CONFIG_PATH` del
+repo apuntan sin excepción dentro de `__config__/`; el traspaso
+(`_traspaso_actualizador.json`) lo escribe el Revisor y lo leen los dos
+comparadores en la MISMA ruta — se armó un árbol de prueba real (con
+`__comun__`, `Revisor_Relq` y `Comparadores` de verdad, tkinter simulado) y
+se confirmó que las tres puntas coinciden; las 26 pruebas de
+`__comun__/test_salidas.py` + `test_config.py` pasan igual que antes de
+mover el módulo; `.gitignore` ignora `__config__/` entera sin tocar
+`__comun__/`; `__pycache__/` sigue cubierto (no hacía falta agregar nada,
+la usuaria solo avisó "por si"); se borró la carpeta huérfana `comun/` de
+la raíz; `Reemplazos REUC/Auxiliares/` conserva sus `.xlsx` descargados,
+solo se le fue el `.json`; `generar_interfaces.py --check` queda limpio.
+
+**Dos regresiones reales, corregidas en esta rama antes de avisar:**
+
+1. Los dos comparadores seguían guardando el Excel **anual** dentro de una
+   subcarpeta `_comparador`/`_comparador_tabulado` bajo `00_Salidas/AAAA/`
+   (`00_Salidas/2024/_comparador/Comparacion_Etapas_2024.xlsx`), en vez de
+   directo bajo el año
+   (`00_Salidas/2024/Comparacion_Etapas_2024.xlsx`) — que es exactamente lo
+   que la usuaria confirmó en la pregunta que se le hizo antes de escribir
+   el plan (`00_Salidas` "solo resultados, nada más", con el Excel anual
+   como único archivo del año). Confirmado con una prueba real (se importó
+   el módulo con tkinter simulado y se comparó la ruta devuelta contra la
+   esperada) antes y después de la corrección. `dir_resultados_anuales()`
+   ahora arma `00_Salidas/AAAA` directo, sin la subcarpeta — en los dos
+   comparadores.
+2. `Actualiza_SC_CO.py` tenía, antes de esta reorganización, un
+   `try/except ImportError` alrededor de `from comun import config` que
+   mostraba un diálogo de error y salía limpio si faltaba la carpeta —
+   ChatGPT lo sacó al cambiar a `from __comun__ import config`, dejando un
+   `ModuleNotFoundError` sin capturar (invisible si el script corre con
+   `pythonw`, sin consola). Se repuso el mismo patrón `_morir()` que ya usa
+   el resto del archivo. Se agregó el mismo resguardo, que antes no hacía
+   falta porque `comun/` viajaba SIEMPRE adentro de `Revisor_Relq/`, en dos
+   lugares nuevos donde ahora aplica el mismo riesgo (bajar el repo a medias
+   ahora puede dejar afuera `__comun__/`, que es una carpeta hermana
+   aparte): `Revisor_Reliquidacion.py` (nunca tuvo un `_morir`, se le agregó
+   uno chico) y el `from __comun__ import salidas/tema` de los dos
+   comparadores (que ya tenían `_morir` para el caso de no encontrar
+   `Revisor_Relq/`, pero no para este import).
+
+Quedó una decisión sin confirmar con la usuaria, anotada en "Pendientes
+abiertos": los respaldos de los últimos 5 Excel anuales de los comparadores
+quedaron en `00_Salidas/AAAA/respaldos/` (compartida entre los dos, sin
+colisión de nombres) — no es un resultado final ni es state/caché, se dejó
+ahí a criterio propio, pero podría discutirse si no debería ir a
+`__config__/AAAA/_comparador*/` también.
+
+`docs/PLAN_reorganizacion_config.md` se borra en este mismo commit: ya está
+aplicado y verificado (mismo ciclo que tuvo `docs/PLAN_comparadores.md`).
 
 ---
 

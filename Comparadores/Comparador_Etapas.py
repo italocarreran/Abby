@@ -27,7 +27,7 @@ Almacenamiento incremental (nunca se reescribe lo ya consolidado):
         vistas/
             vista_2401.parquet          <- tabla ya comparada del mes (cache para el Excel)
     00_Salidas/AAAA/MM Mes/Comparacion_AAMM.xlsx
-    00_Salidas/AAAA/_comparador/Comparacion_Etapas_AAAA.xlsx
+    00_Salidas/AAAA/Comparacion_Etapas_AAAA.xlsx
 
 Agregar un mes escribe solo sus archivos. El Excel se arma desde las vistas, asi
 que reexportar un anio completo no vuelve a tocar ningun Access.
@@ -180,8 +180,16 @@ assert DIR_REVISOR is not None
 
 DIR_RAIZ = DIR_REVISOR.parent
 sys.path.insert(0, str(DIR_RAIZ))
-from __comun__ import salidas as _sal
-from __comun__ import tema as _tema
+try:
+    from __comun__ import salidas as _sal
+    from __comun__ import tema as _tema
+except ImportError as e:
+    _morir(
+        "Falta la carpeta __comun__/",
+        "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq y de\n"
+        "Comparadores. Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_RAIZ}\n\nDetalle: {e}",
+    )
 
 CONFIG_RAIZ = _sal.raiz_config(BASE)
 CONFIG_PATH = CONFIG_RAIZ / "config.json"
@@ -1107,8 +1115,12 @@ def path_vista(aamm):
 
 
 def dir_resultados_anuales(anio):
-    """Carpeta anual que contiene solo los Excel entregables."""
-    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador")
+    """00_Salidas/AAAA, directo bajo el anio: 00_Salidas solo tiene resultados,
+    el estado y los datos intermedios del comparador viven en __config__."""
+    normal = _sal.normalizar_anio(anio)
+    if normal is None:
+        raise ValueError(f"anio no reconocido: {anio!r}")
+    return SALIDAS / normal
 
 
 def path_excel_mes(aamm):
@@ -1117,7 +1129,7 @@ def path_excel_mes(aamm):
 
 
 def path_excel_anual(anio_aa):
-    """El consolidado con todos los meses disponibles, en _comparador."""
+    """El consolidado con todos los meses disponibles, directo bajo el anio."""
     return dir_resultados_anuales(anio_aa) / f"Comparacion_Etapas_{_sal.normalizar_anio(anio_aa)}.xlsx"
 
 
@@ -2484,7 +2496,7 @@ class App:
         guardar_estado(self.var_anio.get().strip(), self.est)
 
     def exportar(self):
-        """Excel por mes en 00_Salidas/AAAA/MM Mes + consolidado anual en _comparador.
+        """Excel por mes en 00_Salidas/AAAA/MM Mes + consolidado anual directo en AAAA.
 
         Solo rehace lo que quedo viejo: los meses cuya vista es mas nueva que su
         propio Excel, y el consolidado anual si cambio algun mes.

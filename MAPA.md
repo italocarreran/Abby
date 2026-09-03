@@ -288,8 +288,9 @@ para Excel y demás resultados entregables.
 - **Consume:** los `.mdb` de cada etapa, el JSON mensual de traspaso del Revisor,
   el `config.json` compartido y el maestro vigente de central/empresa.
 - **Produce:** parquet, vistas, estado y rutas en
-  `__config__/AAAA/_comparador/`; Excel mensual en `AAAA/MM Mes/` y consolidado
-  anual en `_comparador/`.
+  `__config__/AAAA/_comparador/`; Excel mensual en `00_Salidas/AAAA/MM Mes/` y
+  consolidado anual directo en `00_Salidas/AAAA/` (sin subcarpeta — ahí no
+  queda nada más que los `.xlsx`).
 - **Expone:** `cdir(anio)`, `ruta_json_mes(aamm)`, `path_excel_mes(aamm)` y el
   bloque propio `comparador_etapas` del JSON mensual.
 - **Depende de:** `__comun__/salidas.py`; localiza la carpeta del Revisor
@@ -306,8 +307,9 @@ para Excel y demás resultados entregables.
 - **Consume:** Consolidados Tabulados, JSON mensuales, el `config.json` compartido
   y `__config__/AAAA/_comparador/rutas.json` del comparador de Access.
 - **Produce:** parquet de variables, vistas, estado y rutas en
-  `__config__/AAAA/_comparador_tabulado/`; Excel mensual en `AAAA/MM Mes/` y
-  consolidado anual en `_comparador_tabulado/`.
+  `__config__/AAAA/_comparador_tabulado/`; Excel mensual en
+  `00_Salidas/AAAA/MM Mes/` y consolidado anual directo en `00_Salidas/AAAA/`
+  (sin subcarpeta).
 - **Expone:** `cdir(anio)`, `dir_parquet(anio)`, `ruta_json_mes(aamm)` y
   `path_excel_mes(aamm)`.
 - **Depende de:** `__comun__/salidas.py` y, para no pedir las mismas

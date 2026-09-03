@@ -37,7 +37,7 @@ Almacenamiento incremental
         parquet_variables/aamm=2501/etapa=def/datos.parquet
         vistas_variables/vista_2501.parquet
     00_Salidas/AAAA/MM Mes/Comparacion_Variables_AAMM.xlsx
-    00_Salidas/AAAA/_comparador_tabulado/Comparacion_Variables_AAAA.xlsx
+    00_Salidas/AAAA/Comparacion_Variables_AAAA.xlsx
 
 Al abrir la ventana NO se lee ningun archivo: solo se listan carpetas y se
 compara la fecha de modificacion. El contenido se lee unicamente al consolidar.
@@ -193,8 +193,16 @@ assert DIR_REVISOR is not None
 
 DIR_RAIZ = DIR_REVISOR.parent
 sys.path.insert(0, str(DIR_RAIZ))
-from __comun__ import salidas as _sal
-from __comun__ import tema as _tema
+try:
+    from __comun__ import salidas as _sal
+    from __comun__ import tema as _tema
+except ImportError as e:
+    _morir(
+        "Falta la carpeta __comun__/",
+        "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq y de\n"
+        "Comparadores. Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_RAIZ}\n\nDetalle: {e}",
+    )
 
 CONFIG_RAIZ = _sal.raiz_config(BASE)
 CONFIG_PATH = CONFIG_RAIZ / "config.json"
@@ -927,8 +935,12 @@ def path_vista(aamm):
 
 
 def dir_resultados_anuales(anio):
-    """Carpeta anual que contiene solo los Excel entregables."""
-    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador_tabulado")
+    """00_Salidas/AAAA, directo bajo el anio: 00_Salidas solo tiene resultados,
+    el estado y los datos intermedios del comparador viven en __config__."""
+    normal = _sal.normalizar_anio(anio)
+    if normal is None:
+        raise ValueError(f"anio no reconocido: {anio!r}")
+    return SALIDAS / normal
 
 
 def path_excel_mes(aamm):

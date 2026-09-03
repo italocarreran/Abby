@@ -159,8 +159,15 @@ RE_UNIDAD = re.compile(r"-\d+\s*$")
 # Estaba copiado en los 10 scripts y las copias se habian ido separando entre
 # si. Los nombres de siempre se conservan como envoltorios, asi que ningun
 # punto de llamada cambia. Ver MAPA.md, "El modulo comun".
-sys.path.insert(0, str(DIR_SCRIPT.parent.parent))
-from __comun__ import config as _cfg
+try:
+    sys.path.insert(0, str(DIR_SCRIPT.parent.parent))
+    from __comun__ import config as _cfg
+except ImportError as e:
+    _morir("Falta la carpeta __comun__/",
+           "No se pudo cargar __comun__/config.py.\n\n"
+           "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq,\n"
+           "con config.py adentro. Baja el repositorio completo, no los .py sueltos.\n\n"
+           f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
 
 get_usuario = _cfg.clave_equipo
 escribir_json = _cfg.escribir_json

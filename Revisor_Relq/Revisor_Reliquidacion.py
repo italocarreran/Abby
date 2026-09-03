@@ -25,10 +25,31 @@ import json, subprocess, sys, re, socket, os, traceback, unicodedata, time, csv
 import shutil
 import threading, queue
 
+def _morir_import(mensaje):
+    """Como no hay ventana todavia, esto puede correr antes que exista
+    cualquier otra. Sin esto, lanzado con pythonw (sin consola) moriria
+    callado si falta __comun__/."""
+    try:
+        raiz = tk.Tk()
+        raiz.withdraw()
+        messagebox.showerror("Falta la carpeta __comun__/", mensaje)
+        raiz.destroy()
+    except Exception:
+        print(mensaje)
+    raise SystemExit(1)
+
+
 DIR_RAIZ_CODIGO = Path(__file__).resolve().parent.parent
 if str(DIR_RAIZ_CODIGO) not in sys.path:
     sys.path.insert(0, str(DIR_RAIZ_CODIGO))
-from __comun__ import salidas as _sal
+try:
+    from __comun__ import salidas as _sal
+except ImportError as e:
+    _morir_import(
+        "No se pudo cargar __comun__/salidas.py.\n\n"
+        "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
+        "Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_RAIZ_CODIGO}\n\nDetalle: {e}")
 
 # =============================================================================
 #  >>> ZONA A AJUSTAR <<<
