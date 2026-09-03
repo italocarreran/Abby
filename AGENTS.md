@@ -90,6 +90,10 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
   ajuste que el archivo entero. Solo se agregan o actualizan claves propias, nunca
   se borra nada ajeno.
 - **Log de progreso** con timer y barra, visible durante toda la corrida.
+- **Tema oscuro optativo.** El piloto vive en los dos comparadores y usa
+  `comun/tema.py`; la clave compartida `tema` vale `"claro"` por omisión. Los
+  widgets `tk` clásicos se pintan además de los estilos `ttk`, y un fallo del
+  tema nunca debe impedir que la herramienta arranque.
 - **Los `.xlsm` se modifican preservando las macros** (xlwings / COM). Los destinos
   tienen que estar cerrados antes de correr; al terminar el archivo queda guardado y
   abierto en Excel a propósito.

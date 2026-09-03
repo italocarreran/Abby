@@ -40,10 +40,9 @@
       menciones viejas — se suma a la fila ya abierta de diferencias con el
       código real (arriba).
 
-- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1, 2 y 3 terminadas y
-      verificadas con pruebas de comportamiento reales (no solo lectura de
-      código). Falta la Tarea 4 (tema oscuro, experimental) para poder borrar
-      el plan.
+- [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
+      comparadores. La verificación automatizada cubre paletas, configuración y
+      un `root` simulado, pero este entorno no tiene pantalla.
 - [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
       `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
 - [ ] Los comparadores tienen su propia copia de `leer_config` /
@@ -52,6 +51,26 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — ChatGPT — Tarea 4: tema oscuro experimental
+
+Se agregó `comun/tema.py`, sin dependencias externas, con paletas clara y
+oscura, estilos `ttk` y pintado recursivo de los widgets `tk` clásicos. La
+paleta oscura incluye colores de estado legibles; la clara conserva exactamente
+los cuatro colores de estado y el color de enlace que usaban los comparadores.
+
+Los dos comparadores tienen ahora una casilla «Tema oscuro». Lee y escribe la
+clave compartida `tema` en `config.json`, aplica el cambio en vivo y arranca en
+claro cuando la clave no existe. Toda aplicación está protegida: si falla, se
+registra el problema y la herramienta conserva el aspecto anterior. El Revisor
+y los actualizadores no se tocaron, porque el plan define este cambio como un
+piloto limitado a los dos comparadores.
+
+`test_tema.py` verifica sin pantalla el modo por omisión, los colores históricos
+y `aplicar()` con un root/estilo simulados. Pasaron también las pruebas de
+configuración y salidas, sintaxis de ambos comparadores y el generador. Falta la
+prueba visual real en Windows, que queda en Pendientes abiertos. Con las cuatro
+tareas completas se elimina el documento temporal `docs/PLAN_comparadores.md`.
 
 ## 2026-09-03 — Claude — verifica la Tarea 3 con pruebas de comportamiento reales
 

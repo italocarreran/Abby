@@ -27,6 +27,7 @@ Convenciones de esta página:
 
 - [`Revisor_Relq/comun/config.py`](#revisor_relqcomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 - [`Revisor_Relq/comun/salidas.py`](#revisor_relqcomunsalidaspy) — 143 líneas — Rutas compartidas de ``00_Salidas``.
+- [`Revisor_Relq/comun/tema.py`](#revisor_relqcomuntemapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6852 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
@@ -37,8 +38,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1343 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2536 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1853 líneas — Comparador_Tabulado.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2568 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1885 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -167,6 +168,43 @@ otro nombre, que despues nadie encuentra.
 #### `def carpetas_legado(dir_salidas) -> List[Path]`
 
 Lista las carpetas planas AAMM del formato anterior que aun existen.
+
+
+---
+
+## `Revisor_Relq/comun/tema.py`
+
+> Tema claro/oscuro compartido para las ventanas tkinter.
+>
+> No depende de librerias externas.  ``aplicar`` configura ttk y devuelve la
+> paleta; ``pintar_tk`` completa el trabajo para los widgets tk clasicos, que no
+> obedecen los estilos ttk.
+
+**Importa:** `tkinter`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `CLARO` | `dict de 15 claves: 'modo', 'fondo', 'panel', …` |  |
+| `OSCURO` | `dict de 15 claves: 'modo', 'fondo', 'panel', …` |  |
+
+### Funciones
+
+#### `def paleta(modo='oscuro')`
+
+Devuelve una copia de la paleta pedida; cualquier otro valor es claro.
+
+#### `def aplicar(root, modo='oscuro') -> dict`
+
+Configura los estilos ttk de la ventana y devuelve la paleta.
+
+El llamador puede usar el resultado para pintar tambien los widgets ``tk``
+clasicos. El modo claro conserva exactamente los colores historicos.
+
+#### `def pintar_tk(widget, colores)`
+
+Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 
 
 ---
@@ -1975,10 +2013,7 @@ Devuelve (ok, resumen).
 | `PAT_MES_DIR` | `re.compile('^(\\d{1,2})\\b')` |  |
 | `RAMAS_FACT` | `['02 Definitivo', '01 Preliminar']` |  |
 | `HOJA_CONFIG_EMPRESA` | `'Configuracion Empresa'` |  |
-| `COLOR_ROJO` | `'#c0392b'` |  |
-| `COLOR_AMARILLO` | `'#b8860b'` |  |
-| `COLOR_VERDE` | `'#1e7a1e'` |  |
-| `COLOR_GRIS` | `'#7f8c8d'` |  |
+| `COLORES` | `_tema.paleta('claro')` | La paleta clara conserva exactamente los colores historicos. |
 | `MAPA_SOB` | `dict de 7 claves: 'claveaniomes', 'claveanomes', 'clavea_omes', …` | Nombres de columna que se buscan en la tabla Sobrecostos (normalizados) |
 | `MAPA_CEN` | `{'central': 'central', 'empresa': 'empresa'}` |  |
 | `_CACHE_DIR` | `{}` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
@@ -2023,6 +2058,7 @@ Un archivo o carpeta, con lo que hace falta ya leido.
 #### `class App`
 
 - `def __init__(self, root)`
+- `def cambiar_tema(self)` — Guarda y aplica en vivo la preferencia compartida del equipo.
 - `def log(self, msg)`
 - `def set_progreso(self, **kw)`
 - `def set_estado(self, txt)`
@@ -2384,10 +2420,7 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 | `PAT_SSCC` | `re.compile('ENTRADA[\\s_]*SOB[\\s_]*SSCC', re.IGNORECASE)` |  |
 | `PAT_SOB` | `re.compile('ENTRADA[\\s_]*SOB(?![\\s_]*SSCC)', re.IGNORECASE)` |  |
 | `PAT_COPIA` | `re.compile('(-\\s*copia\|-\\s*copy\|\\(\\d+\\))\\s*$', re.IGNORECASE)` |  |
-| `COLOR_ROJO` | `'#c0392b'` |  |
-| `COLOR_AMARILLO` | `'#b8860b'` |  |
-| `COLOR_VERDE` | `'#1e7a1e'` |  |
-| `COLOR_GRIS` | `'#7f8c8d'` |  |
+| `COLORES` | `_tema.paleta('claro')` | La paleta clara conserva exactamente los colores historicos. |
 | `LIMITE_FILAS_HOJA` | `1048000` |  |
 | **— lectura del Consolidado_Tabulado —** | | |
 | `NOMBRE_CARPETA_DETALLES` | `'Detalles diarios'` |  |
@@ -2428,6 +2461,7 @@ Un archivo o carpeta, con lo que hace falta ya leido.
 #### `class App`
 
 - `def __init__(self, root)`
+- `def cambiar_tema(self)` — Guarda y aplica en vivo la preferencia compartida del equipo.
 - `def log(self, msg)`
 - `def set_progreso(self, **kw)`
 - `def set_estado(self, txt)`
@@ -2684,10 +2718,7 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `CENTRALES_EMBALSE` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py` |
 | `CHUNK` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `CLAVE_JSON_PROPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `COLOR_AMARILLO` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `COLOR_GRIS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `COLOR_ROJO` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `COLOR_VERDE` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COLORES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COLUMNAS_VISTA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
 | `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |

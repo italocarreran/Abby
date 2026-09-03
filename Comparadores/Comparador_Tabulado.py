@@ -192,6 +192,7 @@ if DIR_REVISOR is None:
 
 sys.path.insert(0, str(DIR_REVISOR))
 from comun import salidas as _sal
+from comun import tema as _tema
 
 CONFIG_PATH = DIR_REVISOR / "config.json"
 SALIDAS = _sal.raiz_salidas(BASE)
@@ -245,10 +246,9 @@ PAT_SSCC = re.compile(r"ENTRADA[\s_]*SOB[\s_]*SSCC", re.IGNORECASE)
 PAT_SOB = re.compile(r"ENTRADA[\s_]*SOB(?![\s_]*SSCC)", re.IGNORECASE)
 PAT_COPIA = re.compile(r"(-\s*copia|-\s*copy|\(\d+\))\s*$", re.IGNORECASE)
 
-COLOR_ROJO = "#c0392b"
-COLOR_AMARILLO = "#b8860b"
-COLOR_VERDE = "#1e7a1e"
-COLOR_GRIS = "#7f8c8d"
+# La paleta clara conserva exactamente los colores historicos. La ventana
+# reemplaza este dict solo si el tema pedido se pudo aplicar completo.
+COLORES = _tema.paleta("claro")
 
 LIMITE_FILAS_HOJA = 1_048_000
 
@@ -578,11 +578,11 @@ def firma_vistas(meses):
 
 def color_de(estado):
     return {
-        "falta": COLOR_ROJO,
-        "pendiente": COLOR_AMARILLO,
-        "desactualizado": COLOR_AMARILLO,
-        "ok": COLOR_VERDE,
-    }.get(estado, COLOR_GRIS)
+        "falta": COLORES["rojo"],
+        "pendiente": COLORES["amarillo"],
+        "desactualizado": COLORES["amarillo"],
+        "ok": COLORES["verde"],
+    }.get(estado, COLORES["gris"])
 
 
 # Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares.
@@ -1303,8 +1303,11 @@ class App:
         self.var_forzar = tk.BooleanVar(value=False)
         self.var_preservar = tk.BooleanVar(value=True)
         self.var_anual = tk.StringVar(value=str(cdir(anio_inicial)) if meses_del_anio(anio_inicial) else "")
+        self.var_tema_oscuro = tk.BooleanVar(
+            value=self.cfg.get("tema", "claro") == "oscuro")
 
         self._construir()
+        self._aplicar_tema()
         self.root.after(100, self._bombear_cola)
         self.log(f"Carpeta base: {BASE}")
         self.log("Lectura rapida de Excel: "
@@ -1322,19 +1325,21 @@ class App:
         self.btn_refrescar = tk.Button(pie, text="ACTUALIZAR estado",
                                        command=self.refrescar, width=18)
         self.btn_refrescar.pack(side="left", padx=6)
-        self.btn_cons = tk.Button(pie, text="Consolidar pendientes", bg="#b8860b",
-                                  fg="white", width=20,
+        self.btn_cons = tk.Button(pie, text="Consolidar pendientes", bg=COLORES["amarillo"],
+                                  fg=COLORES["texto_estado"], width=20,
                                   command=lambda: self.lanzar(self.consolidar, forzar=False))
         self.btn_cons.pack(side="left", padx=6)
-        self.btn_todo = tk.Button(pie, text="Reconsolidar TODO", bg="#7f8c8d",
-                                  fg="white", width=18, command=self.confirmar_todo)
+        self.btn_todo = tk.Button(pie, text="Reconsolidar TODO", bg=COLORES["gris"],
+                                  fg=COLORES["texto_estado"], width=18, command=self.confirmar_todo)
         self.btn_todo.pack(side="left", padx=6)
-        self.btn_excel = tk.Button(pie, text="Exportar Excel", bg="#1e7a1e",
-                                   fg="white", width=16,
+        self.btn_excel = tk.Button(pie, text="Exportar Excel", bg=COLORES["verde"],
+                                   fg=COLORES["texto_estado"], width=16,
                                    command=lambda: self.lanzar(self.exportar))
         self.btn_excel.pack(side="left", padx=6)
+        tk.Checkbutton(pie, text="Tema oscuro", variable=self.var_tema_oscuro,
+                       command=self.cambiar_tema).pack(side="left", padx=8)
         tk.Label(pie, textvariable=self.var_tiempo, font=("Consolas", 11, "bold"),
-                 fg="#1e7a1e").pack(side="right", padx=10)
+                 fg=COLORES["verde"]).pack(side="right", padx=10)
 
         marco_log = tk.LabelFrame(root, text="Bitacora")
         marco_log.pack(side="bottom", fill="x", padx=8, pady=(0, 4))
@@ -1346,7 +1351,7 @@ class App:
         self.barra = ttk.Progressbar(root, mode="determinate")
         self.barra.pack(side="bottom", fill="x", padx=8)
         tk.Label(root, textvariable=self.var_estado, anchor="w",
-                 fg="#1f3864").pack(side="bottom", fill="x", padx=10)
+                 fg=COLORES["enlace"]).pack(side="bottom", fill="x", padx=10)
 
         canvas = tk.Canvas(root, borderwidth=0, highlightthickness=0)
         scroll = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
@@ -1385,15 +1390,15 @@ class App:
 
         f3 = tk.Frame(cont)
         f3.pack(fill="x", padx=12, pady=(2, 6))
-        tk.Label(f3, anchor="w", justify="left", fg=COLOR_GRIS, font=("Segoe UI", 8),
+        tk.Label(f3, anchor="w", justify="left", fg=COLORES["gris"], font=("Segoe UI", 8),
                  text="Las rutas de Rpre y Rdef salen de donde esta el .mdb de SSCC "
                       "(las que ya elegiste en el comparador de Access).\n"
                       "Dentro de esa carpeta se busca 'Detalles diarios' y se toma el "
                       "Excel que haya ahi, sea cual sea su nombre."
                  ).pack(anchor="w")
-        for txt, col in (("rojo = falta el archivo", COLOR_ROJO),
-                         ("amarillo = esta pero sin consolidar / cambio despues", COLOR_AMARILLO),
-                         ("verde = consolidado y al dia", COLOR_VERDE)):
+        for txt, col in (("rojo = falta el archivo", COLORES["rojo"]),
+                         ("amarillo = esta pero sin consolidar / cambio despues", COLORES["amarillo"]),
+                         ("verde = consolidado y al dia", COLORES["verde"])):
             tk.Label(f3, text="  " + txt, fg=col,
                      font=("Segoe UI", 8, "bold")).pack(side="left")
 
@@ -1402,13 +1407,13 @@ class App:
 
         f4 = tk.LabelFrame(cont, text="Paso 2 — parquet a Excel", padx=8, pady=6)
         f4.pack(fill="x", padx=12, pady=8)
-        tk.Label(f4, anchor="w", justify="left", fg=COLOR_GRIS, font=("Segoe UI", 8),
+        tk.Label(f4, anchor="w", justify="left", fg=COLORES["gris"], font=("Segoe UI", 8),
                  text="Cada mes deja su Excel en Salidas\\AAMM\\ y el consolidado del "
                       "anio en Salidas\\_comparador_tabulado\\.\nSolo se rehace lo que "
                       "quedo viejo."
                  ).pack(fill="x")
         self.lbl_anual = tk.Label(f4, textvariable=self.var_anual, cursor="hand2",
-                                  anchor="w", font=("Segoe UI", 9), fg="#1f3864")
+                                  anchor="w", font=("Segoe UI", 9), fg=COLORES["enlace"])
         self.lbl_anual.pack(fill="x", pady=(4, 0))
         self.lbl_anual.bind("<Button-1>",
                             lambda _: abrir_en_explorador(self.var_anual.get(), True))
@@ -1422,8 +1427,34 @@ class App:
                        variable=self.var_solo_dif).pack(side="left", padx=10)
         tk.Label(fb, text="tolerancia:").pack(side="left", padx=(10, 2))
         tk.Entry(fb, textvariable=self.var_tol, width=8).pack(side="left")
-        tk.Label(fb, text="(proporcion: 0.01 = 1%)", fg=COLOR_GRIS,
+        tk.Label(fb, text="(proporcion: 0.01 = 1%)", fg=COLORES["gris"],
                  font=("Segoe UI", 8)).pack(side="left", padx=4)
+
+    def _aplicar_tema(self):
+        """Aplica el tema sin impedir que la herramienta arranque si falla."""
+        global COLORES
+        modo = "oscuro" if self.var_tema_oscuro.get() else "claro"
+        try:
+            colores = _tema.aplicar(self.root, modo)
+            _tema.pintar_tk(self.root, colores)
+        except Exception as exc:
+            self.log(f"No se pudo aplicar el tema {modo}; se conserva el aspecto anterior: {exc}")
+            return False
+        COLORES = colores
+        self.btn_cons.config(bg=COLORES["amarillo"],
+                             fg=COLORES["texto_estado"])
+        self.btn_todo.config(bg=COLORES["gris"],
+                             fg=COLORES["texto_estado"])
+        self.btn_excel.config(bg=COLORES["verde"],
+                              fg=COLORES["texto_estado"])
+        return True
+
+    def cambiar_tema(self):
+        """Guarda y aplica en vivo la preferencia compartida del equipo."""
+        modo = "oscuro" if self.var_tema_oscuro.get() else "claro"
+        guardar_config({"tema": modo})
+        if self._aplicar_tema():
+            self.pintar()
 
     # ---------------- log / estado ----------------
     def log(self, msg):
@@ -1619,7 +1650,7 @@ class App:
                              font=("Segoe UI", 9, "bold"), relief="ridge", padx=4, pady=1)
                 l.pack(side="left", padx=3)
                 chips[etapa] = l
-            info = tk.Label(cab, text="", anchor="w", fg=COLOR_GRIS, font=("Segoe UI", 8))
+            info = tk.Label(cab, text="", anchor="w", fg=COLORES["gris"], font=("Segoe UI", 8))
             info.pack(side="left", padx=8)
             tk.Button(cab, text="Consolidar mes", font=("Segoe UI", 8),
                       command=lambda mm=m: self.lanzar(self.consolidar, meses=[mm],
@@ -1651,6 +1682,7 @@ class App:
                 lineas[etapa] = lr
             self.filas[m] = {"btn": btn, "chips": chips, "info": info,
                              "det": det, "lineas": lineas, "inc": var_inc}
+        self._aplicar_tema()
 
     def cambiar_inclusion(self, m):
         f = self.filas.get(m)
@@ -1681,16 +1713,16 @@ class App:
             for etapa in ETAPAS:
                 st = estado_etapa(self.est, m, etapa, rutas)
                 ests.append(st)
-                f["chips"][etapa].config(fg="white", bg=color_de(st))
+                f["chips"][etapa].config(fg=COLORES["texto_estado"], bg=color_de(st))
                 r = rutas.get(etapa)
                 lr = f["lineas"][etapa]
                 msg = dg.get(etapa) or ""
                 if r and Path(r).is_file():
                     lr.config(text=str(r) + (f"   ({msg})" if msg and not
                                              msg.startswith(str(Path(r).parent)) else ""),
-                              fg="#1f3864")
+                              fg=COLORES["enlace"])
                 else:
-                    lr.config(text=f"[sin archivo] {msg}".strip(), fg=COLOR_ROJO)
+                    lr.config(text=f"[sin archivo] {msg}".strip(), fg=COLORES["rojo"])
             reg = self.est.get(m) or {}
             hechas = [ETIQUETA[e] for e in ETAPAS if (reg.get(e) or {}).get("consolidado")]
             info = (f"consolidado: {', '.join(hechas) or '—'}"

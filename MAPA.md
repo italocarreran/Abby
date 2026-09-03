@@ -294,7 +294,9 @@ propia `Auxiliares/`, como siempre.
 - **Depende de:** `Revisor_Relq/comun/salidas.py`; localiza la carpeta del Revisor
   por `Revisor_Reliquidacion.py`, no por su nombre.
 - **Detalles que importan:** el hilo de trabajo comunica log, estado, progreso y
-  repintado mediante una cola; solo el hilo principal toca tkinter.
+  repintado mediante una cola; solo el hilo principal toca tkinter. El tema es
+  claro por omision y se puede alternar en vivo; la preferencia compartida
+  `tema` queda en `config.json`.
 
 ## `Comparadores/Comparador_Tabulado.py`
 
@@ -313,6 +315,8 @@ propia `Auxiliares/`, como siempre.
   una cola; un detalle que supera el límite de Excel continúa en hojas `_2`,
   `_3`, etc. Antes de calcular `hora_mes` se advierte si faltan días u horas o si
   el total mensual no corresponde a un mes completo (incluido cambio de hora).
+  El tema es claro por omisión y se puede alternar en vivo con la misma clave
+  `tema` del `config.json` compartido.
 
 ## `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`
 
@@ -366,6 +370,17 @@ código.** Corregir el documento cuando haya oportunidad:
 ---
 
 ## El módulo común
+
+### `Revisor_Relq/comun/tema.py` — **piloto en los comparadores**
+
+- **Qué hace:** ofrece las paletas clara y oscura sin dependencias externas,
+  configura los estilos `ttk` y pinta recursivamente los widgets `tk` clásicos.
+- **Expone:** `paleta(modo)`, `aplicar(root, modo="oscuro")` y
+  `pintar_tk(widget, colores)`.
+- **Reglas:** el modo desconocido o ausente es claro; la paleta clara conserva
+  los colores históricos de estado; si la aplicación falla, cada comparador
+  continúa con el aspecto anterior.
+- **Pruebas:** `Revisor_Relq/comun/test_tema.py`, sin pantalla y solo stdlib.
 
 ### `Revisor_Relq/comun/salidas.py` — **hecho**
 
