@@ -2080,11 +2080,12 @@ class App:
 
     def pintar_actual(self):
         reg = (self.est or {}).get("_actual") or {}
-        if reg.get("archivo"):
+        anio = self.var_anio.get().strip()
+        if reg.get("archivo") and meses_del_anio(anio):
             self.var_actual.set(
                 f"{reg.get('etiqueta', '')} · {Path(reg['archivo']).name} · "
                 f"{reg.get('centrales', 0)} centrales · leido {reg.get('leido', '')}")
-            self.lbl_actual.config(fg=COLOR_VERDE if actual_parquet(self.var_anio.get().strip()).exists()
+            self.lbl_actual.config(fg=COLOR_VERDE if actual_parquet(anio).exists()
                                    else COLOR_AMARILLO)
         else:
             self.var_actual.set("[sin leer — el Excel saldra sin la columna Actual]")
@@ -2356,6 +2357,12 @@ class App:
             self.lanzar(self.consolidar, forzar=True)
 
     def consolidar(self, meses=None, forzar=False):
+        if not meses_del_anio(self.var_anio.get().strip()):
+            # Sin esto, cargar_estado()/actual_parquet() revientan con
+            # ValueError (via comun.salidas.normalizar_anio): antes de la
+            # Tarea 2 estas rutas no dependian del anio y nunca fallaban.
+            self.log("Elegi un anio valido antes de consolidar.")
+            return
         meses = meses or self.meses_visibles()
         raiz = self.var_cmg.get().strip()
         self.est = cargar_estado(self.var_anio.get().strip())

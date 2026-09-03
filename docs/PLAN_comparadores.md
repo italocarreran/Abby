@@ -487,6 +487,17 @@ perezosa con `_Perezoso`, así que importarlos no debería requerirlas):
 Hay un ejemplo de este tipo de prueba con módulos simulados en `BITACORA.md`,
 entrada "separa el Revisor de los actualizadores".
 
+**⚠️ Ya aplicado y con una regresión encontrada y corregida — ver `BITACORA.md`,
+entrada "verifica la Tarea 2".** Antes de esta tarea, las rutas de `_actual` y
+de `_comparador*` eran constantes de módulo que no dependían del año y nunca
+fallaban. Al volverlas función-del-año (correcto, es lo que pedía el punto 3),
+cualquier punto que las llamara con un año vacío o inválido pasó a lanzar
+`ValueError` en vez de simplemente no encontrar el archivo. Se corrigió
+agregando una guarda de "año válido" al principio de `consolidar()` (los dos
+comparadores) y de `pintar_actual()` (Etapas) — el mismo patrón que ya usaba
+`__init__`. **Si se toca cualquier otra función que dependa del año, revisar
+que tenga esta guarda o la herede de un llamador que ya la tenga.**
+
 ---
 
 ## 7. Trampas — leer antes de tocar

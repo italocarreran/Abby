@@ -37,8 +37,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1343 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2507 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1783 líneas — Comparador_Tabulado.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2514 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1789 líneas — Comparador_Tabulado.py
 
 
 ---

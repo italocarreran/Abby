@@ -40,10 +40,9 @@
       menciones viejas — se suma a la fila ya abierta de diferencias con el
       código real (arriba).
 
-- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1 (`comun/salidas.py` + `dir_mes` del Revisor) y 2 (cableado de
-      los dos comparadores) terminadas; faltan Tarea 3 (4 bugs encontrados) y
-      Tarea 4 (tema oscuro, experimental). Borrar ese plan cuando esté todo
-      aplicado.
+- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1 y 2 terminadas y
+      verificadas; faltan Tarea 3 (4 bugs encontrados) y Tarea 4 (tema oscuro,
+      experimental). Borrar ese plan cuando esté todo aplicado.
 - [ ] **Bug 🔴 sin arreglar:** los dos comparadores escriben en la ventana desde
       el hilo de trabajo (`App.log`). Da cuelgues intermitentes en corridas
       largas. Plan, 3.1.
@@ -61,6 +60,52 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — Claude — verifica la Tarea 2 y corrige una regresión real
+
+Codex hizo la Tarea 2 bien en lo estructural: partió del commit al día
+(`fdaec6d`), localiza al Revisor por archivo (no por nombre de carpeta),
+`CONFIG_PATH` y `SALIDAS` resuelven al mismo lugar que el Revisor, y
+`Comparador_Tabulado` conservó `parquet_variables`/`vistas_variables` (el
+comportamiento real, no las constantes muertas que tenía el original).
+Verificado con AST que no quedó ninguna referencia colgante a las constantes
+viejas (`CDIR`, `DIR_PARQUET`, etc.) — la migración a funciones por año fue
+completa en los dos archivos.
+
+**Encontrada una regresión real al leer el código, antes de correr nada
+pesado.** Antes de esta tarea, `ACTUAL_PARQUET` (Etapas) y las rutas de
+`Comparador_Tabulado` eran constantes de módulo **independientes del año** —
+un bug/simplificación preexistente, pero que nunca lanzaba una excepción.
+Ahora que correctamente dependen del año (`carpeta_comparador` →
+`normalizar_anio`, que desde la corrección de la Tarea 1 lanza `ValueError`
+con un año vacío o irreconocible), tres puntos podían reventar la ventana:
+
+- `App.consolidar()` en **los dos** comparadores llamaba a `cargar_estado()`
+  (y en Etapas también a `actual_parquet()`) **antes** de comprobar si había
+  algo que consolidar. Con el año vacío o inválido — posible al apretar
+  "Reconsolidar TODO" sin haber escrito un año — la ventana caía con
+  `ValueError` sin ningún mensaje útil.
+- `App.pintar_actual()` (Etapas) tenía el mismo riesgo si `self.est` traía
+  `_actual.archivo` cargado de una sesión anterior pero `self.var_anio` ya no
+  coincidía (por ejemplo, si el usuario borra el año a mano).
+
+Se agregó una guarda al principio de los tres métodos, con el mismo estilo que
+ya usaba el propio `__init__` (`if meses_del_anio(...) else ...`): si el año no
+es válido, se avisa en el log y se corta antes de tocar el disco, en vez de
+reventar. Reproducido el crash y confirmado el arreglo con un `App` simulado
+(sin abrir ventana real) antes y después del parche.
+
+Verificación completa de la sección 6.6 del plan, hecha por cuenta propia:
+sintaxis de los 14 `.py`, las 13 pruebas de `comun/config.py`, las 13 de
+`comun/salidas.py`, `generar_interfaces.py --check`, y — la parte que más
+importaba — que `Comparador_Etapas` y `Comparador_Tabulado` resuelven **el
+mismo** `CONFIG_PATH` que el Revisor, la misma `ruta_json_mes("2407")`, que
+`Comparador_Tabulado.dir_parquet("2024")` sigue terminando en
+`parquet_variables` (no en `parquet`), y que `Tabulado.cdir_mdb("2024")` ==
+`Etapas.cdir("2024")` (la dependencia cruzada entre los dos).
+
+Quedan la Tarea 3 (los 4 bugs ya documentados: threading, límite de Excel,
+`hora_mes`, código duplicado) y la Tarea 4 (tema oscuro, experimental).
 
 ## 2026-09-03 — ChatGPT — Tarea 2: cablea los dos comparadores
 

@@ -1658,6 +1658,12 @@ class App:
             self.lanzar(self.consolidar, forzar=True)
 
     def consolidar(self, meses=None, forzar=False):
+        if not meses_del_anio(self.var_anio.get().strip()):
+            # Sin esto, cargar_estado()/rutas_manuales_mdb() revientan con
+            # ValueError (via comun.salidas.normalizar_anio): antes de la
+            # Tarea 2 estas rutas no dependian del anio y nunca fallaban.
+            self.log("Elegi un anio valido antes de consolidar.")
+            return
         meses = meses or self.meses_visibles()
         raiz = self.var_cmg.get().strip()
         man_mdb = rutas_manuales_mdb(self.var_anio.get().strip())
