@@ -507,3 +507,217 @@ entrada "separa el Revisor de los actualizadores".
   `comun/config.py` como ya hizo `Actualiza_SC_CO.py`. **No en estas dos
   tareas** — se anota en `BITACORA.md` → "Pendientes abiertos" y se hace
   cuando toque, una pieza a la vez.
+
+---
+
+## 9. TAREA 3 — bugs encontrados en los comparadores
+
+Revisión hecha sobre `Comparadores/*.py` sin correrlos (no hay Windows, Excel ni
+Access acá). Cada hallazgo dice cómo verificarlo. **Van en orden de gravedad.**
+
+Se puede hacer junto con la Tarea 2 o después, pero **no antes**: varios tocan
+las mismas funciones que la Tarea 2 mueve de lugar.
+
+### 3.1 🔴 Se escribe en la ventana desde el hilo de trabajo (LOS DOS)
+
+`App.log()` (Etapas 1922 · Tabulado 1320) hace, tal cual:
+
+```python
+self.txt.insert("end", str(msg) + "\n")
+self.txt.see("end")
+self.root.update_idletasks()
+```
+
+y se lo llama **desde dentro de los hilos**: `correr` (Et 1957 · Ta 1353) y
+`buscar` (Et 2103 · Ta 1438), en las líneas 1961-1962, 2113-2114, 2126 (Etapas)
+y 1357-1358, 1449-1450, 1462 (Tabulado).
+
+**Tkinter no es thread-safe.** Tocar widgets desde otro hilo da cuelgues y
+crashes intermitentes — y `update_idletasks()` es lo peor de todo, porque
+reentra al loop de eventos desde el hilo equivocado. No falla siempre: falla en
+las corridas largas, que es justo cuando estas herramientas se usan (consolidar
+12 meses de Access).
+
+Los autores conocían la regla — usaron `self.root.after(0, ...)` para `pintar()`
+y `botones()` (Ta 1362-1364, 1464). Se les escapó el log, que es lo que más se
+llama.
+
+**Arreglo: copiar el patrón que el Revisor ya usa y que funciona.** En
+`Revisor_Reliquidacion.py`: `self.cola = queue.Queue()` (3290), un
+`self.root.after(300, self._bombear_cola)` (3324) y `_bombear_cola` (6791) que
+vacía la cola **desde el hilo principal**. El hilo solo hace
+`self.cola.put(("log", mensaje))`. Ninguno de los dos comparadores importa
+`queue` hoy (0 ocurrencias).
+
+Verificación: que `grep -n "queue" Comparadores/*.py` deje de dar 0, y que
+ninguna función lanzada con `threading.Thread(target=...)` llame a `self.log`
+ni a ningún método de un widget de forma directa.
+
+### 3.2 🔴 `Comparador_Tabulado` corta el Excel en silencio
+
+Al pasar `LIMITE_FILAS_HOJA`, los dos hacen cosas distintas:
+
+| | Qué hace |
+|---|---|
+| **Etapas** (1502) | abre una hoja nueva (`AAMM_2`, `_3`…) y sigue. **Correcto.** |
+| **Tabulado** (1141) | `break` y **descarta el resto de las filas**. |
+
+Dos problemas:
+
+1. **El Excel queda incompleto pero parece completo.** En una herramienta cuyo
+   único trabajo es encontrar diferencias entre etapas, eso significa poder
+   concluir "acá no hay diferencias" cuando estaban en las filas cortadas. Para
+   este dominio, es el peor tipo de error: silencioso y con plata detrás.
+2. Ese `break` sale solo del `for reg in lote`, **no del `while True`**: el
+   cursor se sigue vaciando lote por lote sin escribir nada, y el aviso se
+   repite una vez por lote.
+
+**Arreglo: que Tabulado haga lo mismo que Etapas** — hoja nueva y seguir. Es el
+comportamiento correcto y además ya está escrito al lado, en el archivo hermano.
+
+### 3.3 🟠 La hora mensual se calcula sin comprobar que el mes venga completo
+
+`Comparador_Tabulado.acumulado_por_dia` (815) arma
+`{día: horas_acumuladas_antes}` haciendo `groupby("dia")["hora_dia"].max()`, y
+`hora_mensual` (804) suma eso a la hora del día.
+
+El comentario explica bien por qué usa `max()` y no la cantidad de filas (para
+que un día de 23 o 25 horas por cambio de hora no desalinee). Está bien pensado.
+**Lo que falta es comprobar que los días estén completos y contiguos.**
+
+Si al archivo de una etapa le falta un día entero (o le faltan las últimas horas
+de un día), el acumulado de todos los días siguientes se corre — y `hora_mes` es
+**la clave con la que se cruzan las etapas** (`SELECT etapa, central, tipo,
+hora_mes`, líneas 923-997). O sea: se comparan horas distintas entre sí. El
+resultado no es un error, es una **tabla de diferencias inventadas**, o peor,
+diferencias reales tapadas.
+
+El dominio ya documenta esta trampa: `docs/ESTRUCTURA_CASO_RELIQUIDACION.md`,
+"El cambio de hora", con la hora 145 que no existe.
+
+**Arreglo:** después de armar `acc`, avisar **fuerte** en el log (no cortar, que
+el usuario decida) si:
+
+- los días no van de 1 a `max(dias)` sin huecos;
+- dentro de un día las horas no van de 1 a `max` sin huecos;
+- `min(hora_dia) != 1` (si algún archivo viniera con horas desde 0, **todo** se
+  corre una hora y hoy no se notaría);
+- el total de horas del mes no es 672/696/720/744 ±1 (el ±1 es el cambio de hora).
+
+Con el nombre del archivo y el mes en el mensaje, para que se pueda ir a mirar.
+
+### 3.4 🟡 283 líneas duplicadas entre los dos comparadores
+
+33 funciones son **idénticas carácter por carácter** en los dos archivos:
+`leer_config`, `guardar_config`, `escribir_json_atomico`, `get_usuario`,
+`leer_json`, `normalizar`, `normalizar_suave`, `listar`, `huella`,
+`huella_entrada`, `limpiar_cache`, `subcarpeta`, `buscar_mdb`, `es_copia`,
+`carpeta_definitivo`, `meses_del_anio`, `fmt_tiempo`, `ahora`,
+`abrir_en_explorador`, `respaldar`, `cargar_estado`, `guardar_estado`,
+`firma_vistas`, `color_de`, `mes_incluido`, `fijar_incluido`, `una_fila`,
+`tabla_por_nombre`, `es_hoja_propia`, `hojas_ajenas`, `path_vista`,
+`ruta_json_mes`, `_falta`.
+
+Otras 12 comparten nombre y difieren; se revisaron las dos más delicadas:
+`rutas_desde_json_mes` difiere **solo en el nombre de una variable** (`rutas` vs
+`r`), y `estado_etapa` difiere por una razón real (Etapas tiene 2 archivos por
+etapa, Tabulado 1). Ninguna de las dos es un bug hoy.
+
+Pero es exactamente la trampa de `CENTRALES_EMBALSE` a mayor escala: arreglar
+algo en uno y no en el otro. **No hacer esta migración dentro de esta tarea** —
+va a `comun/`, una pieza a la vez, como manda `AGENTS.md`. Se anota acá para que
+quede el número medido y el orden sugerido:
+
+1. `leer_config` / `guardar_config` / `escribir_json_atomico` / `get_usuario` →
+   ya existen en `comun/config.py`. Es reemplazo directo, igual que se hizo con
+   `Actualiza_SC_CO.py`.
+2. `normalizar` / `normalizar_suave` / `es_copia` / `subcarpeta` / `listar` /
+   `huella` → un `comun/archivos.py`.
+3. El resto, cuando toque.
+
+### 3.5 Lo que se revisó y está bien
+
+Para que nadie lo revise dos veces:
+
+- **Cierre de conexiones Access y de libros Excel**: todas las aperturas tienen
+  su `try/finally` con `con.close()` / `wb.close()`.
+- **El marshalling a la ventana de `pintar()`, `botones()` y `set_estado()`**:
+  correcto, va por `self.root.after(0, ...)`. El problema es solo el log (3.1).
+- **`rutas_desde_json_mes`** en los dos archivos: mismo comportamiento.
+- **El contrato del JSON de traspaso**: `Comparador_Etapas` escribe solo bajo su
+  clave `comparador_etapas`, sin tocar nada del Revisor. Correcto.
+- **`hora_mensual` con `max()` en vez de contar filas**: la decisión es la
+  correcta para el cambio de hora. Lo que falta es la validación (3.3).
+
+---
+
+## 10. TAREA 4 — tema oscuro (experimental, va al final)
+
+El usuario dijo que las ventanas le parecen feas y quiere probar un tema oscuro.
+Es **para probar**, así que la regla es: que se pueda volver atrás sin tocar
+código.
+
+### 10.1 Piloto primero, no las 12 ventanas
+
+**Aplicarlo solo a los dos comparadores.** Son los que menos se usan, así que si
+queda mal no molesta en el trabajo diario. Si al usuario le gusta, después se
+lleva al Revisor y a los actualizadores; si no, se descarta y no se tocó nada
+importante.
+
+### 10.2 `Revisor_Relq/comun/tema.py`
+
+Una paleta y una función que la aplica:
+
+```python
+def aplicar(root, modo="oscuro") -> dict
+    """Configura los estilos ttk de la ventana y devuelve la paleta.
+
+    Devuelve el dict de colores para que quien lo llame pinte tambien los
+    widgets tk clasicos (Text, Label, Entry, Canvas), que NO siguen los
+    estilos ttk.
+    """
+```
+
+Tres cosas que hay que resolver sí o sí, porque son las que hacen que un tema
+oscuro en tkinter quede a medias:
+
+1. **Los widgets `tk.` clásicos no siguen a ttk.** Estos scripts usan mezcla:
+   `tk.Text` (el log), `tk.Label`, `tk.Entry`, `tk.Frame`. Hay que pintarlos a
+   mano con `bg`/`fg`/`insertbackground` desde la paleta que devuelve `aplicar`.
+2. **Los colores de estado están calibrados para fondo claro** y sobre oscuro no
+   se leen: `COLOR_ROJO = "#c0392b"`, `COLOR_AMARILLO = "#b8860b"`,
+   `COLOR_VERDE = "#1e7a1e"` en los comparadores, y `C_OK`, `C_FALTA`,
+   `C_AMARILLO`, `C_VENCIDA` en el Revisor. La paleta tiene que traer **su
+   propia versión de cada color de estado**, más clara, y el código usarla desde
+   ahí en vez de las constantes de módulo.
+3. **`C_NEUTRO = "SystemButtonFace"`** (Revisor) es un color del sistema: en
+   tema oscuro queda un parche gris claro. Reemplazarlo por el de la paleta.
+
+### 10.3 Que se pueda apagar
+
+El modo sale de `config.json`, clave `tema` (`"claro"` | `"oscuro"`), por
+equipo/usuario como todo lo demás. **Por omisión `"claro"`**, o sea: si el
+usuario no hace nada, todo se ve igual que hoy. Un menú o casilla en la ventana
+lo cambia y lo guarda.
+
+### 10.4 Qué NO hacer
+
+- **No reacomodar la disposición de los controles.** Esto es color, no rediseño.
+  Mover botones de lugar en una herramienta que el usuario ya tiene aprendida es
+  una molestia, no una mejora.
+- **No instalar librerías de temas** (`ttkbootstrap`, `sv-ttk`). El repo es solo
+  biblioteca estándar y estas herramientas corren en equipos donde instalar algo
+  es un trámite.
+- **No tocar el tema si `aplicar()` falla.** Envolver en `try/except` y seguir
+  con el aspecto de siempre: nadie se puede quedar sin poder trabajar porque un
+  color no se pudo aplicar.
+
+### 10.5 Verificación
+
+No hay ventana en este entorno, así que la verificación real la hace el usuario
+mirando. Lo que sí se puede comprobar acá:
+
+- Que con `tema` sin definir en `config.json`, los colores que se usan sean
+  exactamente los de hoy (o sea: por omisión no cambia nada).
+- Que `aplicar()` con un `root` simulado no lance.
+- Que ninguna de las constantes de color viejas quede sin usar y sin reemplazo.

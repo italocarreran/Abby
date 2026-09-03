@@ -41,9 +41,19 @@
       código real (arriba).
 
 - [ ] **En curso — `docs/PLAN_comparadores.md`.** Tarea 1 (`comun/salidas.py` +
-      `dir_mes` del Revisor) y Tarea 2 (cablear los dos comparadores). Los dos
-      `.py` ya están en `Comparadores/` pero **sin cablear: hoy no corren en
-      esa ubicación**. Borrar ese plan cuando las dos tareas estén aplicadas.
+      `dir_mes` del Revisor), Tarea 2 (cablear los dos comparadores), Tarea 3
+      (4 bugs encontrados) y Tarea 4 (tema oscuro, experimental). Los dos `.py`
+      ya están en `Comparadores/` pero **sin cablear: hoy no corren en esa
+      ubicación**. Borrar ese plan cuando esté todo aplicado.
+- [ ] **Bug 🔴 sin arreglar:** los dos comparadores escriben en la ventana desde
+      el hilo de trabajo (`App.log`). Da cuelgues intermitentes en corridas
+      largas. Plan, 3.1.
+- [ ] **Bug 🔴 sin arreglar:** `Comparador_Tabulado` descarta filas en silencio
+      al pasar el límite de Excel, en vez de seguir en una hoja nueva como hace
+      `Comparador_Etapas`. Plan, 3.2.
+- [ ] **Bug 🟠 sin arreglar:** `Comparador_Tabulado` calcula `hora_mes` sin
+      comprobar que el mes venga completo; un día faltante corre todas las horas
+      siguientes y cruza etapas mal. Plan, 3.3.
 - [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
       `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
 - [ ] Los comparadores tienen su propia copia de `leer_config` /
@@ -52,6 +62,51 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-02 — Claude — revisión de bugs de los comparadores y plan del tema oscuro
+
+El usuario se quedó sin acceso a Codex y pidió aprovechar para buscar bugs y
+para pensar un tema oscuro. Revisión hecha **sin correr nada** (no hay Windows,
+Excel ni Access acá): lectura del código más análisis por AST. Todo quedó en
+`docs/PLAN_comparadores.md`, Tareas 3 y 4.
+
+Cuatro hallazgos, en orden de gravedad:
+
+1. 🔴 **Tkinter desde el hilo de trabajo, en los dos comparadores.** `App.log()`
+   hace `self.txt.insert(...)` y `self.root.update_idletasks()` directo, y se lo
+   llama desde `correr` y `buscar`, que corren en `threading.Thread`. Tkinter no
+   es thread-safe: da cuelgues y crashes intermitentes, justo en las corridas
+   largas. Los autores conocían la regla (usaron `after(0, ...)` para `pintar` y
+   `botones`), pero el log se les escapó. Ninguno de los dos importa `queue`; el
+   Revisor sí, y su patrón (`cola` + `_bombear_cola` cada 300 ms) es el arreglo
+   a copiar.
+2. 🔴 **`Comparador_Tabulado` corta el Excel en silencio** al pasar el límite de
+   filas: hace `break` y descarta el resto, mientras `Comparador_Etapas` abre
+   una hoja nueva y sigue. En una herramienta que existe para encontrar
+   diferencias, un Excel incompleto que parece completo es lo peor que puede
+   pasar. Además ese `break` no sale del `while`, así que vacía el cursor sin
+   escribir.
+3. 🟠 **`hora_mes` se calcula sin validar que el mes venga completo.** El uso de
+   `max(hora_dia)` por día está bien pensado para el cambio de hora, pero si
+   falta un día entero todas las horas siguientes se corren — y `hora_mes` es la
+   clave con la que se cruzan las etapas. El resultado serían diferencias
+   inventadas o diferencias reales tapadas, sin ningún error visible.
+4. 🟡 **283 líneas idénticas duplicadas entre los dos comparadores** (33
+   funciones, medidas por hash). Es `CENTRALES_EMBALSE` a mayor escala. No se
+   migra ahora; queda el número y el orden sugerido en el plan.
+
+Se revisó y **está bien**: el cierre de conexiones Access y libros Excel (todos
+con `try/finally`), el marshalling de `pintar`/`botones`/`set_estado` con
+`after(0, ...)`, el contrato del JSON de traspaso, y que
+`rutas_desde_json_mes` se comporte igual en los dos archivos (difiere solo en el
+nombre de una variable).
+
+Sobre el tema oscuro: se plantea como piloto **solo en los comparadores** (los
+que menos se usan, así un experimento fallido no molesta en el trabajo diario),
+con `comun/tema.py`, apagado por omisión y conmutable desde `config.json`. Se
+anotan las tres cosas que hacen que un tema oscuro en tkinter quede a medias:
+los widgets `tk.` clásicos no siguen a ttk, los colores de estado están
+calibrados para fondo claro, y `SystemButtonFace` queda como un parche gris.
 
 ## 2026-09-02 — Claude — plan de los comparadores y de `00_Salidas` por año
 
