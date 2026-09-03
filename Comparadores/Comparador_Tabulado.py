@@ -53,6 +53,7 @@ import importlib
 import importlib.util
 import json
 import os
+import queue
 import re
 import socket
 import subprocess
@@ -877,10 +878,33 @@ def hora_mensual(dia, hora_dia, acumulado_por_dia_dict):
     return acumulado_por_dia_dict[dia] + hora_dia
 
 
-def acumulado_por_dia(df):
-    """{dia: horas_acumuladas_antes_de_ese_dia} a partir de lo que trae el df."""
+def acumulado_por_dia(df, archivo="archivo", mes="mes desconocido", log=print):
+    """Calcula acumulados y avisa si la secuencia horaria puede desalinearse."""
     por_dia = df.groupby("dia")["hora_dia"].max().to_dict()
     dias = sorted(por_dia)
+    problemas = []
+    if dias and dias != list(range(1, max(dias) + 1)):
+        faltan = sorted(set(range(1, max(dias) + 1)) - set(dias))
+        problemas.append(f"dias no contiguos (faltan: {faltan})")
+    horas_incompletas = []
+    horas_sin_uno = []
+    for dia, grupo in df.groupby("dia"):
+        horas = sorted(set(int(h) for h in grupo["hora_dia"]))
+        if horas and horas[0] != 1:
+            horas_sin_uno.append(int(dia))
+        if horas and horas != list(range(1, horas[-1] + 1)):
+            horas_incompletas.append(int(dia))
+    if horas_sin_uno:
+        problemas.append(f"hora inicial distinta de 1 en dia(s) {horas_sin_uno}")
+    if horas_incompletas:
+        problemas.append(f"horas no contiguas en dia(s) {horas_incompletas}")
+    total_horas = sum(int(v) for v in por_dia.values())
+    if not any(abs(total_horas - esperado) <= 1 for esperado in (672, 696, 720, 744)):
+        problemas.append(f"total mensual inusual: {total_horas} horas")
+    if problemas:
+        log(f"    !!! ADVERTENCIA FUERTE {mes} · {Path(archivo).name}: "
+            + "; ".join(problemas)
+            + ". hora_mes puede comparar horas distintas entre etapas.")
     acc, total = {}, 0
     for d in dias:
         acc[d] = total
@@ -922,7 +946,7 @@ def estado_etapa(est, aamm, etapa, rutas):
 def consolidar_etapa(aamm, etapa, ruta, est, log=print):
     log(f"  {aamm} {ETIQUETA[etapa]} · {Path(ruta).name}")
     df = leer_consolidado_tabulado(ruta, log=log)
-    acc = acumulado_por_dia(df)
+    acc = acumulado_por_dia(df, archivo=ruta, mes=aamm, log=log)
     df["hora_mes"] = [hora_mensual(d, h, acc) for d, h in zip(df["dia"], df["hora_dia"])]
     df["etapa"] = etapa
     d = dir_datos(aamm, etapa)
@@ -1131,21 +1155,31 @@ def _escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log):
             cur = con.execute(f"SELECT {', '.join(COLUMNAS_VISTA[1:])} "
                               f"FROM read_parquet('{pvs}') {filtro} "
                               f"ORDER BY central, tipo, hora_mes")
-            h = wb.add_worksheet(aamm)
-            h.write_row(0, 0, CAB, f_head)
-            h.set_row(0, 26)
-            h.freeze_panes(1, 3)
-            h.set_column(0, 1, 26)
-            h.set_column(3, 18, 13, f_num)
-            h.set_column(22, 22, 70)
-            h.autofilter(0, 0, 0, len(CAB) - 1)
+            def nueva(nombre):
+                hoja = wb.add_worksheet(nombre)
+                hoja.write_row(0, 0, CAB, f_head)
+                hoja.set_row(0, 26)
+                hoja.freeze_panes(1, 3)
+                hoja.set_column(0, 1, 26)
+                hoja.set_column(3, 18, 13, f_num)
+                hoja.set_column(22, 22, 70)
+                hoja.autofilter(0, 0, 0, len(CAB) - 1)
+                return hoja
+
+            h = nueva(aamm)
             i_cg, i_cv, i_cm, i_fm = 19, 20, 21, 22
-            fila = 1
+            fila, total, extra = 1, 0, 0
             while True:
                 lote = cur.fetchmany(50_000)
                 if not lote:
                     break
                 for reg in lote:
+                    if fila > LIMITE_FILAS_HOJA:
+                        extra += 1
+                        h = nueva(f"{aamm}_{extra + 1}")
+                        fila = 1
+                        log(f"  ! {aamm} paso el limite de filas: sigue en "
+                            f"{aamm}_{extra + 1}")
                     marca = any(reg[i] for i in (i_cg, i_cv, i_cm, i_fm))
                     for j, v in enumerate(reg):
                         if isinstance(v, bool):
@@ -1160,7 +1194,8 @@ def _escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log):
                         else:
                             h.write(fila, j, str(v), f_alerta if marca and j == 22 else None)
                     fila += 1
-            log(f"  {aamm}: {fila - 1:,} filas.")
+                    total += 1
+            log(f"  {aamm}: {total:,} filas en {extra + 1} hoja(s).")
     finally:
         if wb is not None:
             wb.close()
@@ -1186,13 +1221,18 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
         i_cg, i_cv, i_cm, i_fm = 19, 20, 21, 22
         for aamm, pvs in vistas:
             filtro = _filtro(solo_dif, tolerancia)
-            h = wb.create_sheet(aamm)
-            for j, tx in enumerate(CAB, start=1):
-                c = h.cell(row=1, column=j, value=tx)
-                c.fill, c.font = azul, blanco_negrita
-                c.alignment = Alignment(wrap_text=True, vertical="center")
-            h.freeze_panes = "D2"
-            fila = 2
+            def nueva(nombre):
+                hoja = wb.create_sheet(nombre)
+                for j, tx in enumerate(CAB, start=1):
+                    c = hoja.cell(row=1, column=j, value=tx)
+                    c.fill, c.font = azul, blanco_negrita
+                    c.alignment = Alignment(wrap_text=True, vertical="center")
+                hoja.freeze_panes = "D2"
+                hoja.auto_filter.ref = f"A1:{get_column_letter(len(CAB))}1"
+                return hoja
+
+            h = nueva(aamm)
+            fila, total, extra = 2, 0, 0
             cur = con.execute(f"SELECT {', '.join(COLUMNAS_VISTA[1:])} "
                               f"FROM read_parquet('{pvs}') {filtro} "
                               f"ORDER BY central, tipo, hora_mes")
@@ -1202,8 +1242,11 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
                     break
                 for reg in lote:
                     if fila > LIMITE_FILAS_HOJA:
-                        log(f"  ! {aamm} paso el limite de filas; usa 'Solo con diferencia'.")
-                        break
+                        extra += 1
+                        h = nueva(f"{aamm}_{extra + 1}")
+                        fila = 2
+                        log(f"  ! {aamm} paso el limite de filas: sigue en "
+                            f"{aamm}_{extra + 1}")
                     marca = any(reg[i] for i in (i_cg, i_cv, i_cm, i_fm))
                     for j, v in enumerate(reg, start=1):
                         if v is None:
@@ -1221,8 +1264,8 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
                             if marca and j - 1 == 22:
                                 c.fill = naranjo
                     fila += 1
-            h.auto_filter.ref = f"A1:{get_column_letter(len(CAB))}1"
-            log(f"  {aamm}: {fila - 2:,} filas.")
+                    total += 1
+            log(f"  {aamm}: {total:,} filas en {extra + 1} hoja(s).")
         wb.save(str(destino))
     finally:
         con.close()
@@ -1234,6 +1277,7 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
 class App:
     def __init__(self, root):
         self.root = root
+        self.cola = queue.Queue()
         self.cfg = leer_config()
         anio_inicial = self.cfg.get("tab_anio", "")
         self.est = cargar_estado(anio_inicial) if meses_del_anio(anio_inicial) else {}
@@ -1261,6 +1305,7 @@ class App:
         self.var_anual = tk.StringVar(value=str(cdir(anio_inicial)) if meses_del_anio(anio_inicial) else "")
 
         self._construir()
+        self.root.after(100, self._bombear_cola)
         self.log(f"Carpeta base: {BASE}")
         self.log("Lectura rapida de Excel: "
                  + ("python-calamine activo" if TIENE_CALAMINE
@@ -1382,19 +1427,38 @@ class App:
 
     # ---------------- log / estado ----------------
     def log(self, msg):
-        self.txt.insert("end", str(msg) + "\n")
-        self.txt.see("end")
-        try:
-            self.root.update_idletasks()
-        except Exception:
-            pass
+        self.cola.put(("log", str(msg)))
+
+    def _bombear_cola(self):
+        """Aplica en el hilo de tkinter los cambios pedidos por los workers."""
+        while True:
+            try:
+                accion, valor = self.cola.get_nowait()
+            except queue.Empty:
+                break
+            if accion == "log":
+                self.txt.insert("end", valor + "\n")
+                self.txt.see("end")
+            elif accion == "estado":
+                self.var_estado.set(valor)
+            elif accion == "barra":
+                if valor.pop("final", False):
+                    self.barra.config(value=self.barra["maximum"])
+                else:
+                    self.barra.config(**valor)
+            elif accion == "llamar":
+                funcion, args = valor
+                funcion(*args)
+        self.root.after(100, self._bombear_cola)
+
+    def _llamar_en_ui(self, funcion, *args):
+        self.cola.put(("llamar", (funcion, args)))
+
+    def set_progreso(self, **kw):
+        self.cola.put(("barra", kw))
 
     def set_estado(self, txt):
-        self.var_estado.set(txt)
-        try:
-            self.root.update_idletasks()
-        except Exception:
-            pass
+        self.cola.put(("estado", txt))
 
     def tick(self):
         if self.timer["on"]:
@@ -1423,9 +1487,9 @@ class App:
             finally:
                 self.timer["on"] = False
                 self.trabajando = False
-                self.root.after(0, lambda: self.botones(True))
-                self.root.after(0, self.pintar)
-                self.root.after(0, lambda: self.set_estado("Listo"))
+                self._llamar_en_ui(self.botones, True)
+                self._llamar_en_ui(self.pintar)
+                self.set_estado("Listo")
 
         threading.Thread(target=correr, daemon=True).start()
 
@@ -1500,7 +1564,7 @@ class App:
         self.trabajando = True
         self.botones(False)
         objetivo = [solo] if solo else meses
-        self.barra.config(maximum=len(objetivo), value=0)
+        self.set_progreso(maximum=len(objetivo), value=0)
 
         def buscar():
             t0 = time.time()
@@ -1511,7 +1575,7 @@ class App:
                     self.set_estado(f"Buscando archivos... {m}  ({i}/{len(objetivo)})")
                     self.rutas[m], self.diag[m] = resolver_rutas(
                         m, raiz, self.manuales, man_mdb)
-                    self.barra.config(value=i)
+                    self.set_progreso(value=i)
             except Exception as e:
                 self.log(f"ERROR buscando archivos: {e}")
                 self.log(traceback.format_exc())
@@ -1528,7 +1592,7 @@ class App:
                     if seg > 3:
                         self.log(f"Busqueda de archivos: {seg:.1f} s "
                                  f"({len(objetivo)} mes(es)).")
-                self.root.after(0, terminar)
+                self._llamar_en_ui(terminar)
 
         threading.Thread(target=buscar, daemon=True).start()
 
@@ -1679,7 +1743,7 @@ class App:
             self.log("Nada por consolidar: todo lo que tiene archivo ya esta al dia.")
             return
         self.log(f"\n=== Consolidando {len(tareas)} etapa(s) ===")
-        self.barra.config(maximum=len(tareas), value=0)
+        self.set_progreso(maximum=len(tareas), value=0)
         tocados = set()
         for i, (m, etapa, st) in enumerate(tareas, 1):
             self.set_estado(f"[{i}/{len(tareas)}] {m} {ETIQUETA[etapa]} ({st})")
@@ -1690,8 +1754,8 @@ class App:
             except Exception as e:
                 self.log(f"  ERROR en {m} {ETIQUETA[etapa]}: {e}")
                 self.log(traceback.format_exc())
-            self.barra.config(value=i)
-            self.root.after(0, self.pintar)
+            self.set_progreso(value=i)
+            self._llamar_en_ui(self.pintar)
         tol = self.tolerancia()
         for m in sorted(tocados):
             self.set_estado(f"Rearmando vista {m}")
@@ -1736,14 +1800,14 @@ class App:
                 pend.append(m)
         if pend:
             self.log(f"\n=== Excel por mes: {', '.join(pend)} ===")
-            self.barra.config(maximum=len(pend), value=0)
+            self.set_progreso(maximum=len(pend), value=0)
             for i, m in enumerate(pend, 1):
                 self.set_estado(f"[{i}/{len(pend)}] Excel de {m}")
                 dm = path_excel_mes(m)
                 dm.parent.mkdir(parents=True, exist_ok=True)
                 exportar_excel(dm, [m], solo_dif, tol, log=self.log,
                                preservar=self.var_preservar.get())
-                self.barra.config(value=i)
+                self.set_progreso(value=i)
         else:
             self.log("\nExcel por mes: todos al dia, no se rehace ninguno.")
 
@@ -1775,7 +1839,7 @@ class App:
                 guardar_estado(self.var_anio.get().strip(), self.est)
                 self.log(f"  ({self.est['_excel_anual']['segundos']} s)")
             self.var_anual.set(str(anual))
-        self.barra.config(value=self.barra["maximum"])
+        self.set_progreso(final=True)
         self.log("=== Listo ===\n")
 
 

@@ -293,6 +293,8 @@ propia `Auxiliares/`, como siempre.
   bloque propio `comparador_etapas` del JSON mensual.
 - **Depende de:** `Revisor_Relq/comun/salidas.py`; localiza la carpeta del Revisor
   por `Revisor_Reliquidacion.py`, no por su nombre.
+- **Detalles que importan:** el hilo de trabajo comunica log, estado, progreso y
+  repintado mediante una cola; solo el hilo principal toca tkinter.
 
 ## `Comparadores/Comparador_Tabulado.py`
 
@@ -307,6 +309,10 @@ propia `Auxiliares/`, como siempre.
   `path_excel_mes(aamm)`.
 - **Depende de:** `Revisor_Relq/comun/salidas.py` y, para no pedir las mismas
   carpetas dos veces, del `rutas.json` de `_comparador` **del mismo año**.
+- **Detalles que importan:** el hilo de trabajo se comunica con tkinter mediante
+  una cola; un detalle que supera el límite de Excel continúa en hojas `_2`,
+  `_3`, etc. Antes de calcular `hora_mes` se advierte si faltan días u horas o si
+  el total mensual no corresponde a un mes completo (incluido cambio de hora).
 
 ## `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`
 

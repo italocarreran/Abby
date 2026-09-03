@@ -42,6 +42,7 @@ import json
 import importlib
 import importlib.util
 import os
+import queue
 import re
 import socket
 import subprocess
@@ -1806,6 +1807,7 @@ def respaldar(destino, anio, log=print):
 class App:
     def __init__(self, root):
         self.root = root
+        self.cola = queue.Queue()
         self.cfg = leer_config()
         anio_inicial = self.cfg.get("comp_anio", "")
         self.est = cargar_estado(anio_inicial) if meses_del_anio(anio_inicial) else {}
@@ -1835,6 +1837,7 @@ class App:
         self.var_preservar = tk.BooleanVar(value=True)
 
         self._construir()
+        self.root.after(100, self._bombear_cola)
         drv = driver_access()
         self.log(f"Driver Access: {drv or 'NO ENCONTRADO'} · Python "
                  f"{'64' if sys.maxsize > 2**32 else '32'} bits, "
@@ -1994,19 +1997,38 @@ class App:
 
     # ---------------- log / estado ----------------
     def log(self, msg):
-        self.txt.insert("end", str(msg) + "\n")
-        self.txt.see("end")
-        try:
-            self.root.update_idletasks()
-        except Exception:
-            pass
+        self.cola.put(("log", str(msg)))
+
+    def _bombear_cola(self):
+        """Aplica en el hilo de tkinter los cambios pedidos por los workers."""
+        while True:
+            try:
+                accion, valor = self.cola.get_nowait()
+            except queue.Empty:
+                break
+            if accion == "log":
+                self.txt.insert("end", valor + "\n")
+                self.txt.see("end")
+            elif accion == "estado":
+                self.var_estado.set(valor)
+            elif accion == "barra":
+                if valor.pop("final", False):
+                    self.barra.config(value=self.barra["maximum"])
+                else:
+                    self.barra.config(**valor)
+            elif accion == "llamar":
+                funcion, args = valor
+                funcion(*args)
+        self.root.after(100, self._bombear_cola)
+
+    def _llamar_en_ui(self, funcion, *args):
+        self.cola.put(("llamar", (funcion, args)))
+
+    def set_progreso(self, **kw):
+        self.cola.put(("barra", kw))
 
     def set_estado(self, txt):
-        self.var_estado.set(txt)
-        try:
-            self.root.update_idletasks()
-        except Exception:
-            pass
+        self.cola.put(("estado", txt))
 
     def tick(self):
         if self.timer["on"]:
@@ -2037,9 +2059,9 @@ class App:
             finally:
                 self.timer["on"] = False
                 self.trabajando = False
-                self.root.after(0, lambda: self.botones(True))
-                self.root.after(0, self.pintar)
-                self.root.after(0, lambda: self.set_estado("Listo"))
+                self._llamar_en_ui(self.botones, True)
+                self._llamar_en_ui(self.pintar)
+                self.set_estado("Listo")
 
         threading.Thread(target=correr, daemon=True).start()
 
@@ -2069,7 +2091,7 @@ class App:
         self.set_estado("Buscando el 4_REMUNERACION_SC_CO mas nuevo...")
         cambio = consolidar_actual(self.var_anio.get().strip(), raiz, self.est, forzar=forzar, log=self.log)
         guardar_estado(self.var_anio.get().strip(), self.est)
-        self.root.after(0, self.pintar_actual)
+        self._llamar_en_ui(self.pintar_actual)
         if cambio:
             # Cambio la referencia: hay que rearmar las vistas ya existentes
             for m in self.meses_visibles():
@@ -2176,7 +2198,7 @@ class App:
         self.trabajando = True
         self.botones(False)
         objetivo = [solo] if solo else meses
-        self.barra.config(maximum=len(objetivo), value=0)
+        self.set_progreso(maximum=len(objetivo), value=0)
 
         def buscar():
             t0 = time.time()
@@ -2186,7 +2208,7 @@ class App:
                     self.set_estado(f"Buscando archivos... {m}  ({i}/{len(objetivo)})")
                     self.rutas[m], self.diag[m] = resolver_rutas(
                         m, raiz, self.rutas_manuales)
-                    self.barra.config(value=i)
+                    self.set_progreso(value=i)
             except Exception as e:
                 self.log(f"ERROR buscando archivos: {e}")
                 self.log(traceback.format_exc())
@@ -2203,7 +2225,7 @@ class App:
                     if seg > 3:
                         self.log(f"Busqueda de archivos: {seg:.1f} s "
                                  f"({len(objetivo)} mes(es)).")
-                self.root.after(0, terminar)
+                self._llamar_en_ui(terminar)
 
         threading.Thread(target=buscar, daemon=True).start()
 
@@ -2387,7 +2409,7 @@ class App:
         tocados = set()
         if tareas:
             self.log(f"\n=== Consolidando {len(tareas)} etapa(s) ===")
-            self.barra.config(maximum=len(tareas), value=0)
+            self.set_progreso(maximum=len(tareas), value=0)
             for i, (m, etapa, st) in enumerate(tareas, 1):
                 self.set_estado(f"[{i}/{len(tareas)}] {m} {ETIQUETA[etapa]} ({st})")
                 try:
@@ -2397,8 +2419,8 @@ class App:
                 except Exception as e:
                     self.log(f"  ERROR en {m} {ETIQUETA[etapa]}: {e}")
                     self.log(traceback.format_exc())
-                self.barra.config(value=i)
-                self.root.after(0, self.pintar)
+                self.set_progreso(value=i)
+                self._llamar_en_ui(self.pintar)
             for m in sorted(tocados):
                 self.set_estado(f"Rearmando vista {m}")
                 try:
@@ -2455,14 +2477,14 @@ class App:
                     pend.append(m)
             if pend:
                 self.log(f"\n=== Excel por mes: {', '.join(pend)} ===")
-                self.barra.config(maximum=len(pend) + 1, value=0)
+                self.set_progreso(maximum=len(pend) + 1, value=0)
                 for i, m in enumerate(pend, 1):
                     self.set_estado(f"[{i}/{len(pend)}] Excel de {m}")
                     dm = path_excel_mes(m)
                     dm.parent.mkdir(parents=True, exist_ok=True)
                     exportar_excel(dm, [m], solo_dif, tol, log=self.log,
                                    preservar=self.var_preservar.get())
-                    self.barra.config(value=i)
+                    self.set_progreso(value=i)
             else:
                 self.log("\nExcel por mes: todos al dia, no se rehace ninguno.")
 
@@ -2499,7 +2521,7 @@ class App:
                     guardar_estado(self.var_anio.get().strip(), self.est)
                     self.log(f"  ({self.est['_excel_anual']['segundos']} s)")
                 self.var_anual.set(str(anual))
-            self.barra.config(value=self.barra["maximum"])
+            self.set_progreso(final=True)
 
         self.log("=== Listo ===\n")
 

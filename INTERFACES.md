@@ -37,8 +37,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1343 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2514 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1789 líneas — Comparador_Tabulado.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2536 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1853 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -1947,7 +1947,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2024,6 +2024,7 @@ Un archivo o carpeta, con lo que hace falta ya leido.
 
 - `def __init__(self, root)`
 - `def log(self, msg)`
+- `def set_progreso(self, **kw)`
 - `def set_estado(self, txt)`
 - `def tick(self)`
 - `def botones(self, activos)`
@@ -2359,7 +2360,7 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2428,6 +2429,7 @@ Un archivo o carpeta, con lo que hace falta ya leido.
 
 - `def __init__(self, root)`
 - `def log(self, msg)`
+- `def set_progreso(self, **kw)`
 - `def set_estado(self, txt)`
 - `def tick(self)`
 - `def botones(self, activos)`
@@ -2631,9 +2633,9 @@ sobre las horas que realmente trae el archivo (asi un dia de 23 o 25
 horas por cambio de hora no desalinea los dias siguientes: el archivo
 manda, no el calendario).
 
-#### `def acumulado_por_dia(df)`
+#### `def acumulado_por_dia(df, archivo='archivo', mes='mes desconocido', log=print)`
 
-{dia: horas_acumuladas_antes_de_ese_dia} a partir de lo que trae el df.
+Calcula acumulados y avisa si la secuencia horaria puede desalinearse.
 
 #### `def dir_datos(aamm, etapa)`
 

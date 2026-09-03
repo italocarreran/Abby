@@ -40,18 +40,9 @@
       menciones viejas — se suma a la fila ya abierta de diferencias con el
       código real (arriba).
 
-- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1 y 2 terminadas y
-      verificadas; faltan Tarea 3 (4 bugs encontrados) y Tarea 4 (tema oscuro,
-      experimental). Borrar ese plan cuando esté todo aplicado.
-- [ ] **Bug 🔴 sin arreglar:** los dos comparadores escriben en la ventana desde
-      el hilo de trabajo (`App.log`). Da cuelgues intermitentes en corridas
-      largas. Plan, 3.1.
-- [ ] **Bug 🔴 sin arreglar:** `Comparador_Tabulado` descarta filas en silencio
-      al pasar el límite de Excel, en vez de seguir en una hoja nueva como hace
-      `Comparador_Etapas`. Plan, 3.2.
-- [ ] **Bug 🟠 sin arreglar:** `Comparador_Tabulado` calcula `hora_mes` sin
-      comprobar que el mes venga completo; un día faltante corre todas las horas
-      siguientes y cruza etapas mal. Plan, 3.3.
+- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1, 2 y 3 terminadas y
+      verificadas; falta la Tarea 4 (tema oscuro, experimental). Borrar ese plan
+      cuando esté todo aplicado.
 - [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
       `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
 - [ ] Los comparadores tienen su propia copia de `leer_config` /
@@ -60,6 +51,26 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — ChatGPT — Tarea 3: corrige los bugs de los comparadores
+
+Los dos comparadores pasan ahora todos los cambios de log, estado, progreso y
+repintado por una `queue.Queue` que vacía exclusivamente el hilo principal de
+tkinter; los workers ya no tocan widgets ni llaman `after()`.
+
+`Comparador_Tabulado` continúa en hojas `AAMM_2`, `AAMM_3`, etc. al alcanzar el
+límite de Excel, tanto al crear un libro como al preservar hojas ajenas, sin
+descartar filas. También valida antes de calcular `hora_mes` que días y horas
+sean contiguos, que cada día empiece en 1 y que el total mensual sea uno de los
+largos admisibles con tolerancia de una hora. Una anomalía genera una advertencia
+fuerte con archivo y mes, pero no corta el proceso, tal como pide el plan.
+
+La duplicación de 283 líneas queda documentada pero no se migró: el punto 3.4
+indica explícitamente hacerlo por piezas y fuera de esta tarea. Pasaron el
+checklist completo de la sección 9, las pruebas de `comun/`, el generador y
+pruebas aisladas de la validación horaria, la cola UI y la continuación de hojas.
+No se pudo hacer una prueba real con Access/Excel por ser un entorno Linux.
+Queda pendiente la Tarea 4 experimental y la prueba visual/real en Windows.
 
 ## 2026-09-03 — Claude — verifica la Tarea 2 y corrige una regresión real
 
