@@ -26,8 +26,9 @@ Convenciones de esta página:
 ## Índice
 
 - [`Revisor_Relq/comun/config.py`](#revisor_relqcomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+- [`Revisor_Relq/comun/salidas.py`](#revisor_relqcomunsalidaspy) — 117 líneas — Rutas compartidas de ``00_Salidas``.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6840 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6852 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1030 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1598 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
@@ -99,6 +100,59 @@ pisarlo le borraria los ajustes a los demas scripts.
 #### `def guardar(ruta, data: dict) -> bool`
 
 Agrega o actualiza claves en el bloque del equipo actual.
+
+
+---
+
+## `Revisor_Relq/comun/salidas.py`
+
+> Rutas compartidas de ``00_Salidas``.
+>
+> Centraliza la conversion de AAMM a ``AAAA/MM Mes`` para que el Revisor y los
+> comparadores lean y escriban exactamente en el mismo lugar. Las carpetas planas
+> del formato anterior solo se detectan para avisar: nunca se reutilizan.
+
+**Importa:** `pathlib`, `re`, `typing`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `MESES` | `tupla de 12 elementos: 'Enero', 'Febrero', 'Marzo', …` |  |
+
+### Funciones
+
+#### `def raiz_salidas(dir_script) -> Path`
+
+Devuelve ``00_Salidas``, hermana de la carpeta del script.
+
+#### `def partir_aamm(aamm) -> Optional[Tuple[str, int]]`
+
+Convierte ``'2407'`` en ``('2024', 7)``; None si no es AAMM valido.
+
+#### `def nombre_carpeta_mes(aamm) -> Optional[str]`
+
+Devuelve el nombre canonico ``MM Mes``; None si AAMM no es valido.
+
+#### `def carpeta_anio(dir_salidas, aamm) -> Optional[Path]`
+
+Devuelve ``00_Salidas/AAAA``; None si AAMM no es valido.
+
+#### `def carpeta_mes(dir_salidas, aamm, crear=False) -> Path`
+
+Devuelve la ruta mensual nueva, o una variante ya existente.
+
+Con ``crear=True`` crea siempre la ruta canonica ``AAAA/MM Mes``. Para un
+valor no valido (incluido ``sin_mes``) conserva la ruta plana historica.
+Las carpetas planas AAMM del formato anterior nunca se devuelven.
+
+#### `def carpeta_comparador(dir_salidas, anio, nombre) -> Path`
+
+Devuelve una carpeta de comparador dentro del año indicado.
+
+#### `def carpetas_legado(dir_salidas) -> List[Path]`
+
+Lista las carpetas planas AAMM del formato anterior que aun existen.
 
 
 ---
@@ -343,7 +397,7 @@ manteniendo el formato de las celdas.
 > Para .mdb se necesita el "Microsoft Access Driver (*.mdb, *.accdb)" con la misma
 > arquitectura (32/64 bits) que el Python que ejecuta el script.
 
-**Importa:** `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `comun`, `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -415,7 +469,7 @@ en self.stats, para poder decir en la bitacora cuanto se ahorro.
 
 #### `class Estado`
 
-Verificaciones de un mes. Se guardan en 00_Salidas/AAMM, fuera de Revisor_Relq.
+Verificaciones de un mes. Se guardan en 00_Salidas/AAAA/MM Mes.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -430,7 +484,7 @@ Verificaciones de un mes. Se guardan en 00_Salidas/AAMM, fuera de Revisor_Relq.
 
 Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
 modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-vuelve a abrir. Se guarda en 00_Salidas/AAMM para que sirva entre ejecuciones.
+vuelve a abrir. Se guarda en 00_Salidas/AAAA/MM Mes entre ejecuciones.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -473,7 +527,10 @@ ni guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
 
 #### `def dir_mes(aamm, crear=False)`
 
-00_Salidas/AAMM, hermana de Revisor_Relq. Solo la crea si crear=True.
+00_Salidas/AAAA/MM Mes, hermana de Revisor_Relq.
+
+La logica vive en comun/salidas.py porque los comparadores tienen que armar
+exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
 
 #### `def escribir_json(ruta, data)`
 

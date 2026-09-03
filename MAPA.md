@@ -61,7 +61,7 @@ propia `Auxiliares/`, como siempre.
                                                               (el que se va a pago)
 
    Revisor_Reliquidacion  ← orquesta todo: verifica V4..V17 y lanza los de arriba
-                            pasándoles 00_Salidas/AAMM/_traspaso_actualizador.json
+                            pasándoles 00_Salidas/AAAA/MM Mes/_traspaso_actualizador.json
 ```
 
 ---
@@ -75,7 +75,7 @@ propia `Auxiliares/`, como siempre.
 - **Consume:** todo el árbol de `02 CASO RELIQUIDACION` + `FD/`, las tres bases
   Access, `config.json` (`carpeta_base`, `ultimo_mes`, `carpetas_por_mes`,
   `_valores`).
-- **Produce:** `00_Salidas/AAMM/`, en la carpeta hermana de `Revisor_Relq/` —
+- **Produce:** `00_Salidas/AAAA/MM Mes/`, en la carpeta hermana de `Revisor_Relq/` —
   estado, caché y `_traspaso_actualizador.json`, que
   le pasa como único argumento al actualizador que lanza.
 - **Expone:** el JSON de traspaso (`origen`, `version`, `aamm`, `carpeta_reliq`,
@@ -328,6 +328,20 @@ código.** Corregir el documento cuando haya oportunidad:
 ---
 
 ## El módulo común
+
+### `Revisor_Relq/comun/salidas.py` — **hecho**
+
+- **Qué hace:** centraliza las rutas de `00_Salidas` con la estructura
+  `AAAA/MM Mes`, compartida por el Revisor y los comparadores.
+- **Expone:** `raiz_salidas(dir_script)`, `partir_aamm(aamm)`,
+  `nombre_carpeta_mes(aamm)`, `carpeta_anio(dir_salidas, aamm)`,
+  `carpeta_mes(dir_salidas, aamm, crear=False)`,
+  `carpeta_comparador(dir_salidas, anio, nombre)` y
+  `carpetas_legado(dir_salidas)`.
+- **Reglas:** nunca lee ni escribe en carpetas planas AAMM antiguas; las detecta
+  solo para avisar. Tolera variantes existentes como `7 Julio` o `07 julio`,
+  pero `crear=True` crea siempre el nombre canónico.
+- **Pruebas:** `Revisor_Relq/comun/test_salidas.py`, solo stdlib.
 
 ### `Revisor_Relq/comun/config.py` — **hecho**
 

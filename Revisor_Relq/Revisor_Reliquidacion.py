@@ -25,6 +25,8 @@ import json, subprocess, sys, re, socket, os, traceback, unicodedata, time, csv
 import shutil
 import threading, queue
 
+from comun import salidas as _sal
+
 # =============================================================================
 #  >>> ZONA A AJUSTAR <<<
 #  Aca se declara DONDE esta cada valor dentro de cada archivo.
@@ -1102,11 +1104,12 @@ ARCHIVO_ESTADO = "_revisor_verificaciones.json"
 
 
 def dir_mes(aamm, crear=False):
-    """00_Salidas/AAMM, hermana de Revisor_Relq. Solo la crea si crear=True."""
-    p = DIR_SALIDAS / str(aamm).strip()
-    if crear:
-        p.mkdir(parents=True, exist_ok=True)
-    return p
+    """00_Salidas/AAAA/MM Mes, hermana de Revisor_Relq.
+
+    La logica vive en comun/salidas.py porque los comparadores tienen que armar
+    exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
+    """
+    return _sal.carpeta_mes(DIR_SALIDAS, aamm, crear=crear)
 
 
 def escribir_json(ruta, data):
@@ -1509,7 +1512,7 @@ def firma_verificador(vid):
 
 
 class Estado:
-    """Verificaciones de un mes. Se guardan en 00_Salidas/AAMM, fuera de Revisor_Relq."""
+    """Verificaciones de un mes. Se guardan en 00_Salidas/AAAA/MM Mes."""
 
     def __init__(self):
         self.ruta = None
@@ -1610,7 +1613,7 @@ def huella_spec(spec):
 class CacheValores:
     """Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
     modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-    vuelve a abrir. Se guarda en 00_Salidas/AAMM para que sirva entre ejecuciones."""
+    vuelve a abrir. Se guarda en 00_Salidas/AAAA/MM Mes entre ejecuciones."""
 
     def __init__(self):
         self.aamm = None
@@ -6825,6 +6828,15 @@ def main():
     app.log("1) Examinar -> carpeta 02 CASO RELIQUIDACION   2) ACTUALIZAR   3) Verificar")
     app.log("Si a un verificador le falta saber la hoja/celda, usa «Configurar valores...»:")
     app.log("ahí eliges la hoja de una lista y escribes la celda o el rango a sumar.")
+    legado = _sal.carpetas_legado(DIR_SALIDAS)
+    if legado:
+        nombres = ", ".join(p.name for p in legado)
+        app.log(f"OJO: hay {len(legado)} carpeta(s) con el formato viejo en "
+                f"00_Salidas ({nombres}).")
+        app.log("     La estructura nueva es 00_Salidas/AAAA/MM Mes "
+                "(ej: 2024/07 Julio).")
+        app.log("     Mové el contenido a mano; desde acá no se lee ni se escribe "
+                "en ellas.")
     faltan = [k for k, v in VALORES.items()
               if (v["tipo"] == "excel" and not (v.get("hoja") and v.get("celda")))
               or (v["tipo"] == "excel_col" and not (v.get("hoja") and v.get("columna")))

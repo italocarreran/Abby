@@ -11,7 +11,7 @@ entera. Ahí adentro está todo lo que corre, con la estructura que los scripts
 esperan.
 
 Lo que no se sube y aparece solo al usarlo: `config.json`, `00_Salidas/` (hermana
-de `Revisor_Relq/`) y
+de `Revisor_Relq/`, organizada como `AAAA/MM Mes`) y
 `Reemplazos REUC/Auxiliares/config.json`.
 
 ## Si sos un asistente y entrás — Claude, ChatGPT, el que sea

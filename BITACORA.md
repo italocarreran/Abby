@@ -41,7 +41,8 @@
       código real (arriba).
 
 - [ ] **En curso — `docs/PLAN_comparadores.md`.** Tarea 1 (`comun/salidas.py` +
-      `dir_mes` del Revisor), Tarea 2 (cablear los dos comparadores), Tarea 3
+      `dir_mes` del Revisor) terminada; faltan Tarea 2 (cablear los dos
+      comparadores), Tarea 3
       (4 bugs encontrados) y Tarea 4 (tema oscuro, experimental). Los dos `.py`
       ya están en `Comparadores/` pero **sin cablear: hoy no corren en esa
       ubicación**. Borrar ese plan cuando esté todo aplicado.
@@ -62,6 +63,23 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — ChatGPT — Tarea 1: `00_Salidas` por año y mes
+
+Se creó `Revisor_Relq/comun/salidas.py` como única fuente para convertir AAMM
+a `00_Salidas/AAAA/MM Mes`, con reconocimiento tolerante de variantes ya
+existentes (`7 Julio`, `07 julio`) y detección separada de las carpetas planas
+antiguas. El Revisor usa ahora ese módulo desde su único `dir_mes()`, sin cambiar
+sus puntos de llamada, y al arrancar avisa en la bitácora de pantalla cuáles
+carpetas antiguas debe mover el usuario a mano. `sin_mes` conserva el
+comportamiento plano anterior.
+
+Se agregaron 9 pruebas stdlib en `comun/test_salidas.py` y se actualizaron
+`MAPA.md`, `AGENTS.md`, `README.md` e `INTERFACES.md`. Pasaron las 9 pruebas
+nuevas, las 13 de config, el chequeo del generador, la sintaxis del Revisor y
+la importación sin ventana que confirma las dos rutas pedidas en el plan. Los
+comparadores no se tocaron. Quedan pendientes las Tareas 2 a 4 y que el usuario
+mueva manualmente las carpetas antiguas informadas por el nuevo aviso.
 
 ## 2026-09-03 — Claude — la copia del repo que ve Codex puede estar vieja
 
