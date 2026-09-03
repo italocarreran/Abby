@@ -1,0 +1,18 @@
+{
+  // __comun__/ vive en la carpeta de trabajo, hermana de Revisor_Relq/ y de
+  // Comparadores/. Los scripts la agregan al sys.path al arrancar, pero el
+  // analizador de VS Code (Pylance) NO ejecuta nada: solo mira estas rutas.
+  // Sin esto marca 'Import "__comun__" could not be resolved' aunque el
+  // programa corra perfecto.
+  //
+  // Se listan las tres rutas a proposito, para que ande abras la carpeta que
+  // abras: "." cuando abris la carpeta de trabajo, ".." cuando abris
+  // directamente Revisor_Relq/ o Comparadores/, y "../.." cuando abris una
+  // subcarpeta como actualizadores/ o "Reemplazos REUC"/.
+  //
+  // Este mismo archivo esta repetido en Revisor_Relq/.vscode/ y en
+  // Comparadores/.vscode/ por la misma razon: VS Code solo lee el de la
+  // carpeta que abriste.
+  "python.analysis.extraPaths": [".", "..", "../.."],
+  "python.autoComplete.extraPaths": [".", "..", "../.."]
+}

@@ -75,6 +75,21 @@ por lo que no viene en el ZIP. Su estructura refleja la de las salidas: los JSON
 mensuales están en `AAAA/MM Mes/`, y cada comparador guarda estado, rutas, parquet
 y vistas en `AAAA/_comparador*`. Los Excel finales siguen en `00_Salidas/`.
 
+### Si VS Code subraya `from __comun__ import ...`
+
+Está resuelto y **no hay que tocar el código**. Cada carpeta trae un
+`.vscode/settings.json` con `python.analysis.extraPaths`, que es lo único que
+hace falta: los scripts agregan `__comun__/` al `sys.path` al arrancar, pero
+Pylance no ejecuta nada, solo mira esas rutas. Si el subrayado aparece igual,
+es una de estas tres:
+
+1. `__comun__/` no está todavía al lado de `Revisor_Relq/` — bajá el
+   repositorio de nuevo, esa carpeta es código y viaja con los programas.
+2. Abriste una carpeta que no trae el `.vscode/` (por ejemplo una subcarpeta
+   suelta). Abrí la carpeta de trabajo, `Revisor_Relq/` o `Comparadores/`.
+3. VS Code quedó con el análisis viejo: `Ctrl+Shift+P` →
+   *Developer: Reload Window*.
+
 ## Después de tocar cualquier `.py`
 
 ```

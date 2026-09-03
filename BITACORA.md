@@ -127,6 +127,54 @@ visto), y avisarle a la usuaria que después de aplicado tiene que armar
 
 ---
 
+## 2026-09-03 — Claude — el warning del editor: causa real y arreglo verificado
+
+La usuaria avisó que el subrayado amarillo seguía apareciendo **después** de
+toda la reorganización. Tenía razón, y la suposición con la que se cerró la
+sesión anterior (que mover `comun/` a `__comun__/` como carpeta de primer
+nivel iba a hacerlo desaparecer solo) era incorrecta.
+
+Se reprodujo de verdad, no por lectura: se instaló `pyright` (el mismo motor
+que usa Pylance dentro de VS Code) y se corrió sobre una copia del árbol real.
+El diagnóstico exacto es
+`error | reportMissingImports | Import "__comun__" could not be resolved`, y
+aparece **según qué carpeta esté abierta en el editor**:
+
+- raíz = la carpeta de trabajo (la que contiene `__comun__/`) → 0 errores.
+- raíz = `Comparadores/` → 2 errores (las dos líneas del import).
+- raíz = `Revisor_Relq/` → 1 error.
+- raíz = `Revisor_Relq/actualizadores/` → 1 error.
+
+O sea: el analizador resuelve los imports mirando la carpeta abierta, no
+ejecutando el `sys.path.insert` — que es justamente lo que le dice a Python
+dónde está `__comun__/` en tiempo de ejecución. Por eso el programa corre
+perfecto y el editor igual protesta. Y por eso mover la carpeta **no podía**
+arreglarlo: al quedar `__comun__/` un nivel ARRIBA de los programas, abrir la
+carpeta de un programa nunca la va a ver.
+
+El arreglo es de editor, no de código: un `.vscode/settings.json` con
+`python.analysis.extraPaths` (y su gemelo `python.autoComplete.extraPaths`)
+en `[".", "..", "../.."]`, repetido en las tres carpetas —raíz,
+`Revisor_Relq/` y `Comparadores/`— porque VS Code solo lee el de la carpeta
+que abriste. Las tres rutas cubren los cuatro casos de arriba, incluido abrir
+`actualizadores/` suelta. Verificado con el mismo pyright: los cuatro casos
+pasan a **0 errores**. Lo que no se pudo probar acá es VS Code en sí (no hay
+entorno gráfico): se verificó el motor y los valores de ruta, que es donde
+estaba el problema; `python.analysis.extraPaths` es exactamente cómo Pylance
+consume esa misma opción.
+
+Se agregó la fila correspondiente en `AGENTS.md` → "Trampas conocidas",
+porque el reflejo equivocado acá es caro: alguien "arregla" el subrayado
+copiando `__comun__/` adentro de cada programa o volviendo a duplicar el
+código, y se pierde la única regla que sostiene toda la reorganización (lo
+compartido vive en un solo lugar). En `README.md` quedó la explicación en
+criollo, con las tres causas por las que podría seguir apareciendo: que
+`__comun__/` no esté todavía bajada al lado de los programas, que la carpeta
+abierta no traiga su `.vscode/`, o que VS Code tenga el análisis viejo en
+memoria (*Developer: Reload Window*).
+
+---
+
 ## 2026-09-03 — ChatGPT — separa configuración, código común y resultados
 
 A pedido del usuario se establece una separación estricta en la raíz: `__comun__/`
