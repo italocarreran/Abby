@@ -12,6 +12,7 @@ from salidas import (
     nombre_carpeta_mes,
     normalizar_anio,
     partir_aamm,
+    raiz_config,
     raiz_salidas,
 )
 
@@ -38,6 +39,7 @@ class SalidasTest(unittest.TestCase):
     def test_rutas_auxiliares(self):
         script = Path(self.tmp.name) / "Revisor_Relq"
         self.assertEqual(raiz_salidas(script), self.raiz)
+        self.assertEqual(raiz_config(script), Path(self.tmp.name) / "__config__")
         self.assertEqual(carpeta_anio(self.raiz, "2407"), self.raiz / "2024")
         self.assertEqual(
             carpeta_comparador(self.raiz, "2024", "_comparador"),

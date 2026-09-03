@@ -37,7 +37,7 @@ from pathlib import Path
 # Carpetas que se recorren, en este orden. Las que no existan se saltan, y un
 # archivo ya visto no se repite: "scripts/comun" va primero solo para que el
 # modulo compartido quede arriba en el indice.
-CARPETAS = ["Revisor_Relq/comun", "Revisor_Relq", "Comparadores"]
+CARPETAS = ["__comun__", "Revisor_Relq", "Comparadores"]
 
 # Archivos que nunca entran a INTERFACES.md. __init__.py de un paquete
 # es solo el "que es esta carpeta"; su contenido ya esta en MAPA.md.
@@ -477,7 +477,7 @@ def render(modulos: list[dict]) -> str:
     if not modulos:
         partes.append(
             "## Todavía no hay `.py` en el repositorio\n\n"
-            "En cuanto se suba el primer script a `scripts/`, `comun/` o "
+            "En cuanto se suba el primer script a `Revisor_Relq/`, `__comun__/` o "
             "`reemplazos_reuc/`, correr:\n\n"
             "```\npython generar_interfaces.py\n```\n\n"
             "Mientras tanto, lo que hace cada script está descrito en `MAPA.md`.\n"
@@ -569,7 +569,7 @@ def render(modulos: list[dict]) -> str:
         partes.append("## Constantes definidas en más de un archivo\n")
         partes.append(
             "Cada una es un punto donde un cambio hay que hacerlo en varios lados a "
-            "la vez. Candidatas a mudarse a `comun/`.\n"
+            "la vez. Candidatas a mudarse a `__comun__/`.\n"
         )
         partes.append("| Constante | Archivos |")
         partes.append("|---|---|")

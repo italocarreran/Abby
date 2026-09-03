@@ -46,12 +46,12 @@ import xlwings as xw
 # CONFIG POR PC/USUARIO
 # =========================================================
 # La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los
-# usuarios. Ahi van: config.json, los datos_reuc_* descargados y el archivo
+# usuarios. Ahi van los datos_reuc_* descargados y el archivo
 # "Reemplazos forzados". Como el .py suele estar en un disco compartido, el
 # config guarda las rutas SEPARADAS POR PC+USUARIO (ver get_usuario), asi que
 # cada persona conserva las suyas sin pisar las de los demas.
 CARPETA_AUXILIARES = Path(__file__).parent / "Auxiliares"
-CONFIG_PATH = CARPETA_AUXILIARES / "config.json"
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "__config__" / "reemplazos_reuc.json"
 
 
 def get_usuario():
@@ -90,7 +90,7 @@ def guardar_config(data):
 # ---------------------------------------------------------------------------
 # El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].
 # Sin argumento este script funciona como siempre: rutas a mano y su propio
-# config.json (el de "Reemplazos REUC/Auxiliares", que NO es el compartido).
+# reemplazos_reuc.json vive en __config__ y NO es el config compartido.
 TRASPASO_ORIGEN = "Revisor_Reliquidacion"
 TRASPASO_VERSION_MAX = 1
 

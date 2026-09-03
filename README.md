@@ -7,12 +7,13 @@ prorrateador y los cargadores de datos.
 
 **`Revisor_Relq/` y `Comparadores/` son las dos carpetas de programas.**
 Descargás el repositorio (`Code` → `Download ZIP`), lo descomprimís y conservás
-ambas como hermanas. `00_Salidas/` también vive al lado: el Revisor y los dos
-comparadores comparten esa estructura y el `config.json` de `Revisor_Relq/`.
+ambas como hermanas. `00_Salidas/`, `__config__/` y `__comun__/` viven al lado. `00_Salidas/`
+contiene solamente Excel/resultados; `__config__/` concentra todos los JSON,
+estados y datos intermedios; `__comun__/` contiene el código compartido.
 
-Lo que no se sube y aparece solo al usarlo: `config.json`, `00_Salidas/` (hermana
-de `Revisor_Relq/`, organizada como `AAAA/MM Mes`) y
-`Reemplazos REUC/Auxiliares/config.json`.
+Lo que no se sube y aparece solo al usarlo: `00_Salidas/` y `__config__/`.
+Ambas usan la estructura `AAAA/MM Mes` cuando corresponde. La segunda guarda
+`config.json`, `reemplazos_reuc.json`, los estados, rutas, parquet y vistas.
 
 ## Si sos un asistente y entrás — Claude, ChatGPT, el que sea
 
@@ -42,13 +43,14 @@ MAPA.md                         qué hace cada script y de qué depende
 INTERFACES.md                   generado — firmas, constantes y dependencias
 generar_interfaces.py           el generador de INTERFACES.md
 docs/                           referencia de dominio
+__comun__/                     código común y sus pruebas
+__config__/                     configuración/estado/caché local (ignorada por Git)
 Comparadores/                   comparadores anuales (hermana del Revisor)
 ├── Comparador_Etapas.py
 └── Comparador_Tabulado.py
 00_Salidas/                     salidas compartidas, organizadas por AAAA/MM Mes
 Revisor_Relq/                   ← CARPETA DEL REVISOR
 ├── Revisor_Reliquidacion.py   solo, en la raíz — es el que se abre siempre
-├── comun/                     lo compartido, con sus pruebas
 ├── actualizadores/            los 8 que el Revisor lanza por botón
 │   ├── Actualiza_datos.py
 │   ├── Actualiza_Data_Access.py    el motor que reutilizan Energia y P9
@@ -58,23 +60,26 @@ Revisor_Relq/                   ← CARPETA DEL REVISOR
 │   ├── Actualiza_Access_P9.py
 │   ├── Carga_Retiros.py
 │   └── Prorratear.py
-└── Reemplazos REUC/           el noveno, aparte porque tiene su propio config
+└── Reemplazos REUC/           el noveno; usa __config__/reemplazos_reuc.json
     └── ActualizaRemplazos.py
 ```
 
 Dos cosas que **no son un descuido** y no conviene reordenar a mano:
 
 - `Reemplazos REUC`, con espacio y mayúsculas: el Revisor lo busca así, literal.
-- `config.json` vive en `Revisor_Relq/`, **compartido** entre el Revisor y los 8 de
-  `actualizadores/`. Si movés uno de esos 8 a otra carpeta, tiene que seguir
-  apuntando a ese mismo archivo (no crearse el suyo propio), o el traspaso de
-  rutas entre el Revisor y los actualizadores se rompe sin avisar.
+- `__config__/config.json` es **compartido** entre el Revisor, los 8
+  actualizadores y los comparadores. Ningún JSON se guarda fuera de `__config__/`.
+
+`__config__/` se crea automáticamente al primer guardado y está ignorada por Git,
+por lo que no viene en el ZIP. Su estructura refleja la de las salidas: los JSON
+mensuales están en `AAAA/MM Mes/`, y cada comparador guarda estado, rutas, parquet
+y vistas en `AAAA/_comparador*`. Los Excel finales siguen en `00_Salidas/`.
 
 ## Después de tocar cualquier `.py`
 
 ```
 python generar_interfaces.py          # regenera INTERFACES.md
-python Revisor_Relq/comun/test_config.py   # pruebas del módulo común
+python __comun__/test_config.py   # pruebas del módulo común
 ```
 
 Solo biblioteca estándar, Python 3.9 o superior. Subí el `INTERFACES.md` resultante

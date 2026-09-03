@@ -37,7 +37,7 @@
    el contexto de esta.
 5. **Antes de dar un cambio por terminado:** correr
    `python generar_interfaces.py --check` y, si existe, el test suite del
-   módulo tocado (por ejemplo `python Revisor_Relq/comun/test_config.py`).
+   módulo tocado (por ejemplo `python __comun__/test_config.py`).
    Si el cambio toca algo que lee o escribe `config.json`, verificar de
    punta a punta que sigue siendo el mismo archivo compartido — no alcanza
    con que el `.py` compile.

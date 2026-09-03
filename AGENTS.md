@@ -25,22 +25,22 @@ se negocia:
 3. Abrir completo ÚNICAMENTE el archivo que se va a modificar
 ```
 
-**Dónde vive el código:** `Revisor_Relq/` es a la vez la carpeta del
-repositorio y la carpeta de trabajo del usuario. Lo que está ahí adentro corre tal cual al
-descargarlo. Adentro:
+**Dónde vive el código:** `Revisor_Relq/` es la carpeta de trabajo principal,
+pero comparte su raíz con otras carpetas necesarias:
 
 - `Revisor_Reliquidacion.py` va **solo**, en la raíz de `Revisor_Relq/`.
-- `comun/` es el módulo compartido.
+- `__comun__/` es el módulo compartido y vive **afuera**, junto a `Revisor_Relq/`.
+- `__config__/` vive también afuera y contiene todos los JSON y datos intermedios.
 - `actualizadores/` tiene los 8 que el Revisor lanza por botón.
 - `Reemplazos REUC/` — con ese nombre exacto, espacio y mayúsculas, porque el
-  Revisor lo busca literal — tiene el noveno, con su propio `config.json`.
+  Revisor lo busca literal — tiene el noveno.
 
-**`config.json` es compartido** entre el Revisor y los 8 de `actualizadores/`.
-Vive en `Revisor_Relq/`, un nivel arriba de ellos. Un script movido a una subcarpeta
-nueva **tiene que seguir resolviendo esa ruta compartida**, no la suya propia
-(`DIR_SCRIPT.parent / "config.json"`, no `DIR_SCRIPT / "config.json"`) — si no,
-cada uno termina con su copia vacía y el traspaso de rutas entre el Revisor y los
-actualizadores se rompe en silencio, sin ningún error visible.
+**`__config__/config.json` es compartido** entre el Revisor, los 8
+actualizadores y los comparadores. `reemplazos_reuc.json` es propio del noveno.
+Los JSON mensuales, estado, rutas, parquet y vistas también viven bajo
+`__config__/`, con la misma estructura anual/mensual que corresponda. No se
+guarda ningún JSON ni dato intermedio en `00_Salidas/`: esa carpeta es solo para
+resultados. Un script movido tiene que seguir resolviendo la raíz compartida.
 
 **No abrir los archivos vecinos "para tener contexto".** Si de verdad hace falta uno
 más, pedirlo explícitamente y decir por qué. Leer de más es exactamente el problema
@@ -91,7 +91,7 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
   se borra nada ajeno.
 - **Log de progreso** con timer y barra, visible durante toda la corrida.
 - **Tema oscuro optativo.** El piloto vive en los dos comparadores y usa
-  `comun/tema.py`; la clave compartida `tema` vale `"claro"` por omisión. Los
+  `__comun__/tema.py`; la clave compartida `tema` vale `"claro"` por omisión. Los
   widgets `tk` clásicos se pintan además de los estilos `ttk`, y un fallo del
   tema nunca debe impedir que la herramienta arranque.
 - **Los `.xlsm` se modifican preservando las macros** (xlwings / COM). Los destinos
@@ -121,7 +121,7 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
   `Revisor_Relq/` busca entre sus carpetas hermanas la que contiene
   `Revisor_Reliquidacion.py`; no depende del nombre `Revisor_Relq`, que ya cambió.
 - **El JSON de traspaso es opcional.** El revisor puede pasar
-  `00_Salidas/AAAA/MM Mes/_traspaso_actualizador.json` como único argumento; **sin argumento
+  `__config__/AAAA/MM Mes/_traspaso_actualizador.json` como único argumento; **sin argumento
   cada script tiene que seguir funcionando solo**, buscando los archivos por su
   cuenta. Es la vía de escape si el revisor no está.
 
@@ -144,7 +144,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 | Sufijo de revisión distinto entre archivos | Un `.mdb` en `R01P` con el resto en `R01D` no es error del árbol, pero suele explicar descuadres de monto. |
 | Copiar un maestro a su copia | `shutil.copy2`, que conserva la fecha. Con `copy()` a secas el revisor la sigue marcando en amarillo, porque compara por fecha. |
 | El `~$` de Excel | No sirve para saber si un libro está abierto: Excel lo deja huérfano cuando se cae. Comprobar que se pueda escribir abriéndolo en `r+b`. |
-| Armar la carpeta de un mes o de un comparador (`00_Salidas/AAAA/MM Mes`, `_comparador*`) a mano en vez de vía `comun/salidas.py` | El Revisor y los dos comparadores tienen que estar **exactamente de acuerdo** en cómo se llama esa carpeta. Si un script arma la ruta por su cuenta, lee o escribe en el lugar equivocado **sin ningún error visible** — el mismo tipo de bug que `CENTRALES_EMBALSE`, a propósito evitado acá centralizando la lógica en un solo módulo. |
+| Armar la carpeta de un mes o de un comparador (`00_Salidas/AAAA/MM Mes`, `_comparador*`) a mano en vez de vía `__comun__/salidas.py` | El Revisor y los dos comparadores tienen que estar **exactamente de acuerdo** en cómo se llama esa carpeta. Si un script arma la ruta por su cuenta, lee o escribe en el lugar equivocado **sin ningún error visible** — el mismo tipo de bug que `CENTRALES_EMBALSE`, a propósito evitado acá centralizando la lógica en un solo módulo. |
 
 ---
 
@@ -154,7 +154,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 python generar_interfaces.py            # regenera INTERFACES.md
 python generar_interfaces.py --check    # sale con 1 si quedó desactualizado
 python generar_interfaces.py --esqueleto-mapa   # bloques para los .py que faltan en MAPA.md
-python Revisor_Relq/comun/test_config.py   # pruebas del módulo común
+python __comun__/test_config.py   # pruebas del módulo común
 ```
 
 Solo biblioteca estándar, Python 3.9+. **Correrlo después de cualquier cambio de
@@ -188,20 +188,19 @@ tienen bloque en `MAPA.md`.
   cumplen la misma función y viven dentro del repositorio.
 - **El módulo común se migra por partes, nunca de golpe.** Una pieza a la vez, un
   script a la vez, verificando que sigue corriendo antes de seguir con el próximo.
-- **`comun/config.py` ya está**, con 13 pruebas en `comun/test_config.py`. Los
+- **`__comun__/config.py` ya está**, con 13 pruebas en `__comun__/test_config.py`. Los
   scripts migrados conservan sus nombres de siempre (`leer_config`,
   `guardar_config`, `_modificar_config`, `escribir_json`, `get_usuario`) como
   envoltorios de dos líneas, así que **ningún punto de llamada cambia**. Migrar un
   script es reemplazar esas cinco funciones por los envoltorios y agregar
-  `from comun import config as _cfg`. Nada más.
-- **Un script de `actualizadores/` está una carpeta más lejos de `comun/` que el
-  Revisor.** `comun/` vive en `Revisor_Relq/`, junto al Revisor, no dentro de
-  `actualizadores/`. Python solo agrega al `sys.path` la carpeta del propio
-  script, así que `from comun import config` no la encuentra sola: hay que
-  agregar la carpeta padre antes,
-  `sys.path.insert(0, str(DIR_SCRIPT.parent))`. Ver cómo lo hace
+  `from __comun__ import config as _cfg`. Nada más.
+- **Un script de `actualizadores/` está una carpeta más lejos de `__comun__/` que el
+  Revisor.** `__comun__/` vive junto a `Revisor_Relq/`, no dentro de él. Python
+  solo agrega al `sys.path` la carpeta del propio script, así que al ejecutarlo
+  suelto se agrega la raíz común antes:
+  `sys.path.insert(0, str(DIR_SCRIPT.parent.parent))`. Ver cómo lo hace
   `actualizadores/Actualiza_SC_CO.py`.
-- **Al migrar una pieza, la versión que queda en `comun/` es la más defensiva de
+- **Al migrar una pieza, la versión que queda en `__comun__/` es la más defensiva de
   las que había**, y las diferencias se anotan en el docstring del módulo. No
   "elegir la del archivo más nuevo": hay que mirarlas todas.
 - **`docs/ESTRUCTURA_CASO_RELIQUIDACION.md` entra tal cual y es la referencia de

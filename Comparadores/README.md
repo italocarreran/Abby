@@ -3,16 +3,12 @@
 Dos herramientas anuales, parte de la reliquidación pero fuera del circuito
 mensual del Revisor:
 
-- `Comparador_Etapas.py` — consolida los sobrecostos horarios de los `.mdb` de
-  las tres etapas (Definitivo, Reliquidación Preliminar, Reliquidación
-  Definitiva) para los 12 meses de un año.
-- `Comparador_Tabulado.py` — lo mismo sobre los Consolidados Tabulados, con las
-  variables (Generación, CV, CMg, USD). Lee el `rutas.json` del otro comparador
-  para no pedir dos veces las mismas carpetas.
-
-## Estado: cableados al Revisor
+- `Comparador_Etapas.py` compara los `.mdb` de Definitivo, Rpre y Rdef.
+- `Comparador_Tabulado.py` compara los Consolidados Tabulados y reutiliza el
+  `rutas.json` del primer comparador.
 
 Los dos localizan la carpeta hermana que contiene `Revisor_Reliquidacion.py`,
-usan su `config.json` compartido e importan de ahí `comun/salidas.py`. Sus datos
-anuales quedan en `00_Salidas/AAAA/_comparador*`; los Excel y JSON mensuales,
-en `00_Salidas/AAAA/MM Mes/`.
+usan `../__config__/config.json` e importan el paquete hermano `../__comun__/`.
+Estado, rutas, parquet y vistas quedan en `__config__/AAAA/_comparador*`; los JSON
+mensuales, en `__config__/AAAA/MM Mes/`. Solo los Excel mensuales y anuales se
+guardan en `00_Salidas/`.

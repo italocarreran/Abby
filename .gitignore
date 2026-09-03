@@ -1,13 +1,11 @@
-# Configuración local: rutas por equipo y usuario. Las claves conocidas están
-# documentadas en docs/ESTRUCTURA_CASO_RELIQUIDACION.md, sección 9.
-config.json
-00_Salidas/
-__pycache__/
+# Configuración y datos intermedios locales. Todo vive en esta carpeta única.
+__config__/
 
-# Salidas de corrida
-df_ricardo_salida.xlsx
+# Resultados de corrida
+00_Salidas/
 
 # Archivos de trabajo que nunca van al repositorio
+df_ricardo_salida.xlsx
 *.xlsm
 *.xlsx
 *.xls

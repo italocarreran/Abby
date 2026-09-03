@@ -25,7 +25,10 @@ import json, subprocess, sys, re, socket, os, traceback, unicodedata, time, csv
 import shutil
 import threading, queue
 
-from comun import salidas as _sal
+DIR_RAIZ_CODIGO = Path(__file__).resolve().parent.parent
+if str(DIR_RAIZ_CODIGO) not in sys.path:
+    sys.path.insert(0, str(DIR_RAIZ_CODIGO))
+from __comun__ import salidas as _sal
 
 # =============================================================================
 #  >>> ZONA A AJUSTAR <<<
@@ -1049,7 +1052,7 @@ ACTUALIZADORES = {
     "a_consolidado":  [dict(script="actualizadores/Actualiza_Energia.py")],
     "a_0_cuadros": [
         # Reemplazos REUC vive en su propia subcarpeta y tiene su propio
-        # config.json (dentro de "Reemplazos REUC/Auxiliares"), no el compartido.
+        # reemplazos_reuc.json (dentro de __config__), no el compartido.
         dict(script="Reemplazos REUC/ActualizaRemplazos.py",
              texto="Actualizar reemplazos"),
         # Los pasos del propio cuadro: tabla, tasa, formulas, macros, dinamica.
@@ -1098,24 +1101,32 @@ C_GRIS      = "#777777"
 C_NEUTRO    = "SystemButtonFace"
 
 DIR_SCRIPT = Path(__file__).resolve().parent
-CONFIG_PATH = DIR_SCRIPT / "config.json"
-DIR_SALIDAS = DIR_SCRIPT.parent / "00_Salidas"
+DIR_RAIZ = DIR_SCRIPT.parent
+CONFIG_PATH = DIR_RAIZ / "__config__" / "config.json"
+DIR_CONFIG = DIR_RAIZ / "__config__"
+DIR_SALIDAS = DIR_RAIZ / "00_Salidas"
 ARCHIVO_ESTADO = "_revisor_verificaciones.json"
 
 
 def dir_mes(aamm, crear=False):
     """00_Salidas/AAAA/MM Mes, hermana de Revisor_Relq.
 
-    La logica vive en comun/salidas.py porque los comparadores tienen que armar
+    La logica vive en __comun__/salidas.py porque los comparadores tienen que armar
     exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
     """
     return _sal.carpeta_mes(DIR_SALIDAS, aamm, crear=crear)
+
+
+def dir_config_mes(aamm, crear=False):
+    """__config__/AAAA/MM Mes para estado, cache y traspasos internos."""
+    return _sal.carpeta_mes(DIR_CONFIG, aamm, crear=crear)
 
 
 def escribir_json(ruta, data):
     """Escritura atomica: primero un .tmp y despues os.replace.
     Evita dejar el archivo truncado si algo falla a medio camino."""
     ruta = Path(ruta)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
     tmp = ruta.with_suffix(ruta.suffix + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -1512,7 +1523,7 @@ def firma_verificador(vid):
 
 
 class Estado:
-    """Verificaciones de un mes. Se guardan en 00_Salidas/AAAA/MM Mes."""
+    """Verificaciones de un mes. Se guardan en __config__/AAAA/MM Mes."""
 
     def __init__(self):
         self.ruta = None
@@ -1525,7 +1536,7 @@ class Estado:
         self.ruta = None
         if not self.aamm:
             return False
-        self.ruta = dir_mes(self.aamm) / ARCHIVO_ESTADO
+        self.ruta = dir_config_mes(self.aamm) / ARCHIVO_ESTADO
         if self.ruta.exists():
             try:
                 with open(self.ruta, "r", encoding="utf-8") as f:
@@ -1542,8 +1553,8 @@ class Estado:
         if not self.aamm:
             return False
         try:
-            dir_mes(self.aamm, crear=True)
-            escribir_json(dir_mes(self.aamm) / ARCHIVO_ESTADO, self.data)
+            dir_config_mes(self.aamm, crear=True)
+            escribir_json(dir_config_mes(self.aamm) / ARCHIVO_ESTADO, self.data)
             return True
         except Exception:
             return False
@@ -1613,7 +1624,7 @@ def huella_spec(spec):
 class CacheValores:
     """Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
     modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-    vuelve a abrir. Se guarda en 00_Salidas/AAAA/MM Mes entre ejecuciones."""
+    vuelve a abrir. Se guarda en __config__/AAAA/MM Mes entre ejecuciones."""
 
     def __init__(self):
         self.aamm = None
@@ -1624,7 +1635,7 @@ class CacheValores:
         self.data = {}
         if not self.aamm:
             return
-        ruta = dir_mes(self.aamm) / ARCHIVO_CACHE
+        ruta = dir_config_mes(self.aamm) / ARCHIVO_CACHE
         if ruta.exists():
             try:
                 with open(ruta, "r", encoding="utf-8") as f:
@@ -1636,8 +1647,8 @@ class CacheValores:
         if not self.aamm:
             return False
         try:
-            dir_mes(self.aamm, crear=True)
-            escribir_json(dir_mes(self.aamm) / ARCHIVO_CACHE, self.data)
+            dir_config_mes(self.aamm, crear=True)
+            escribir_json(dir_config_mes(self.aamm) / ARCHIVO_CACHE, self.data)
             return True
         except Exception:
             return False
@@ -1693,7 +1704,7 @@ CACHE = CacheValores()
 
 def leer_estado_mes(aamm):
     """Lee el estado de cualquier mes sin tocar el estado en uso."""
-    ruta = dir_mes(aamm) / ARCHIVO_ESTADO
+    ruta = dir_config_mes(aamm) / ARCHIVO_ESTADO
     if not ruta.exists():
         return None
     try:
@@ -3747,7 +3758,7 @@ class Revisor:
             if aamm:
                 habia = ESTADO.cargar(aamm)
                 CACHE.cargar(aamm)
-                self.log(f"  Mes {aamm} — estado en {dir_mes(aamm) / ARCHIVO_ESTADO}"
+                self.log(f"  Mes {aamm} — estado en {dir_config_mes(aamm) / ARCHIVO_ESTADO}"
                          + ("" if habia else "   (aún no existe, se crea al verificar)"))
             else:
                 ESTADO.cargar(None)
@@ -4033,7 +4044,7 @@ class Revisor:
             if not messagebox.askyesno(
                     "Sin mes",
                     "No hay AAMM definido, así que no se sabe a qué mes pertenece "
-                    "esto.\n\nEl traspaso se guardará en 00_Salidas/sin_mes.\n\n¿Lanzar igual?"):
+                    "esto.\n\nEl traspaso se guardará en __config__/sin_mes.\n\n¿Lanzar igual?"):
                 return
 
         # Se deja el mes en curso en config.json para que los actualizadores
@@ -4046,7 +4057,7 @@ class Revisor:
         self.cfg.update(cambios)
 
         traspaso = self._armar_traspaso(aamm, planilla, nid)
-        carpeta_salida = dir_mes(aamm or "sin_mes", crear=True)
+        carpeta_salida = dir_config_mes(aamm or "sin_mes", crear=True)
         ruta_traspaso = carpeta_salida / ARCHIVO_TRASPASO
         try:
             escribir_json(ruta_traspaso, traspaso)
@@ -4578,7 +4589,7 @@ class Revisor:
             messagebox.showwarning("AAMM inválido",
                                    "Escribe el mes con 4 dígitos, por ejemplo 2407.")
             return
-        carpeta = dir_mes(aamm)
+        carpeta = dir_config_mes(aamm)
         archivos = [carpeta / ARCHIVO_ESTADO, carpeta / ARCHIVO_CACHE]
         existen = [a for a in archivos if a.exists()]
         if not existen:
@@ -4926,7 +4937,7 @@ class Revisor:
             messagebox.showwarning("AAMM inválido",
                                    "Escribe el mes con 4 dígitos, por ejemplo 2407.")
             return
-        carpeta = dir_mes(aamm)
+        carpeta = dir_config_mes(aamm)
         data = leer_estado_mes(aamm)
         if data is None:
             messagebox.showinfo(
