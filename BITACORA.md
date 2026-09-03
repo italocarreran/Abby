@@ -41,8 +41,9 @@
       código real (arriba).
 
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
-      comparadores. La verificación automatizada cubre paletas, configuración y
-      un `root` simulado, pero este entorno no tiene pantalla.
+      comparadores. La verificación automatizada corrió con `tkinter` real
+      (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
+      hay forma de ver si el resultado es realmente legible/prolijo.
 - [ ] El usuario tiene que mover a mano las carpetas de `00_Salidas` al formato
       `AAAA/MM Mes`. La Tarea 1 agrega un aviso que dice cuáles faltan.
 - [ ] Los comparadores tienen su propia copia de `leer_config` /
@@ -51,6 +52,46 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — Claude — verifica la Tarea 4 con `tkinter` real y agrega la trampa que faltaba
+
+Codex hizo un trabajo sólido: `comun/tema.py` resuelve bien los tres problemas
+que el plan anticipaba (widgets `tk` clásicos no siguen a ttk, colores de
+estado no legibles en oscuro, `SystemButtonFace`), con un truco elegante que
+el plan no pedía — `pintar_tk` reconoce el color **semántico** que ya tiene un
+widget (comparándolo contra los valores de las dos paletas) y lo remapea, en
+vez de que cada punto de llamada tenga que saber en qué paleta está.
+
+Este entorno no tenía `tkinter` de verdad (se venía simulando todo con
+`MagicMock`). Se instaló (`apt-get install python3-tk`), pero resultó ser para
+otro intérprete — el `python3` real de esta sesión es un `pyenv` aparte, así
+que `test_tema.py` de Codex no se pudo correr tal cual. Se verificó igual con
+`tkinter` real, simulando solo `ttk.Style` (el mismo patrón que ya usa su
+propio test): la paleta clara da carácter por carácter los 4 colores
+históricos; un modo desconocido cae a claro; `aplicar()` con un `root` real
+configura `bg`; y lo más delicado — un botón pintado en rojo-claro migra a
+rojo-oscuro al llamar `pintar_tk` con la paleta oscura, confirmando que el
+remapeo semántico funciona con el objeto real, no con un doble. Se forzó
+además una excepción real en `_tema.aplicar()` (`RuntimeError`) y se confirmó
+que `_aplicar_tema()` no la deja propagar: devuelve `False` y avisa en el log,
+sin tumbar la ventana — la regla del plan de "nunca impedir que arranque".
+
+Confirmado por diff de contenido (no de números de línea) que **ningún**
+control existente cambió de posición en las dos ventanas — la única línea
+`.pack()` nueva es la casilla "Tema oscuro". Y que no se agregó ninguna
+librería externa de temas.
+
+**Antes de aceptar el borrado de `docs/PLAN_comparadores.md`** (738 líneas,
+que el propio plan decía que se eliminaría al terminar) se revisó que lo que
+valía la pena sobreviviera en otro lado. Encontrado un hueco: la razón central
+de todo el trabajo — que el Revisor y los dos comparadores arman la carpeta
+del mes de una única manera, vía `comun/salidas.py`, para no repetir el error
+de `CENTRALES_EMBALSE` — nunca había llegado a la tabla "Trampas conocidas" de
+`AGENTS.md`, que es el lugar pensado justo para eso. Agregada esa fila antes
+de dar la Tarea 4 por cerrada.
+
+Con esto, **las cuatro tareas del plan quedan aplicadas y verificadas**, cada
+una con pruebas de comportamiento reales y no solo lectura de código.
 
 ## 2026-09-03 — ChatGPT — Tarea 4: tema oscuro experimental
 

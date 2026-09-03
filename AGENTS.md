@@ -144,6 +144,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 | Sufijo de revisión distinto entre archivos | Un `.mdb` en `R01P` con el resto en `R01D` no es error del árbol, pero suele explicar descuadres de monto. |
 | Copiar un maestro a su copia | `shutil.copy2`, que conserva la fecha. Con `copy()` a secas el revisor la sigue marcando en amarillo, porque compara por fecha. |
 | El `~$` de Excel | No sirve para saber si un libro está abierto: Excel lo deja huérfano cuando se cae. Comprobar que se pueda escribir abriéndolo en `r+b`. |
+| Armar la carpeta de un mes o de un comparador (`00_Salidas/AAAA/MM Mes`, `_comparador*`) a mano en vez de vía `comun/salidas.py` | El Revisor y los dos comparadores tienen que estar **exactamente de acuerdo** en cómo se llama esa carpeta. Si un script arma la ruta por su cuenta, lee o escribe en el lugar equivocado **sin ningún error visible** — el mismo tipo de bug que `CENTRALES_EMBALSE`, a propósito evitado acá centralizando la lógica en un solo módulo. |
 
 ---
 
