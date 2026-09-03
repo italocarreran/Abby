@@ -1,4 +1,4 @@
-"""Rutas compartidas de ``00_Salidas``.
+"""Rutas compartidas de ``00_Salidas`` y ``__config__``.
 
 Centraliza la conversion de AAMM a ``AAAA/MM Mes`` para que el Revisor y los
 comparadores lean y escriban exactamente en el mismo lugar. Las carpetas planas
@@ -20,6 +20,11 @@ MESES = (
 def raiz_salidas(dir_script) -> Path:
     """Devuelve ``00_Salidas``, hermana de la carpeta del script."""
     return Path(dir_script).parent / "00_Salidas"
+
+
+def raiz_config(dir_script) -> Path:
+    """Devuelve ``__config__``, hermana de la carpeta del script."""
+    return Path(dir_script).parent / "__config__"
 
 
 def partir_aamm(aamm) -> Optional[Tuple[str, int]]:

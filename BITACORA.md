@@ -53,6 +53,27 @@
 
 ---
 
+## 2026-09-03 — ChatGPT — separa configuración, código común y resultados
+
+A pedido del usuario se establece una separación estricta en la raíz: `__comun__/`
+contiene el paquete Python compartido; `__config__/` concentra absolutamente todos
+los JSON y datos intermedios; `00_Salidas/` queda solo para resultados Excel. El
+config compartido pasa a `__config__/config.json` y el propio de REUC a
+`__config__/reemplazos_reuc.json`. Estado, caché y traspaso mensual del Revisor
+replican `AAAA/MM Mes` bajo `__config__/`; estado, rutas, parquet y vistas de los
+comparadores pasan a `__config__/AAAA/_comparador*`. Los Excel mensuales, anuales y
+sus respaldos permanecen en `00_Salidas/`.
+
+`Revisor_Relq/comun/` se movió a `__comun__/`, como hermana de los programas. Los
+imports ahora nombran directamente `__comun__`, eliminando la referencia amarilla
+a un paquete `comun` que el analizador no encontraba en esa ubicación. Las rutas
+crean `__config__/` automáticamente al primer guardado; la carpeta completa está
+ignorada por Git. Se actualizaron mapa, interfaces, instrucciones y documentación.
+No se migran archivos locales viejos automáticamente: el usuario indicó que va a
+ordenarlos. Verificado con compilación de todos los Python, 13+13+3 pruebas de los
+módulos comunes, chequeo del generador y una prueba estructural de las doce rutas
+de configuración. No queda pendiente de esta reorganización.
+
 ## 2026-09-03 — Claude — verifica la Tarea 4 con `tkinter` real y agrega la trampa que faltaba
 
 Codex hizo un trabajo sólido: `comun/tema.py` resuelve bien los tres problemas

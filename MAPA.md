@@ -14,13 +14,14 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 **Dónde vive cada uno:**
 
 ```
+__comun__/                        código compartido y sus pruebas
+__config__/                        JSON, estados y datos intermedios locales
 Comparadores/                      herramientas anuales, hermanas del Revisor
 ├── Comparador_Etapas.py
 └── Comparador_Tabulado.py
 00_Salidas/                        salidas compartidas por año y mes
 Revisor_Relq/
 ├── Revisor_Reliquidacion.py     ← el único que va suelto en la raíz
-├── comun/                        lo compartido (ver más abajo)
 ├── actualizadores/                los 8 que el Revisor lanza por botón
 │   ├── Actualiza_datos.py
 │   ├── Actualiza_Data_Access.py
@@ -30,15 +31,15 @@ Revisor_Relq/
 │   ├── Actualiza_Access_P9.py
 │   ├── Carga_Retiros.py
 │   └── Prorratear.py
-└── Reemplazos REUC/               aparte porque tiene su propio config.json
+└── Reemplazos REUC/               usa __config__/reemplazos_reuc.json
     └── ActualizaRemplazos.py
 ```
 
-`config.json` es **compartido** entre el Revisor y los 8 de `actualizadores/`:
-vive en `Revisor_Relq/`, un nivel arriba de ellos, y cada uno lo resuelve con
-`DIR_SCRIPT.parent / "config.json"` (antes era `DIR_SCRIPT / "config.json"`,
-porque vivían junto al Revisor). `Reemplazos REUC/` no: el suyo está en su
-propia `Auxiliares/`, como siempre.
+`__config__/config.json` es **compartido** entre el Revisor, los 8
+actualizadores y los comparadores. El noveno usa `__config__/reemplazos_reuc.json`.
+Los JSON mensuales replican `AAAA/MM Mes`; estado, rutas, parquet y vistas de los
+comparadores van en `__config__/AAAA/_comparador*`. `00_Salidas/` queda reservado
+para Excel y demás resultados entregables.
 
 ---
 
@@ -65,7 +66,7 @@ propia `Auxiliares/`, como siempre.
                                                               (el que se va a pago)
 
    Revisor_Reliquidacion  ← orquesta todo: verifica V4..V17 y lanza los de arriba
-                            pasándoles 00_Salidas/AAAA/MM Mes/_traspaso_actualizador.json
+                            pasándoles __config__/AAAA/MM Mes/_traspaso_actualizador.json
 ```
 
 ---
@@ -287,11 +288,11 @@ propia `Auxiliares/`, como siempre.
 - **Consume:** los `.mdb` de cada etapa, el JSON mensual de traspaso del Revisor,
   el `config.json` compartido y el maestro vigente de central/empresa.
 - **Produce:** parquet, vistas, estado y rutas en
-  `00_Salidas/AAAA/_comparador/`; Excel mensual en `AAAA/MM Mes/` y consolidado
+  `__config__/AAAA/_comparador/`; Excel mensual en `AAAA/MM Mes/` y consolidado
   anual en `_comparador/`.
 - **Expone:** `cdir(anio)`, `ruta_json_mes(aamm)`, `path_excel_mes(aamm)` y el
   bloque propio `comparador_etapas` del JSON mensual.
-- **Depende de:** `Revisor_Relq/comun/salidas.py`; localiza la carpeta del Revisor
+- **Depende de:** `__comun__/salidas.py`; localiza la carpeta del Revisor
   por `Revisor_Reliquidacion.py`, no por su nombre.
 - **Detalles que importan:** el hilo de trabajo comunica log, estado, progreso y
   repintado mediante una cola; solo el hilo principal toca tkinter. El tema es
@@ -303,13 +304,13 @@ propia `Auxiliares/`, como siempre.
 - **Qué hace:** compara sobrecosto, generación, CV, CMg y USD entre Definitivo,
   Rpre y Rdef, por central y hora, desde los Consolidados Tabulados de un año.
 - **Consume:** Consolidados Tabulados, JSON mensuales, el `config.json` compartido
-  y `00_Salidas/AAAA/_comparador/rutas.json` del comparador de Access.
+  y `__config__/AAAA/_comparador/rutas.json` del comparador de Access.
 - **Produce:** parquet de variables, vistas, estado y rutas en
-  `00_Salidas/AAAA/_comparador_tabulado/`; Excel mensual en `AAAA/MM Mes/` y
+  `__config__/AAAA/_comparador_tabulado/`; Excel mensual en `AAAA/MM Mes/` y
   consolidado anual en `_comparador_tabulado/`.
 - **Expone:** `cdir(anio)`, `dir_parquet(anio)`, `ruta_json_mes(aamm)` y
   `path_excel_mes(aamm)`.
-- **Depende de:** `Revisor_Relq/comun/salidas.py` y, para no pedir las mismas
+- **Depende de:** `__comun__/salidas.py` y, para no pedir las mismas
   carpetas dos veces, del `rutas.json` de `_comparador` **del mismo año**.
 - **Detalles que importan:** el hilo de trabajo se comunica con tkinter mediante
   una cola; un detalle que supera el límite de Excel continúa en hojas `_2`,
@@ -343,7 +344,7 @@ propia `Auxiliares/`, como siempre.
   de las celdas.**
 - **Expone:** —
 - **Depende de:** `pandas`, `xlwings` y `playwright` (este último opcional). Su
-  **propio** `config.json`, en `Reemplazos REUC/Auxiliares/`, no el compartido.
+  **propio** `reemplazos_reuc.json`, en `__config__/`, no el compartido.
 - **⚠️ Orden corregido:** los reemplazos forzados se aplican **antes** del cruce con
   el registro de empresas. Aplicándolos después, las filas sin RUT ya se habían
   descartado y un forzado nunca podía arreglar el nombre que no coincidía: la alerta
@@ -371,7 +372,7 @@ código.** Corregir el documento cuando haya oportunidad:
 
 ## El módulo común
 
-### `Revisor_Relq/comun/tema.py` — **piloto en los comparadores**
+### `__comun__/tema.py` — **piloto en los comparadores**
 
 - **Qué hace:** ofrece las paletas clara y oscura sin dependencias externas,
   configura los estilos `ttk` y pinta recursivamente los widgets `tk` clásicos.
@@ -380,12 +381,12 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Reglas:** el modo desconocido o ausente es claro; la paleta clara conserva
   los colores históricos de estado; si la aplicación falla, cada comparador
   continúa con el aspecto anterior.
-- **Pruebas:** `Revisor_Relq/comun/test_tema.py`, sin pantalla y solo stdlib.
+- **Pruebas:** `__comun__/test_tema.py`, sin pantalla y solo stdlib.
 
-### `Revisor_Relq/comun/salidas.py` — **hecho**
+### `__comun__/salidas.py` — **hecho**
 
-- **Qué hace:** centraliza las rutas de `00_Salidas` con la estructura
-  `AAAA/MM Mes`, compartida por el Revisor y los comparadores.
+- **Qué hace:** centraliza las raíces de `00_Salidas` y `__config__`, y la
+  estructura `AAAA/MM Mes`, compartida por el Revisor y los comparadores.
 - **Expone:** `raiz_salidas(dir_script)`, `partir_aamm(aamm)`,
   `nombre_carpeta_mes(aamm)`, `carpeta_anio(dir_salidas, aamm)`,
   `carpeta_mes(dir_salidas, aamm, crear=False)`,
@@ -394,9 +395,9 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Reglas:** nunca lee ni escribe en carpetas planas AAMM antiguas; las detecta
   solo para avisar. Tolera variantes existentes como `7 Julio` o `07 julio`,
   y, también con `crear=True`, reutiliza esa variante para no partir el mes en dos carpetas.
-- **Pruebas:** `Revisor_Relq/comun/test_salidas.py`, solo stdlib.
+- **Pruebas:** `__comun__/test_salidas.py`, solo stdlib.
 
-### `Revisor_Relq/comun/config.py` — **hecho**
+### `__comun__/config.py` — **hecho**
 
 - **Qué hace:** lee y escribe el `config.json`, indexado por `<equipo>_<usuario>`.
 - **Expone:** `clave_equipo()`, `leer(ruta)`, `leer_todo(ruta)`,
@@ -404,14 +405,14 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Reglas que no cambian:** solo se agregan o actualizan claves, nunca se borra
   nada ajeno; si el archivo existe pero no se puede interpretar **no se escribe**;
   la escritura es atómica (`.tmp` + `os.replace`).
-- **Pruebas:** `Revisor_Relq/comun/test_config.py`, 13 casos, solo stdlib.
+- **Pruebas:** `__comun__/test_config.py`, 13 casos, solo stdlib.
 - **Dos bugs que se arreglaron al juntar las copias:**
   1. `ActualizaRemplazos.py` escribía el archivo entero **sin `.tmp`**, y si el
      config existía pero estaba roto lo pisaba con `{}`. O sea: un `config.json`
      ilegible le borraba los ajustes a los otros nueve scripts.
   2. `get_usuario` tenía versiones con y sin `try/except`. Quedó la defensiva.
 - **Cómo migrar el resto:** reemplazar las cinco funciones del script por
-  envoltorios de dos líneas sobre `_cfg`, y agregar `from comun import config as
+  envoltorios de dos líneas sobre `_cfg`, y agregar `from __comun__ import config as
   _cfg`. Los nombres viejos se conservan, así que **ningún punto de llamada
   cambia** — y `_modificar_config` se llama directo en los 10 scripts, con
   mutadores propios (la tasa por mes de `Actualiza_Cuadro0`, por ejemplo).

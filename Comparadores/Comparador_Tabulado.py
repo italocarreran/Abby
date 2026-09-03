@@ -31,7 +31,7 @@ con el mas reciente.
 
 Almacenamiento incremental
 --------------------------
-    00_Salidas/AAAA/_comparador_tabulado/
+    __config__/AAAA/_comparador_tabulado/
         estado.json
         rutas.json
         parquet_variables/aamm=2501/etapa=def/datos.parquet
@@ -189,12 +189,15 @@ if DIR_REVISOR is None:
         "Revisor (la que contiene Revisor_Reliquidacion.py).\n\n"
         f"Se busco en: {BASE.parent}",
     )
+assert DIR_REVISOR is not None
 
-sys.path.insert(0, str(DIR_REVISOR))
-from comun import salidas as _sal
-from comun import tema as _tema
+DIR_RAIZ = DIR_REVISOR.parent
+sys.path.insert(0, str(DIR_RAIZ))
+from __comun__ import salidas as _sal
+from __comun__ import tema as _tema
 
-CONFIG_PATH = DIR_REVISOR / "config.json"
+CONFIG_RAIZ = _sal.raiz_config(BASE)
+CONFIG_PATH = CONFIG_RAIZ / "config.json"
 SALIDAS = _sal.raiz_salidas(BASE)
 
 
@@ -207,7 +210,7 @@ def _anio_de(aamm):
 
 
 def cdir(anio):
-    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador_tabulado")
+    return _sal.carpeta_comparador(CONFIG_RAIZ, anio, "_comparador_tabulado")
 
 
 def dir_parquet(anio):
@@ -228,7 +231,7 @@ def rutas_path(anio):
 
 # Carpeta del comparador de .mdb: se consulta en modo solo lectura.
 def cdir_mdb(anio):
-    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador")
+    return _sal.carpeta_comparador(CONFIG_RAIZ, anio, "_comparador")
 
 
 def rutas_mdb_path(anio):
@@ -525,7 +528,7 @@ def respaldar(destino, anio, log=print):
     """Copia el archivo antes de reescribirlo. Deja las ultimas 5."""
     try:
         import shutil
-        carpeta = cdir(anio) / "respaldos"
+        carpeta = dir_resultados_anuales(anio) / "respaldos"
         carpeta.mkdir(parents=True, exist_ok=True)
         marca = datetime.now().strftime("%Y%m%d_%H%M%S")
         copia = carpeta / f"{destino.stem}_{marca}{destino.suffix}"
@@ -628,7 +631,7 @@ def carpeta_definitivo(raiz_cmg, aamm):
 # Resolucion de rutas del Consolidado_Tabulado
 # ==========================================================================
 def ruta_json_mes(aamm):
-    return _sal.carpeta_mes(SALIDAS, aamm) / NOMBRE_JSON_MES
+    return _sal.carpeta_mes(CONFIG_RAIZ, aamm) / NOMBRE_JSON_MES
 
 
 def rutas_desde_json_mes(aamm):
@@ -923,12 +926,17 @@ def path_vista(aamm):
     return dir_vistas(_anio_de(aamm)) / f"vista_{aamm}.parquet"
 
 
+def dir_resultados_anuales(anio):
+    """Carpeta anual que contiene solo los Excel entregables."""
+    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador_tabulado")
+
+
 def path_excel_mes(aamm):
     return _sal.carpeta_mes(SALIDAS, aamm) / f"Comparacion_Variables_{aamm}.xlsx"
 
 
 def path_excel_anual(aa):
-    return cdir(aa) / f"Comparacion_Variables_{_sal.normalizar_anio(aa)}.xlsx"
+    return dir_resultados_anuales(aa) / f"Comparacion_Variables_{_sal.normalizar_anio(aa)}.xlsx"
 
 
 def estado_etapa(est, aamm, etapa, rutas):
@@ -1302,7 +1310,7 @@ class App:
         self.var_solo_dif = tk.BooleanVar(value=False)
         self.var_forzar = tk.BooleanVar(value=False)
         self.var_preservar = tk.BooleanVar(value=True)
-        self.var_anual = tk.StringVar(value=str(cdir(anio_inicial)) if meses_del_anio(anio_inicial) else "")
+        self.var_anual = tk.StringVar(value=str(dir_resultados_anuales(anio_inicial)) if meses_del_anio(anio_inicial) else "")
         self.var_tema_oscuro = tk.BooleanVar(
             value=self.cfg.get("tema", "claro") == "oscuro")
 
@@ -1590,7 +1598,7 @@ class App:
         self.est = cargar_estado(anio)
         rj = leer_json(rutas_path(anio), {})
         self.manuales = rj if isinstance(rj, dict) else {}
-        self.var_anual.set(str(cdir(anio)))
+        self.var_anual.set(str(dir_resultados_anuales(anio)))
         raiz = self.var_cmg.get().strip()
         self.trabajando = True
         self.botones(False)

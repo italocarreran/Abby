@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Pruebas de comun/config.py. Solo stdlib, se corre con: python test_config.py"""
+"""Pruebas de __comun__/config.py. Solo stdlib, se corre con: python test_config.py"""
 import json, os, sys, tempfile, unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from comun import config
+from __comun__ import config
 
 
 class TestConfig(unittest.TestCase):

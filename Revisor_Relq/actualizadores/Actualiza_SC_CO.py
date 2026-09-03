@@ -50,9 +50,9 @@ import threading, queue
 DIR_SCRIPT = Path(__file__).resolve().parent
 
 # config.json es compartido con el Revisor y el resto de los actualizadores,
-# que viven un nivel arriba (en scripts/, junto al Revisor). No es
+# y ahora vive en __config__, junto a Revisor_Relq. No es
 # DIR_SCRIPT / "config.json" porque este script esta en actualizadores/.
-CONFIG_PATH = DIR_SCRIPT.parent / "config.json"
+CONFIG_PATH = DIR_SCRIPT.parent.parent / "__config__" / "config.json"
 
 
 def _morir(titulo, mensaje):
@@ -155,19 +155,12 @@ RE_UNIDAD = re.compile(r"-\d+\s*$")
 # =============================================================================
 #  CONFIG COMPARTIDO
 # =============================================================================
-# El manejo del config.json vive en comun/config.py, al lado de este script.
+# El manejo del config.json vive en __comun__/config.py, en la raiz comun.
 # Estaba copiado en los 10 scripts y las copias se habian ido separando entre
 # si. Los nombres de siempre se conservan como envoltorios, asi que ningun
 # punto de llamada cambia. Ver MAPA.md, "El modulo comun".
-try:
-    sys.path.insert(0, str(DIR_SCRIPT.parent))
-    from comun import config as _cfg
-except ImportError as e:
-    _morir("Falta la carpeta comun/",
-           "No se pudo cargar comun/config.py.\n\n"
-           "Tiene que estar la carpeta 'comun' al lado de este script, con\n"
-           "config.py adentro. Baja el repositorio completo, no los .py sueltos.\n\n"
-           f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
+sys.path.insert(0, str(DIR_SCRIPT.parent.parent))
+from __comun__ import config as _cfg
 
 get_usuario = _cfg.clave_equipo
 escribir_json = _cfg.escribir_json

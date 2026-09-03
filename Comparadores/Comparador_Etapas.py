@@ -18,7 +18,7 @@ De cada .mdb se leen:
 
 Almacenamiento incremental (nunca se reescribe lo ya consolidado):
 
-    00_Salidas/AAAA/_comparador/
+    __config__/AAAA/_comparador/
         estado.json                     <- huella (mtime+tamanio) y fecha de cada consolidacion
         rutas.json                      <- rutas elegidas a mano (respaldo propio)
         parquet/
@@ -26,6 +26,8 @@ Almacenamiento incremental (nunca se reescribe lo ya consolidado):
             centrales/  aamm=2401/etapa=def/datos.parquet
         vistas/
             vista_2401.parquet          <- tabla ya comparada del mes (cache para el Excel)
+    00_Salidas/AAAA/MM Mes/Comparacion_AAMM.xlsx
+    00_Salidas/AAAA/_comparador/Comparacion_Etapas_AAAA.xlsx
 
 Agregar un mes escribe solo sus archivos. El Excel se arma desde las vistas, asi
 que reexportar un anio completo no vuelve a tocar ningun Access.
@@ -174,12 +176,15 @@ if DIR_REVISOR is None:
         "Revisor (la que contiene Revisor_Reliquidacion.py).\n\n"
         f"Se busco en: {BASE.parent}",
     )
+assert DIR_REVISOR is not None
 
-sys.path.insert(0, str(DIR_REVISOR))
-from comun import salidas as _sal
-from comun import tema as _tema
+DIR_RAIZ = DIR_REVISOR.parent
+sys.path.insert(0, str(DIR_RAIZ))
+from __comun__ import salidas as _sal
+from __comun__ import tema as _tema
 
-CONFIG_PATH = DIR_REVISOR / "config.json"
+CONFIG_RAIZ = _sal.raiz_config(BASE)
+CONFIG_PATH = CONFIG_RAIZ / "config.json"
 SALIDAS = _sal.raiz_salidas(BASE)
 
 
@@ -192,7 +197,7 @@ def _anio_de(aamm):
 
 
 def cdir(anio):
-    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador")
+    return _sal.carpeta_comparador(CONFIG_RAIZ, anio, "_comparador")
 
 
 def dir_parquet(anio):
@@ -495,7 +500,7 @@ def ahora():
 # Resolucion de rutas de los .mdb
 # ==========================================================================
 def ruta_json_mes(aamm):
-    return _sal.carpeta_mes(SALIDAS, aamm) / NOMBRE_JSON_MES
+    return _sal.carpeta_mes(CONFIG_RAIZ, aamm) / NOMBRE_JSON_MES
 
 
 def rutas_desde_json_mes(aamm):
@@ -1101,6 +1106,11 @@ def path_vista(aamm):
     return dir_vistas(_anio_de(aamm)) / f"vista_{aamm}.parquet"
 
 
+def dir_resultados_anuales(anio):
+    """Carpeta anual que contiene solo los Excel entregables."""
+    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador")
+
+
 def path_excel_mes(aamm):
     """El Excel propio del mes, en su carpeta 00_Salidas/AAAA/MM Mes."""
     return _sal.carpeta_mes(SALIDAS, aamm) / f"Comparacion_{aamm}.xlsx"
@@ -1108,7 +1118,7 @@ def path_excel_mes(aamm):
 
 def path_excel_anual(anio_aa):
     """El consolidado con todos los meses disponibles, en _comparador."""
-    return cdir(anio_aa) / f"Comparacion_Etapas_{_sal.normalizar_anio(anio_aa)}.xlsx"
+    return dir_resultados_anuales(anio_aa) / f"Comparacion_Etapas_{_sal.normalizar_anio(anio_aa)}.xlsx"
 
 
 def firma_vistas(meses):
@@ -1783,7 +1793,7 @@ def respaldar(destino, anio, log=print):
     """Copia el archivo antes de reescribirlo. Deja las ultimas 5."""
     try:
         import shutil
-        carpeta = cdir(anio) / "respaldos"
+        carpeta = dir_resultados_anuales(anio) / "respaldos"
         carpeta.mkdir(parents=True, exist_ok=True)
         marca = datetime.now().strftime("%Y%m%d_%H%M%S")
         copia = carpeta / f"{destino.stem}_{marca}{destino.suffix}"
@@ -1828,7 +1838,7 @@ class App:
         self.var_cmg = tk.StringVar(value=self.cfg.get("comp_cmgreales", ""))
         self.var_fact = tk.StringVar(value=self.cfg.get("comp_facturacion", ""))
         self.var_actual = tk.StringVar(value="[sin leer]")
-        self.var_anual = tk.StringVar(value=str(cdir(anio_inicial)) if meses_del_anio(anio_inicial) else "")
+        self.var_anual = tk.StringVar(value=str(dir_resultados_anuales(anio_inicial)) if meses_del_anio(anio_inicial) else "")
         self.var_estado = tk.StringVar(value="Listo")
         self.var_tiempo = tk.StringVar(value="00:00:00")
         self.var_solo_dif = tk.BooleanVar(value=False)
@@ -2224,7 +2234,7 @@ class App:
         self.est = cargar_estado(anio)
         rj = leer_json(rutas_path(anio), {})
         self.rutas_manuales = rj if isinstance(rj, dict) else {}
-        self.var_anual.set(str(cdir(anio)))
+        self.var_anual.set(str(dir_resultados_anuales(anio)))
         raiz = self.var_cmg.get().strip()
         self.trabajando = True
         self.botones(False)

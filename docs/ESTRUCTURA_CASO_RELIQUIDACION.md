@@ -74,20 +74,17 @@ Junto a los `.py`, fuera del árbol del mes:
 
 ```
 <carpeta de los scripts>/
-├── Revisor_Reliquidacion.py
-├── Actualiza_datos.py
-├── Actualiza_Data_Access.py
-├── Actualiza_Energia.py              ← importa el motor de Actualiza_Data_Access
-├── Actualiza_Cuadro0.py
-├── Actualiza_SC_CO.py
-├── Carga_Retiros.py
-├── Prorratear.py
-├── Actualiza_Access_P9.py
-├── config.json                       ← compartido por estos cuatro
-├── Salidas/AAMM/                     ← estado, caché y JSON de traspaso, por mes
-└── Reemplazos REUC/
-    ├── ActualizaRemplazos.py
-    └── Auxiliares/config.json        ← el suyo, aparte del compartido
+├── __comun__/                        ← código compartido
+├── __config__/
+│   ├── config.json                   ← compartido por Revisor/actualizadores/comparadores
+│   ├── reemplazos_reuc.json          ← propio del actualizador REUC
+│   └── AAAA/                         ← estado, rutas, parquet, vistas y JSON mensuales
+├── 00_Salidas/AAAA/MM Mes/           ← únicamente resultados
+├── Comparadores/
+└── Revisor_Relq/
+    ├── Revisor_Reliquidacion.py
+    ├── actualizadores/
+    └── Reemplazos REUC/ActualizaRemplazos.py
 ```
 
 ### Notas del árbol

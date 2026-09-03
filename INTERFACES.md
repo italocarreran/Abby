@@ -25,26 +25,26 @@ Convenciones de esta página:
 
 ## Índice
 
-- [`Revisor_Relq/comun/config.py`](#revisor_relqcomunconfigpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
-- [`Revisor_Relq/comun/salidas.py`](#revisor_relqcomunsalidaspy) — 143 líneas — Rutas compartidas de ``00_Salidas``.
-- [`Revisor_Relq/comun/tema.py`](#revisor_relqcomuntemapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
+- [`__comun__/config.py`](#__comun__configpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+- [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
+- [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6852 líneas — Revisor de entregables - CASO RELIQUIDACION
-- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1135 líneas — Actualiza el Access de la planilla 9
-- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1030 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1598 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 809 líneas — Actualizar Energia
-- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1343 líneas
-- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
-- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2568 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1885 líneas — Comparador_Tabulado.py
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6863 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1136 líneas — Actualiza el Access de la planilla 9
+- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1031 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1599 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 810 líneas — Actualizar Energia
+- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 899 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1344 líneas
+- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 891 líneas — Carga Retiros_h.parquet a SQL Server
+- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 921 líneas — Prorratear: del Access a SQL Server
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2578 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1893 líneas — Comparador_Tabulado.py
 
 
 ---
 
-## `Revisor_Relq/comun/config.py`
+## `__comun__/config.py`
 
 > Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 >
@@ -107,9 +107,9 @@ Agrega o actualiza claves en el bloque del equipo actual.
 
 ---
 
-## `Revisor_Relq/comun/salidas.py`
+## `__comun__/salidas.py`
 
-> Rutas compartidas de ``00_Salidas``.
+> Rutas compartidas de ``00_Salidas`` y ``__config__``.
 >
 > Centraliza la conversion de AAMM a ``AAAA/MM Mes`` para que el Revisor y los
 > comparadores lean y escriban exactamente en el mismo lugar. Las carpetas planas
@@ -128,6 +128,10 @@ Agrega o actualiza claves en el bloque del equipo actual.
 #### `def raiz_salidas(dir_script) -> Path`
 
 Devuelve ``00_Salidas``, hermana de la carpeta del script.
+
+#### `def raiz_config(dir_script) -> Path`
+
+Devuelve ``__config__``, hermana de la carpeta del script.
 
 #### `def partir_aamm(aamm) -> Optional[Tuple[str, int]]`
 
@@ -172,7 +176,7 @@ Lista las carpetas planas AAMM del formato anterior que aun existen.
 
 ---
 
-## `Revisor_Relq/comun/tema.py`
+## `__comun__/tema.py`
 
 > Tema claro/oscuro compartido para las ventanas tkinter.
 >
@@ -236,7 +240,7 @@ Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 | Nombre | Valor | |
 |---|---|---|
 | `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios. |
-| `CONFIG_PATH` | `CARPETA_AUXILIARES / 'config.json'` |  |
+| `CONFIG_PATH` | `Path(__file__).resolve().parents[2] / '__config__' / 'reemplazos_reuc.json'` |  |
 | `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
@@ -449,12 +453,13 @@ manteniendo el formato de las celdas.
 > Para .mdb se necesita el "Microsoft Access Driver (*.mdb, *.accdb)" con la misma
 > arquitectura (32/64 bits) que el Python que ejecuta el script.
 
-**Importa:** `comun`, `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `__comun__`, `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
 | Nombre | Valor | |
 |---|---|---|
+| `DIR_RAIZ_CODIGO` | `Path(__file__).resolve().parent.parent` |  |
 | `TOLERANCIA` | `1.0` |  |
 | `UMBRAL_DESCUADRE_CPRT` | `1000.0` | Residuo maximo aceptado en el descuadre del cuadro de pago (CPRT!I3). |
 | `TOL_SOBRECOSTO_FILA` | `1.0` | Diferencia maxima aceptada en UNA fila al recalcular el sobrecosto desde sus componentes. |
@@ -484,8 +489,10 @@ manteniendo el formato de las celdas.
 | `C_GRIS` | `'#777777'` |  |
 | `C_NEUTRO` | `'SystemButtonFace'` |  |
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT / 'config.json'` |  |
-| `DIR_SALIDAS` | `DIR_SCRIPT.parent / '00_Salidas'` |  |
+| `DIR_RAIZ` | `DIR_SCRIPT.parent` |  |
+| `CONFIG_PATH` | `DIR_RAIZ / '__config__' / 'config.json'` |  |
+| `DIR_CONFIG` | `DIR_RAIZ / '__config__'` |  |
+| `DIR_SALIDAS` | `DIR_RAIZ / '00_Salidas'` |  |
 | `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
 | `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Cache de directorios Una relectura completa hacia 68 recorridos de carpeta para 13 carpetas distintas: cada nodo del arbol recorria la carpeta entera de nuevo, y encima resolver_carpeta recorria la r… |
 | `RE_COPIA` | `re.compile('(-\\s*cop(?:ia\|y)(?:\\s*\\(\\d+\\))?\|\\(\\d+\\))\\s*$')` | Sufijos que deja Windows al copiar: "archivo - copia.mdb", "archivo - copia (2).mdb", "archivo - Copy.xlsm". |
@@ -521,7 +528,7 @@ en self.stats, para poder decir en la bitacora cuanto se ahorro.
 
 #### `class Estado`
 
-Verificaciones de un mes. Se guardan en 00_Salidas/AAAA/MM Mes.
+Verificaciones de un mes. Se guardan en __config__/AAAA/MM Mes.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -536,7 +543,7 @@ Verificaciones de un mes. Se guardan en 00_Salidas/AAAA/MM Mes.
 
 Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
 modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-vuelve a abrir. Se guarda en 00_Salidas/AAAA/MM Mes entre ejecuciones.
+vuelve a abrir. Se guarda en __config__/AAAA/MM Mes entre ejecuciones.
 
 - `def __init__(self)`
 - `def cargar(self, aamm)`
@@ -581,8 +588,12 @@ ni guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
 
 00_Salidas/AAAA/MM Mes, hermana de Revisor_Relq.
 
-La logica vive en comun/salidas.py porque los comparadores tienen que armar
+La logica vive en __comun__/salidas.py porque los comparadores tienen que armar
 exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
+
+#### `def dir_config_mes(aamm, crear=False)`
+
+__config__/AAAA/MM Mes para estado, cache y traspasos internos.
 
 #### `def escribir_json(ruta, data)`
 
@@ -929,7 +940,7 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | **— motor de Access, reutilizado —** | | |
 | `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
 | `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias. |
@@ -1072,7 +1083,7 @@ Devuelve (ok, resumen).
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | **— Hojas y celdas —** | | |
 | `IDX_HOJA_3` | `2` |  |
 | `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
@@ -1216,7 +1227,7 @@ Devuelve (ok, resumen).
 | `CAPACIDADES` | `frozenset({'fuentes_externas', 'filtro_por_valores', 'borrar_todo', 'cols_no_cero', 'forz…` | Capacidades que este modulo le ofrece a quien lo importe (Actualiza_Energia.py). |
 | `TABLA_ACCESS` | `'Sobrecostos'` |  |
 | `COLUMNAS_ESPERADAS` | `['Clave Año_Mes', 'Tipo_sobrecosto', 'Central', 'Hora Mensual', 'Sobrecosto']` |  |
-| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
 | `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS. |
@@ -1443,7 +1454,7 @@ archivo actualizado".
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
 | `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
 | `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
@@ -1513,14 +1524,14 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Revisor_Reliquidacion.py. |
 | **— Configuracion de origenes y destino —** | | |
 | `HOJA_DESTINO` | `'SC y CO'` |  |
@@ -1610,7 +1621,7 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 |---|---|---|
 | **— Constantes configurables —** | | |
 | `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
-| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
+| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent.parent / '__config__' / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
 | `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
@@ -1732,7 +1743,7 @@ Retorna (ok, lista_rutas_modificadas)
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | **— Configuracion —** | | |
 | `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
 | `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
@@ -1854,7 +1865,7 @@ Devuelve (ok, resumen).
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | **— Configuracion —** | | |
 | `SERVER` | `'SRV-DTE'` |  |
 | `DRIVER_SQL` | `'ODBC Driver 17 for SQL Server'` |  |
@@ -1985,7 +1996,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `__comun__`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1997,7 +2008,9 @@ Devuelve (ok, resumen).
 | `APP_TITULO` | `'Comparador de etapas — Def / Rpre / Rdef'` |  |
 | `BASE` | `Path(__file__).resolve().parent` |  |
 | `DIR_REVISOR` | `_hallar_revisor(BASE.parent)` |  |
-| `CONFIG_PATH` | `DIR_REVISOR / 'config.json'` |  |
+| `DIR_RAIZ` | `DIR_REVISOR.parent` |  |
+| `CONFIG_RAIZ` | `_sal.raiz_config(BASE)` |  |
+| `CONFIG_PATH` | `CONFIG_RAIZ / 'config.json'` |  |
 | `SALIDAS` | `_sal.raiz_salidas(BASE)` |  |
 | `CLAVE_JSON_PROPIA` | `'comparador_etapas'` | Clave nueva y propia dentro del JSON de traspaso del revisor. |
 | `NOMBRE_JSON_MES` | `'_traspaso_actualizador.json'` |  |
@@ -2289,6 +2302,10 @@ Si el mes entra al consolidado anual. Por defecto si.
 
 #### `def path_vista(aamm)`
 
+#### `def dir_resultados_anuales(anio)`
+
+Carpeta anual que contiene solo los Excel entregables.
+
 #### `def path_excel_mes(aamm)`
 
 El Excel propio del mes, en su carpeta 00_Salidas/AAAA/MM Mes.
@@ -2396,7 +2413,7 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `__comun__`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2409,7 +2426,9 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 | `APP_TITULO` | `'Comparador de consolidados tabulados — Def / Rpre / Rdef'` |  |
 | `BASE` | `Path(__file__).resolve().parent` |  |
 | `DIR_REVISOR` | `_hallar_revisor(BASE.parent)` |  |
-| `CONFIG_PATH` | `DIR_REVISOR / 'config.json'` |  |
+| `DIR_RAIZ` | `DIR_REVISOR.parent` |  |
+| `CONFIG_RAIZ` | `_sal.raiz_config(BASE)` |  |
+| `CONFIG_PATH` | `CONFIG_RAIZ / 'config.json'` |  |
 | `SALIDAS` | `_sal.raiz_salidas(BASE)` |  |
 | `NOMBRE_JSON_MES` | `'_traspaso_actualizador.json'` |  |
 | `CLAVE_JSON_PROPIA` | `'comparador_etapas'` |  |
@@ -2675,6 +2694,10 @@ Calcula acumulados y avisa si la secuencia horaria puede desalinearse.
 
 #### `def path_vista(aamm)`
 
+#### `def dir_resultados_anuales(anio)`
+
+Carpeta anual que contiene solo los Excel entregables.
+
 #### `def path_excel_mes(aamm)`
 
 #### `def path_excel_anual(aa)`
@@ -2709,7 +2732,7 @@ Igual espiritu que exportar_excel: solo pisa sus propias hojas.
 
 ## Constantes definidas en más de un archivo
 
-Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. Candidatas a mudarse a `comun/`.
+Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. Candidatas a mudarse a `__comun__/`.
 
 | Constante | Archivos |
 |---|---|
@@ -2722,6 +2745,8 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `COLUMNAS_VISTA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
 | `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `CONFIG_RAIZ` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `ETAPAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |

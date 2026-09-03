@@ -159,7 +159,7 @@ COLUMNAS_ESPERADAS = ["Clave Año_Mes", "Tipo_sobrecosto", "Central",
 # config.json es compartido con el Revisor y el resto de los actualizadores,
 # que viven un nivel arriba (en scripts/, junto al Revisor). No es
 # Path(__file__).parent porque este script esta en actualizadores/.
-CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "__config__" / "config.json"
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +184,7 @@ def escribir_json(ruta, data):
     """Escritura atomica: primero un .tmp y despues os.replace.
     Evita dejar el archivo truncado si algo falla a medio camino."""
     ruta = Path(ruta)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
     tmp = ruta.with_suffix(ruta.suffix + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
