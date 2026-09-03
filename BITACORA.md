@@ -63,6 +63,31 @@
 
 ---
 
+## 2026-09-03 — Claude — la copia del repo que ve Codex puede estar vieja
+
+**Lección de flujo de trabajo, para que no vuelva a pasar.** El usuario le pidió
+a Codex aplicar la Tarea 1 del plan; Codex dijo "listo" y no llegó nada a
+GitHub. Al pedirle la salida cruda de `git log`, `git status` y `ls`, quedó
+claro qué pasó:
+
+- Su commit de arriba (`8afb0ec`) colgaba de `e2443c8`, **3 commits atrás** del
+  repo real. Le faltaban `d2b13f8`, `2955326` y `19d323f`.
+- `2955326` es justamente el que trae `docs/PLAN_comparadores.md` **y** la
+  carpeta `Comparadores/`. O sea: **el plan no existía en su copia**. No podía
+  aplicarlo aunque quisiera, y terminó rehaciendo la tarea anterior (mismo
+  cambio que el ya mergeado `1f16007`, con otro hash).
+- `git status` decía `## work` sin upstream: esa rama no tiene remoto, así que
+  los push no llegan a ningún lado.
+
+**Regla que sale de esto:** antes de pedirle a un asistente externo que aplique
+algo del repo, **pedirle que muestre `git log --oneline -3` y confirme que ve
+los archivos que va a necesitar**. Si su copia no está en el commit de arriba,
+no tiene sentido que empiece — va a trabajar sobre otra cosa y el resultado, si
+llega, va a chocar. Cuesta cinco segundos y evita rehacer todo.
+
+Nada que revertir: el trabajo duplicado quedó en el sandbox de Codex, nunca
+llegó al repositorio.
+
 ## 2026-09-02 — Claude — revisión de bugs de los comparadores y plan del tema oscuro
 
 El usuario se quedó sin acceso a Codex y pidió aprovechar para buscar bugs y
