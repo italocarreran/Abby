@@ -113,6 +113,9 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
 - **Limpiar antes de escribir.** Reliquidar es reciclar el cuadro de un mes pasado:
   los archivos llegan dimensionados para el mes anterior. Si el mes nuevo trae menos
   filas y no se limpia, quedan las viejas abajo y los totales salen inflados.
+- **Los scripts hermanos localizan al Revisor por su archivo.** Un script fuera de
+  `Revisor_Relq/` busca entre sus carpetas hermanas la que contiene
+  `Revisor_Reliquidacion.py`; no depende del nombre `Revisor_Relq`, que ya cambió.
 - **El JSON de traspaso es opcional.** El revisor puede pasar
   `00_Salidas/AAAA/MM Mes/_traspaso_actualizador.json` como único argumento; **sin argumento
   cada script tiene que seguir funcionando solo**, buscando los archivos por su

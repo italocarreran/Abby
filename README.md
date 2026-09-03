@@ -5,10 +5,10 @@ prorrateador y los cargadores de datos.
 
 ## Para descargar y usar
 
-**`Revisor_Relq/` es la carpeta de trabajo.** Descargás el repositorio
-(`Code` → `Download ZIP`), lo descomprimís, y te llevás la carpeta `Revisor_Relq/`
-entera. Ahí adentro está todo lo que corre, con la estructura que los scripts
-esperan.
+**`Revisor_Relq/` y `Comparadores/` son las dos carpetas de programas.**
+Descargás el repositorio (`Code` → `Download ZIP`), lo descomprimís y conservás
+ambas como hermanas. `00_Salidas/` también vive al lado: el Revisor y los dos
+comparadores comparten esa estructura y el `config.json` de `Revisor_Relq/`.
 
 Lo que no se sube y aparece solo al usarlo: `config.json`, `00_Salidas/` (hermana
 de `Revisor_Relq/`, organizada como `AAAA/MM Mes`) y
@@ -42,7 +42,11 @@ MAPA.md                         qué hace cada script y de qué depende
 INTERFACES.md                   generado — firmas, constantes y dependencias
 generar_interfaces.py           el generador de INTERFACES.md
 docs/                           referencia de dominio
-Revisor_Relq/                   ← LA CARPETA DE TRABAJO
+Comparadores/                   comparadores anuales (hermana del Revisor)
+├── Comparador_Etapas.py
+└── Comparador_Tabulado.py
+00_Salidas/                     salidas compartidas, organizadas por AAAA/MM Mes
+Revisor_Relq/                   ← CARPETA DEL REVISOR
 ├── Revisor_Reliquidacion.py   solo, en la raíz — es el que se abre siempre
 ├── comun/                     lo compartido, con sus pruebas
 ├── actualizadores/            los 8 que el Revisor lanza por botón

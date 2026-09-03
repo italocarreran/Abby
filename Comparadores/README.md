@@ -10,15 +10,9 @@ mensual del Revisor:
   variables (Generación, CV, CMg, USD). Lee el `rutas.json` del otro comparador
   para no pedir dos veces las mismas carpetas.
 
-## ⚠️ Estado: todavía NO están cableados
+## Estado: cableados al Revisor
 
-Los dos archivos están acá **tal cual los entregó el usuario**, sin modificar.
-Hoy resuelven sus rutas como si vivieran dentro de `Revisor_Relq/`
-(`BASE / "Salidas"`, `BASE / "config.json"`), así que **en esta ubicación no
-funcionan**.
-
-Lo que falta está especificado en **`docs/PLAN_comparadores.md`, Tarea 2**:
-apuntarlos al `config.json` compartido del Revisor y a `00_Salidas/`, y volver
-anuales sus carpetas `_comparador` / `_comparador_tabulado`.
-
-La Tarea 1 de ese mismo plan (`comun/salidas.py` + el Revisor) va primero.
+Los dos localizan la carpeta hermana que contiene `Revisor_Reliquidacion.py`,
+usan su `config.json` compartido e importan de ahí `comun/salidas.py`. Sus datos
+anuales quedan en `00_Salidas/AAAA/_comparador*`; los Excel y JSON mensuales,
+en `00_Salidas/AAAA/MM Mes/`.

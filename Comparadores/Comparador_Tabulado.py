@@ -31,18 +31,19 @@ con el mas reciente.
 
 Almacenamiento incremental
 --------------------------
-    Salidas/_comparador_tabulado/
+    00_Salidas/AAAA/_comparador_tabulado/
         estado.json
         rutas.json
-        parquet/aamm=2501/etapa=def/datos.parquet
-        vistas/vista_2501.parquet
-    Salidas/AAMM/Comparacion_Variables_AAMM.xlsx
-    Salidas/_comparador_tabulado/Comparacion_Variables_AAAA.xlsx
+        parquet_variables/aamm=2501/etapa=def/datos.parquet
+        vistas_variables/vista_2501.parquet
+    00_Salidas/AAAA/MM Mes/Comparacion_Variables_AAMM.xlsx
+    00_Salidas/AAAA/_comparador_tabulado/Comparacion_Variables_AAAA.xlsx
 
 Al abrir la ventana NO se lee ningun archivo: solo se listan carpetas y se
 compara la fecha de modificacion. El contenido se lee unicamente al consolidar.
 
-Ubicacion: en la misma carpeta que contiene la carpeta "Salidas".
+Ubicacion: este .py va en ``Comparadores/``, carpeta hermana de la carpeta
+del Revisor.
 
 Requiere: pandas, pyarrow, duckdb, xlsxwriter, openpyxl
 Opcional (muy recomendado): python-calamine  -> lectura varias veces mas rapida
@@ -154,18 +155,82 @@ TIENE_CALAMINE = not _falta("python_calamine")
 APP_TITULO = "Comparador de consolidados tabulados — Def / Rpre / Rdef"
 
 BASE = Path(__file__).resolve().parent
-SALIDAS = BASE / "Salidas"
-CDIR = SALIDAS / "_comparador_tabulado"
-DIR_PARQUET = CDIR / "parquet"
-DIR_VISTAS = CDIR / "vistas"
-ESTADO_PATH = CDIR / "estado.json"
-RUTAS_PATH = CDIR / "rutas.json"
-CONFIG_PATH = BASE / "config.json"
 
-# Carpeta del comparador de .mdb: de ahi se leen (solo lectura) las carpetas
-# que el usuario ya eligio alla, para no pedirle dos veces lo mismo.
-CDIR_MDB = SALIDAS / "_comparador"
-RUTAS_MDB_PATH = CDIR_MDB / "rutas.json"
+
+def _morir(titulo, mensaje):
+    """Muestra un error util incluso cuando el script corre con pythonw."""
+    try:
+        raiz = tk.Tk()
+        raiz.withdraw()
+        messagebox.showerror(titulo, mensaje)
+        raiz.destroy()
+    except Exception:
+        print(f"{titulo}: {mensaje}")
+    raise SystemExit(1)
+
+
+def _hallar_revisor(raiz):
+    """Carpeta hermana que contiene Revisor_Reliquidacion.py."""
+    preferida = raiz / "Revisor_Relq"
+    if (preferida / "Revisor_Reliquidacion.py").is_file():
+        return preferida
+    for carpeta in sorted(p for p in raiz.iterdir() if p.is_dir()):
+        if (carpeta / "Revisor_Reliquidacion.py").is_file():
+            return carpeta
+    return None
+
+
+DIR_REVISOR = _hallar_revisor(BASE.parent)
+if DIR_REVISOR is None:
+    _morir(
+        "No se encontro la carpeta del Revisor",
+        "Este comparador tiene que estar en una carpeta hermana de la del\n"
+        "Revisor (la que contiene Revisor_Reliquidacion.py).\n\n"
+        f"Se busco en: {BASE.parent}",
+    )
+
+sys.path.insert(0, str(DIR_REVISOR))
+from comun import salidas as _sal
+
+CONFIG_PATH = DIR_REVISOR / "config.json"
+SALIDAS = _sal.raiz_salidas(BASE)
+
+
+def _anio_de(aamm):
+    """Devuelve el anio de cuatro digitos de un AAMM valido."""
+    partes = _sal.partir_aamm(aamm)
+    if partes is None:
+        raise ValueError(f"AAMM invalido: {aamm!r}")
+    return partes[0]
+
+
+def cdir(anio):
+    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador_tabulado")
+
+
+def dir_parquet(anio):
+    return cdir(anio) / "parquet_variables"
+
+
+def dir_vistas(anio):
+    return cdir(anio) / "vistas_variables"
+
+
+def estado_path(anio):
+    return cdir(anio) / "estado.json"
+
+
+def rutas_path(anio):
+    return cdir(anio) / "rutas.json"
+
+
+# Carpeta del comparador de .mdb: se consulta en modo solo lectura.
+def cdir_mdb(anio):
+    return _sal.carpeta_comparador(SALIDAS, anio, "_comparador")
+
+
+def rutas_mdb_path(anio):
+    return cdir_mdb(anio) / "rutas.json"
 
 NOMBRE_JSON_MES = "_traspaso_actualizador.json"
 CLAVE_JSON_PROPIA = "comparador_etapas"
@@ -455,11 +520,11 @@ def hojas_ajenas(destino, log=print):
         return []
 
 
-def respaldar(destino, log=print):
+def respaldar(destino, anio, log=print):
     """Copia el archivo antes de reescribirlo. Deja las ultimas 5."""
     try:
         import shutil
-        carpeta = CDIR / "respaldos"
+        carpeta = cdir(anio) / "respaldos"
         carpeta.mkdir(parents=True, exist_ok=True)
         marca = datetime.now().strftime("%Y%m%d_%H%M%S")
         copia = carpeta / f"{destino.stem}_{marca}{destino.suffix}"
@@ -477,13 +542,13 @@ def respaldar(destino, log=print):
         return None
 
 
-def cargar_estado():
-    est = leer_json(ESTADO_PATH, {})
+def cargar_estado(anio):
+    est = leer_json(estado_path(anio), {})
     return est if isinstance(est, dict) else {}
 
 
-def guardar_estado(est):
-    escribir_json_atomico(ESTADO_PATH, est)
+def guardar_estado(anio, est):
+    escribir_json_atomico(estado_path(anio), est)
 
 
 def mes_incluido(est, aamm):
@@ -562,7 +627,7 @@ def carpeta_definitivo(raiz_cmg, aamm):
 # Resolucion de rutas del Consolidado_Tabulado
 # ==========================================================================
 def ruta_json_mes(aamm):
-    return SALIDAS / aamm / NOMBRE_JSON_MES
+    return _sal.carpeta_mes(SALIDAS, aamm) / NOMBRE_JSON_MES
 
 
 def rutas_desde_json_mes(aamm):
@@ -589,12 +654,12 @@ def rutas_desde_json_mes(aamm):
     return rdef, rpre
 
 
-def rutas_manuales_mdb():
+def rutas_manuales_mdb(anio):
     """Las carpetas que el usuario ya eligio en el comparador de .mdb.
 
     Se leen en modo solo lectura: este programa nunca escribe ese archivo.
     """
-    d = leer_json(RUTAS_MDB_PATH, {})
+    d = leer_json(rutas_mdb_path(anio), {})
     return d if isinstance(d, dict) else {}
 
 
@@ -824,24 +889,22 @@ def acumulado_por_dia(df):
 
 
 # ---- almacenamiento (parquet), separado del de sobrecostos por tipo ----
-DIR_PARQUET = CDIR / "parquet_variables"
-DIR_VISTAS = CDIR / "vistas_variables"
 
 
 def dir_datos(aamm, etapa):
-    return DIR_PARQUET / f"aamm={aamm}" / f"etapa={etapa}"
+    return dir_parquet(_anio_de(aamm)) / f"aamm={aamm}" / f"etapa={etapa}"
 
 
 def path_vista(aamm):
-    return DIR_VISTAS / f"vista_{aamm}.parquet"
+    return dir_vistas(_anio_de(aamm)) / f"vista_{aamm}.parquet"
 
 
 def path_excel_mes(aamm):
-    return SALIDAS / aamm / f"Comparacion_Variables_{aamm}.xlsx"
+    return _sal.carpeta_mes(SALIDAS, aamm) / f"Comparacion_Variables_{aamm}.xlsx"
 
 
 def path_excel_anual(aa):
-    return CDIR / f"Comparacion_Variables_20{aa}.xlsx"
+    return cdir(aa) / f"Comparacion_Variables_{_sal.normalizar_anio(aa)}.xlsx"
 
 
 def estado_etapa(est, aamm, etapa, rutas):
@@ -911,10 +974,10 @@ def construir_vista(aamm, tol=0.01, log=print):
     if not disp:
         log(f"  {aamm}: nada consolidado en variables, sin vista.")
         return None
-    DIR_VISTAS.mkdir(parents=True, exist_ok=True)
+    dir_vistas(_anio_de(aamm)).mkdir(parents=True, exist_ok=True)
     con = duckdb.connect()
     try:
-        base = str((DIR_PARQUET / f"aamm={aamm}").as_posix()) + "/**/*.parquet"
+        base = str((dir_parquet(_anio_de(aamm)) / f"aamm={aamm}").as_posix()) + "/**/*.parquet"
         sel = ",\n".join(
             f"MAX(CASE WHEN etapa='{e}' THEN {c} END) AS {c}_{e}"
             for e in ETAPAS for c in ("sobrecosto", "gen", "cv", "cmg", "usd"))
@@ -1107,7 +1170,7 @@ def _escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log):
 def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
     log(f"  Se conservan {len(ajenas)} hoja(s) de otra persona: "
        f"{', '.join(ajenas[:6])}{' ...' if len(ajenas) > 6 else ''}")
-    respaldar(destino, log)
+    respaldar(destino, _anio_de(vistas[0][0]), log)
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
     azul = PatternFill("solid", fgColor="1F3864")
@@ -1172,8 +1235,9 @@ class App:
     def __init__(self, root):
         self.root = root
         self.cfg = leer_config()
-        self.est = cargar_estado()
-        rj = leer_json(RUTAS_PATH, {})
+        anio_inicial = self.cfg.get("tab_anio", "")
+        self.est = cargar_estado(anio_inicial) if meses_del_anio(anio_inicial) else {}
+        rj = leer_json(rutas_path(anio_inicial), {}) if meses_del_anio(anio_inicial) else {}
         self.manuales = rj if isinstance(rj, dict) else {}
         self.rutas = {}       # aamm -> {etapa: ruta|None}
         self.diag = {}        # aamm -> {etapa: diagnostico}
@@ -1194,7 +1258,7 @@ class App:
         self.var_solo_dif = tk.BooleanVar(value=False)
         self.var_forzar = tk.BooleanVar(value=False)
         self.var_preservar = tk.BooleanVar(value=True)
-        self.var_anual = tk.StringVar(value=str(CDIR))
+        self.var_anual = tk.StringVar(value=str(cdir(anio_inicial)) if meses_del_anio(anio_inicial) else "")
 
         self._construir()
         self.log(f"Carpeta base: {BASE}")
@@ -1385,7 +1449,7 @@ class App:
         if not r:
             return
         self.manuales.setdefault(aamm, {})[etapa] = r
-        escribir_json_atomico(RUTAS_PATH, self.manuales)
+        escribir_json_atomico(rutas_path(self.var_anio.get().strip()), self.manuales)
         self.refrescar(solo=aamm)
 
     def elegir_carpeta(self, aamm, etapa):
@@ -1402,12 +1466,12 @@ class App:
         self.log(f"{aamm} {ETIQUETA[etapa]} · {f.name}"
                  + (f"   ({aviso})" if aviso else ""))
         self.manuales.setdefault(aamm, {})[etapa] = str(f)
-        escribir_json_atomico(RUTAS_PATH, self.manuales)
+        escribir_json_atomico(rutas_path(self.var_anio.get().strip()), self.manuales)
         self.refrescar(solo=aamm)
 
     def olvidar_manual(self, aamm, etapa):
         if (self.manuales.get(aamm) or {}).pop(etapa, None) is not None:
-            escribir_json_atomico(RUTAS_PATH, self.manuales)
+            escribir_json_atomico(rutas_path(self.var_anio.get().strip()), self.manuales)
             self.log(f"{aamm} {ETIQUETA[etapa]}: se vuelve a la deteccion automatica.")
             self.refrescar(solo=aamm)
 
@@ -1428,7 +1492,10 @@ class App:
         if self.trabajando:
             return
         guardar_config({"tab_anio": anio})
-        self.est = cargar_estado()
+        self.est = cargar_estado(anio)
+        rj = leer_json(rutas_path(anio), {})
+        self.manuales = rj if isinstance(rj, dict) else {}
+        self.var_anual.set(str(cdir(anio)))
         raiz = self.var_cmg.get().strip()
         self.trabajando = True
         self.botones(False)
@@ -1439,7 +1506,7 @@ class App:
             t0 = time.time()
             try:
                 limpiar_cache()      # el disco pudo cambiar desde el refresco anterior
-                man_mdb = rutas_manuales_mdb()
+                man_mdb = rutas_manuales_mdb(self.var_anio.get().strip())
                 for i, m in enumerate(objetivo, 1):
                     self.set_estado(f"Buscando archivos... {m}  ({i}/{len(objetivo)})")
                     self.rutas[m], self.diag[m] = resolver_rutas(
@@ -1525,9 +1592,9 @@ class App:
         f = self.filas.get(m)
         if not f:
             return
-        self.est = cargar_estado()
+        self.est = cargar_estado(self.var_anio.get().strip())
         fijar_incluido(self.est, m, f["inc"].get())
-        guardar_estado(self.est)
+        guardar_estado(self.var_anio.get().strip(), self.est)
         self.pintar()
 
     def alternar(self, m):
@@ -1593,8 +1660,8 @@ class App:
     def consolidar(self, meses=None, forzar=False):
         meses = meses or self.meses_visibles()
         raiz = self.var_cmg.get().strip()
-        man_mdb = rutas_manuales_mdb()
-        self.est = cargar_estado()
+        man_mdb = rutas_manuales_mdb(self.var_anio.get().strip())
+        self.est = cargar_estado(self.var_anio.get().strip())
         tareas = []
         for m in meses:
             self.rutas[m], self.diag[m] = resolver_rutas(m, raiz, self.manuales, man_mdb)
@@ -1613,7 +1680,7 @@ class App:
             try:
                 consolidar_etapa(m, etapa, self.rutas[m][etapa], self.est, log=self.log)
                 tocados.add(m)
-                guardar_estado(self.est)
+                guardar_estado(self.var_anio.get().strip(), self.est)
             except Exception as e:
                 self.log(f"  ERROR en {m} {ETIQUETA[etapa]}: {e}")
                 self.log(traceback.format_exc())
@@ -1625,24 +1692,24 @@ class App:
             try:
                 construir_vista(m, tol=tol, log=self.log)
                 self.est.setdefault(m, {})["vista"] = ahora()
-                guardar_estado(self.est)
+                guardar_estado(self.var_anio.get().strip(), self.est)
             except Exception as e:
                 self.log(f"  ERROR armando vista {m}: {e}")
         self.log("=== Consolidacion terminada ===\n")
 
     def rearmar_vista(self, meses=None):
-        self.est = cargar_estado()
+        self.est = cargar_estado(self.var_anio.get().strip())
         tol = self.tolerancia()
         for m in (meses or self.meses_visibles()):
             if etapas_consolidadas(m):
                 construir_vista(m, tol=tol, log=self.log)
                 self.est.setdefault(m, {})["vista"] = ahora()
-        guardar_estado(self.est)
+        guardar_estado(self.var_anio.get().strip(), self.est)
 
     def exportar(self):
         tol = self.tolerancia()
         guardar_config({"tab_tolerancia": str(tol)})
-        self.est = cargar_estado()
+        self.est = cargar_estado(self.var_anio.get().strip())
         anio = self.var_anio.get().strip()
         aa = anio[2:] if len(anio) == 4 else anio
         meses = self.meses_visibles()
@@ -1699,7 +1766,7 @@ class App:
                     "archivo": str(anual), "meses": incluidos, "firma": firma,
                     "escrito": ahora(), "segundos": round(time.time() - t0, 1),
                 }
-                guardar_estado(self.est)
+                guardar_estado(self.var_anio.get().strip(), self.est)
                 self.log(f"  ({self.est['_excel_anual']['segundos']} s)")
             self.var_anual.set(str(anual))
         self.barra.config(value=self.barra["maximum"])
@@ -1707,11 +1774,6 @@ class App:
 
 
 def main():
-    for d in (CDIR, DIR_PARQUET, DIR_VISTAS):
-        try:
-            d.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
     root = tk.Tk()
     App(root)
     root.mainloop()

@@ -37,6 +37,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1343 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 890 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 920 líneas — Prorratear: del Access a SQL Server
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2507 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1783 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -195,9 +197,9 @@ Lista las carpetas planas AAMM del formato anterior que aun existen.
 
 | Nombre | Valor | |
 |---|---|---|
-| `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios.  |
+| `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios. |
 | `CONFIG_PATH` | `CARPETA_AUXILIARES / 'config.json'` |  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
 | `RAIZ_PLABACOM_DEFAULT` | `'T:\\Facturacion\\Plabacom'` |  |
@@ -416,27 +418,27 @@ manteniendo el formato de las celdas.
 | Nombre | Valor | |
 |---|---|---|
 | `TOLERANCIA` | `1.0` |  |
-| `UMBRAL_DESCUADRE_CPRT` | `1000.0` | Residuo maximo aceptado en el descuadre del cuadro de pago (CPRT!I3).  |
-| `TOL_SOBRECOSTO_FILA` | `1.0` | Diferencia maxima aceptada en UNA fila al recalcular el sobrecosto desde sus componentes.  |
-| `TOL_PAGO_EMPRESA` | `150.0` | Diferencia maxima aceptada al comparar el pago por empresa y concepto entre la planilla 1 y la 9 (o la 4).  |
-| `TOTALES_PRORRATA` | `(1.0, 100.0)` | Las filas de prorrata suman el 100%, escrito como 1 o como 100 segun la planilla.  |
+| `UMBRAL_DESCUADRE_CPRT` | `1000.0` | Residuo maximo aceptado en el descuadre del cuadro de pago (CPRT!I3). |
+| `TOL_SOBRECOSTO_FILA` | `1.0` | Diferencia maxima aceptada en UNA fila al recalcular el sobrecosto desde sus componentes. |
+| `TOL_PAGO_EMPRESA` | `150.0` | Diferencia maxima aceptada al comparar el pago por empresa y concepto entre la planilla 1 y la 9 (o la 4). |
+| `TOTALES_PRORRATA` | `(1.0, 100.0)` | Las filas de prorrata suman el 100%, escrito como 1 o como 100 segun la planilla. |
 | `TOL_PRORRATA` | `0.0001` |  |
-| `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros.  |
-| `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses.  |
-| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py.  |
+| `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
+| `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
+| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
 | `TOL_MTIME` | `2` |  |
 | `VALORES` | `dict de 56 claves: 'TOTAL_SSCC', 'TOTAL_CO', 'TOTAL_CCA', …` |  |
 | `VERIFICADORES` | `dict de 14 claves: 'V8', 'V9', 'V10', …` |  |
 | `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
 | `DB` | `('.mdb', '.accdb')` |  |
-| `DD` | `('Detalles diarios', 'Detalle diario', 'Detalle diarios', 'Detalles diario')` | La carpeta de detalles se llama distinto segun el modulo ("Detalles diarios" en Sobrecostos, "Detalle diario" en CO y CCA).  |
+| `DD` | `('Detalles diarios', 'Detalle diario', 'Detalle diarios', 'Detalles diario')` | La carpeta de detalles se llama distinto segun el modulo ("Detalles diarios" en Sobrecostos, "Detalle diario" en CO y CCA). |
 | `NODOS` | `lista de 36 elementos: dict(id='c_fd', tipo='carpeta', pref='', texto='../FD/          « ORIGEN — fuera de 02 CASO RELIQUIDACION »'), dict(id='a_sscc_desempeno', tipo='archivo', pref='    └── ', texto='SSCC_Desempeno*.xlsx\|xlsm   (origen de las hojas FD)', carpeta=['FD'], sube=True, solo_info=True, patron='^sscc_desempeno', ext=XL, espejo=None), dict(id='c_ent', tipo='carpeta', pref='├── ', texto='00 Entregables/'), …` |  |
 | `NODO_POR_ID` | `{n['id']: n for n in NODOS}` |  |
-| `ACTUALIZADORES` | `dict de 10 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_retiros_parq', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita.  |
+| `ACTUALIZADORES` | `dict de 10 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_retiros_parq', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita. |
 | `CLAVES_TRASPASO` | `dict de 16 claves: 'a_sscc_desempeno', 'a_cons_tab', 'a_prorrata', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
 | `ARCHIVO_TRASPASO` | `'_traspaso_actualizador.json'` |  |
 | `TRASPASO_VERSION` | `1` |  |
-| `ACCIONES_INTERNAS` | `{'a_0_cuadros': [('Exportar CPRT', '_exportar_cprt')]}` | Acciones que corren DENTRO del revisor, sin lanzar otro proceso.  |
+| `ACCIONES_INTERNAS` | `{'a_0_cuadros': [('Exportar CPRT', '_exportar_cprt')]}` | Acciones que corren DENTRO del revisor, sin lanzar otro proceso. |
 | `C_OK` | `'#1a7f1a'` | colores |
 | `C_FALTA` | `'#c00000'` |  |
 | `C_AMARILLO` | `'#ffe600'` |  |
@@ -457,19 +459,19 @@ manteniendo el formato de las celdas.
 | `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
 | `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
 | `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
-| `C_LOG_MALO` | `'#c00000'` | Coloreado del log y del detalle Los mensajes ya vienen rotulados: ">>" es fallo, "OK" es bien, "?" es sin datos y ".." es "trabajando".  |
+| `C_LOG_MALO` | `'#c00000'` | Coloreado del log y del detalle Los mensajes ya vienen rotulados: ">>" es fallo, "OK" es bien, "?" es sin datos y ".." es "trabajando". |
 | `C_LOG_DUDA` | `'#b45309'` |  |
 | `C_LOG_BIEN` | `'#1d6b1d'` |  |
 | `_PALABRAS_MALO` | `tupla de 13 elementos: 'FALTA ', 'FALTA EL ARCHIVO', 'NO CUADRA', …` | Palabras que pintan la linea sin importar el bloque en que caiga. |
-| `_PALABRAS_DUDA` | `tupla de 10 elementos: 'OJO', 'AMARILLO', 'ADVERTENCIA', …` | Ojo: aca NO van "omitidas" ni "descartadas".  |
-| `HOJA_CPRT` | `'CPRT'` | Exportar el CPRT a csv El cuadro cero trae en su hoja "CPRT" el cuadro de pago ya armado.  |
+| `_PALABRAS_DUDA` | `tupla de 10 elementos: 'OJO', 'AMARILLO', 'ADVERTENCIA', …` | Ojo: aca NO van "omitidas" ni "descartadas". |
+| `HOJA_CPRT` | `'CPRT'` | Exportar el CPRT a csv El cuadro cero trae en su hoja "CPRT" el cuadro de pago ya armado. |
 | `CPRT_FILAS_META` | `5` |  |
 | `CPRT_FILA_ENCABEZADO` | `6` |  |
-| `CPRT_N_CAMPOS` | `7` | El csv lleva 7 campos: A:F mas UNA columna de monto.  |
+| `CPRT_N_CAMPOS` | `7` | El csv lleva 7 campos: A:F mas UNA columna de monto. |
 | `CPRT_COL_MONTO` | `8` |  |
-| `CPRT_ROTULO_DESDE_G` | `True` | El ROTULO de esa columna se sigue tomando de la G, o sea que el encabezado dice "Monto" y no "Monto retenido".  |
+| `CPRT_ROTULO_DESDE_G` | `True` | El ROTULO de esa columna se sigue tomando de la G, o sea que el encabezado dice "Monto" y no "Monto retenido". |
 | `CPRT_CODIF` | `'cp1252'` |  |
-| `UMBRAL_PAR_SEGURO` | `100.0` | El cuadro de pagos: la matriz y la tabla dinamica CuadroPago arma en 01.SSCC_Recurso_Tecnico una matriz cruzada: N8 = "Pagan" O8:..8 = las empresas que RECIBEN N9:N..  |
+| `UMBRAL_PAR_SEGURO` | `100.0` | El cuadro de pagos: la matriz y la tabla dinamica CuadroPago arma en 01.SSCC_Recurso_Tecnico una matriz cruzada: N8 = "Pagan" O8:..8 = las empresas que RECIBEN N9:N.. |
 
 ### Clases
 
@@ -488,8 +490,8 @@ Verificaciones de un mes. Se guardan en 00_Salidas/AAAA/MM Mes.
 - `def existe(self)`
 - `def guardar(self)`
 - `def get(self, vid)`
-- `def vigente(self, vid)` — El registro guardado, si hay alguno. 
-- `def firma_guardada_distinta(self, vid)` — True si hay un registro pero es de una definicion anterior. 
+- `def vigente(self, vid)` — El registro guardado, si hay alguno.
+- `def firma_guardada_distinta(self, vid)` — True si hay un registro pero es de una definicion anterior.
 - `def set(self, vid, registro)`
 
 #### `class CacheValores`
@@ -510,9 +512,9 @@ vuelve a abrir. Se guarda en 00_Salidas/AAAA/MM Mes entre ejecuciones.
 - `def __init__(self, root)`
 - `def log(self, msg='')`
 - `def examinar(self)`
-- `def actualizar(self, motivo=None, solo_ids=None)` — Relee la carpeta: reubica los archivos, repinta fechas y recalcula la vigencia de las verificaciones. 
-- `def estado_verificador(self, vid, _visitados=None)` — OK | VENCIDA | NO CUADRA | NO SE PUDO | SIN VERIFICAR. 
-- `def configurar_valores(self)` — Ventana para indicar donde esta cada valor, sin editar el codigo. 
+- `def actualizar(self, motivo=None, solo_ids=None)` — Relee la carpeta: reubica los archivos, repinta fechas y recalcula la vigencia de las verificaciones.
+- `def estado_verificador(self, vid, _visitados=None)` — OK | VENCIDA | NO CUADRA | NO SE PUDO | SIN VERIFICAR.
+- `def configurar_valores(self)` — Ventana para indicar donde esta cada valor, sin editar el codigo.
 - `def ir_a_mes(self)` — Lleva TODA la ventana al mes escrito: cambia la carpeta del caso a la que se usó ese mes, recarga el árbol y su estado…
 - `def reiniciar_mes(self)` — Borra el estado y los valores guardados de un mes, para partir limpio.
 - `def ver_detalle_verificacion(self, vid)` — Totales, comprobaciones y bitácora de la última corrida.
@@ -889,10 +891,10 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
 | **— motor de Access, reutilizado —** | | |
 | `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
-| `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias.  |
+| `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias. |
 | `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
 | **— CONFIGURACION —** | | |
 | `TABLA_SOB` | `'Sobrecostos'` |  |
@@ -900,9 +902,9 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 | `IDX_CLAVE` | `0` | Indices DENTRO del bloque de 5 columnas (0-based), segun el orden de la tabla: 0 Clave Año_Mes \| 1 Tipo_sobrecosto \| 2 Central \| 3 Hora Mensual \| 4 Sobrecosto |
 | `IDX_CENTRAL` | `2` |  |
 | `IDX_MONTO` | `4` |  |
-| `RE_AAMM` | `re.compile('[_\\s](\\d{4})[_\\s]*[Rr]\\d')` | La Clave Año_Mes viene MAL desde el origen: siempre trae 23xx aunque el mes sea otro (2405 llega como 2305).  |
+| `RE_AAMM` | `re.compile('[_\\s](\\d{4})[_\\s]*[Rr]\\d')` | La Clave Año_Mes viene MAL desde el origen: siempre trae 23xx aunque el mes sea otro (2405 llega como 2305). |
 | `ENCABEZADOS_ESPERADOS` | `('clave', 'tipo', 'central', 'hora', 'pago')` | Encabezados que se esperan, solo para avisar si el archivo cambio. |
-| `PLANILLAS` | `dict de 3 claves: 'p3', 'p5', 'p6', …` | Todo se organiza POR PLANILLA: una casilla por planilla, y al marcarla se actualizan sus bloques de Sobrecostos Y sus propietarios.  |
+| `PLANILLAS` | `dict de 3 claves: 'p3', 'p5', 'p6', …` | Todo se organiza POR PLANILLA: una casilla por planilla, y al marcarla se actualizan sus bloques de Sobrecostos Y sus propietarios. |
 | `ORDEN_PL` | `['p3', 'p5', 'p6']` |  |
 | `CARPETA_P9` | `'04 Planilla 9'` |  |
 | **— TRASPASO DESDE EL REVISOR —** | | |
@@ -1032,7 +1034,7 @@ Devuelve (ok, resumen).
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
 | **— Hojas y celdas —** | | |
 | `IDX_HOJA_3` | `2` |  |
 | `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
@@ -1042,7 +1044,7 @@ Devuelve (ok, resumen).
 | `ORIGEN_TABLA_FILA` | `9` |  |
 | `DESTINO_TABLA` | `('A', 'C')` |  |
 | `DESTINO_TABLA_FILA` | `5` |  |
-| `BLOQUES_TABLA` | `[('D', 'D')]` | La D de la hoja #3 es una formula que acompaña a la tabla A:C: D5 = B5 + C5 (el neto por empresa: lo que paga mas lo que recibe) O sea que su largo lo manda la TABLA PEGADA, no la lista K.  |
+| `BLOQUES_TABLA` | `[('D', 'D')]` | La D de la hoja #3 es una formula que acompaña a la tabla A:C: D5 = B5 + C5 (el neto por empresa: lo que paga mas lo que recibe) O sea que su largo lo manda la TABLA PEGADA, no la lista K. |
 | `FILA_K` | `5` | --- Formulas que se escriben ---------------------------------------------- IMPORTANTE: por COM las formulas se escriben en INGLES y con COMA como separador, aunque en pantalla se vean en espanol con… |
 | `FORMULA_K` | `'=LET(x,UNIQUE(VSTACK(F{f}:F{tope},A{f}:A{tope})),FILTER(x,(x<>0)*(x<>"")))'` |  |
 | `TOPE_K` | `1000` |  |
@@ -1171,15 +1173,15 @@ Devuelve (ok, resumen).
 
 | Nombre | Valor | |
 |---|---|---|
-| `FUENTES` | `dict de 3 claves: 'SSCC', 'CO', 'CCA', …` | base: de donde cuelga la "carpeta" de cada fuente.  |
+| `FUENTES` | `dict de 3 claves: 'SSCC', 'CO', 'CCA', …` | base: de donde cuelga la "carpeta" de cada fuente. |
 | `ORDEN_FUENTES` | `['SSCC', 'CO', 'CCA']` |  |
-| `CAPACIDADES` | `frozenset({'fuentes_externas', 'filtro_por_valores', 'borrar_todo', 'cols_no_cero', 'forz…` | Capacidades que este modulo le ofrece a quien lo importe (Actualiza_Energia.py).  |
+| `CAPACIDADES` | `frozenset({'fuentes_externas', 'filtro_por_valores', 'borrar_todo', 'cols_no_cero', 'forz…` | Capacidades que este modulo le ofrece a quien lo importe (Actualiza_Energia.py). |
 | `TABLA_ACCESS` | `'Sobrecostos'` |  |
 | `COLUMNAS_ESPERADAS` | `['Clave Año_Mes', 'Tipo_sobrecosto', 'Central', 'Hora Mensual', 'Sobrecosto']` |  |
-| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `1` |  |
-| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS.  |
+| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS. |
 | `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
 | `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
 | `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
@@ -1403,16 +1405,16 @@ archivo actualizado".
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
 | `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
 | `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
 | `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
-| `FILA_DATOS_TABULADO` | `3` | CONFIGURACION El encabezado del "02 Consolidado_Tabulado" (hoja Sobrecostos) esta en la fila 2, asi que los datos arrancan en la 3.  |
-| `TIPOS` | `('SCMT', 'SCPC')` | Tipos que se traen.  |
+| `FILA_DATOS_TABULADO` | `3` | CONFIGURACION El encabezado del "02 Consolidado_Tabulado" (hoja Sobrecostos) esta en la fila 2, asi que los datos arrancan en la 3. |
+| `TIPOS` | `('SCMT', 'SCPC')` | Tipos que se traen. |
 | `HOJA_ORIGEN` | `'Sobrecostos'` |  |
 | `HOJA_DESTINO_CONSOLIDADO` | `'Sobrecostos'` |  |
 | `FUENTES_ENERGIA` | `dict de 1 claves: 'MDB', …` | ---- 1) Access ------------------------------------------------------------- Columnas AA:AE del tabulado, que ya vienen en el mismo orden que la tabla: AA Clave Año_Mes \| AB Tipo sobrecosto \| AC Cent… |
-| `BLOQUES_CONSOLIDADO` | `[('A', 'G'), ('I', 'J'), ('H', 'H')]` | ---- 2) Consolidado_AAMM --------------------------------------------------- Bloques de origen EN ESTE ORDEN -> se pegan corridos en A:J del destino.  |
+| `BLOQUES_CONSOLIDADO` | `[('A', 'G'), ('I', 'J'), ('H', 'H')]` | ---- 2) Consolidado_AAMM --------------------------------------------------- Bloques de origen EN ESTE ORDEN -> se pegan corridos en A:J del destino. |
 | `COL_FILTRO_CONSOLIDADO` | `'AB'` |  |
 | `COL_DESTINO_INI` | `'A'` |  |
 | `FILA_DESTINO_INI` | `2` |  |
@@ -1480,14 +1482,14 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
-| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Revisor_Reliquidacion.py.  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
+| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Revisor_Reliquidacion.py. |
 | **— Configuracion de origenes y destino —** | | |
 | `HOJA_DESTINO` | `'SC y CO'` |  |
 | `FILA_DESTINO` | `9` |  |
 | `COLS_ID` | `('C', 'G')` | Bloque de identificacion (C:G) y de prorrata (I:X), y las formulas (Y:AF). |
 | `COLS_PRO` | `('I', 'X')` |  |
-| `BLOQUES_FORMULA` | `[('Y', 'AB'), ('AD', 'AF')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a proposito.  |
+| `BLOQUES_FORMULA` | `[('Y', 'AB'), ('AD', 'AF')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a proposito. |
 | `COL_TIPO` | `'D'` |  |
 | `COL_CLAVE` | `'C'` |  |
 | `COL_CENTRAL` | `'E'` |  |
@@ -1571,7 +1573,7 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 | **— Constantes configurables —** | | |
 | `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
 | `CONFIG_PATH` | `Path(__file__).resolve().parent.parent / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].  |
+| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `1` |  |
 | `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
 | `MAPEO_SOBRECOSTOS_CONSOLIDADO` | `lista de 1 elementos: {'hoja_origen': 'Sobrecostos', 'cols_origen': [('A', 'G'), ('I', 'J'), ('Q', 'W')], 'fila_ini_origen': 3, 'fila_det_origen': 'A', 'hoja_destino': 'SOBRECOSTOS', 'cols_destino': [('A', 'G'), ('I', 'J'), ('K', 'Q')], 'fila_ini_destino': 7, 'fila_det_destino': 'A', 'cols_formulas': [('R', 'EB')], 'filtro_col': 'C', 'filtro_valor': 'C.Frec', 'detectar_fin_primera_vacia': True, 'ajustar_formulas': True}, …` |  |
@@ -1692,20 +1694,20 @@ Retorna (ok, lista_rutas_modificadas)
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
 | **— Configuracion —** | | |
 | `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
 | `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
 | `TABLA` | `'Retiros'` |  |
 | `SERVER` | `'SRV-DTE'` |  |
 | `DRIVER` | `'ODBC Driver 17 for SQL Server'` |  |
-| `BASES` | `['02_RETIROS', '14_RETIROS_RELIQUIDACION']` | Las bases entre las que se puede elegir.  |
+| `BASES` | `['02_RETIROS', '14_RETIROS_RELIQUIDACION']` | Las bases entre las que se puede elegir. |
 | `CHUNK` | `50000` |  |
-| `LARGO_TEXTO` | `255` | Largo de las columnas de texto SI HAY QUE CREAR la tabla.  |
+| `LARGO_TEXTO` | `255` | Largo de las columnas de texto SI HAY QUE CREAR la tabla. |
 | `COL_PERIODO` | `'Clave Año_Mes'` | Los nombres de columna NO se escriben igual en todos lados: el parquet a veces trae "Clave Año_Mes" (con espacio y ñ) y a veces "Clave_Anio_Mes" o "Clave_anio_mes", y la tabla de SQL Server tiene el… |
 | `COL_SUMINISTRADOR` | `'Suministrador'` |  |
 | `COL_HORA` | `'Hora Mensual'` |  |
-| `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe.  |
+| `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
 | `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
 | `TRASPASO_VERSION_MAX` | `1` |  |
@@ -1814,14 +1816,14 @@ Devuelve (ok, resumen).
 | Nombre | Valor | |
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor).  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
 | **— Configuracion —** | | |
 | `SERVER` | `'SRV-DTE'` |  |
 | `DRIVER_SQL` | `'ODBC Driver 17 for SQL Server'` |  |
-| `ESCENARIOS` | `dict de 2 claves: 'normal', 'reliq', …` | Los dos escenarios.  |
+| `ESCENARIOS` | `dict de 2 claves: 'normal', 'reliq', …` | Los dos escenarios. |
 | `ORDEN_ESC` | `['normal', 'reliq']` |  |
 | `TABLAS_A_BORRAR` | `['Central_Empresa', 'Pago_Retiro_reporte_tabla', 'Sobrecostos', 'TIPOS']` | Tablas que se borran antes de importar, en la base de sobrecostos. |
-| `IMPORTAR` | `lista de 3 elementos: {'destino': 'Central_Empresa', 'origen': ['Central_Empresa_Actualizada', 'Central_Empresa']}, {'destino': 'Sobrecostos', 'origen': ['Sobrecostos']}, {'destino': 'TIPOS', 'origen': ['TIPOS']}, …` | Que se copia del Access.  |
+| `IMPORTAR` | `lista de 3 elementos: {'destino': 'Central_Empresa', 'origen': ['Central_Empresa_Actualizada', 'Central_Empresa']}, {'destino': 'Sobrecostos', 'origen': ['Sobrecostos']}, {'destino': 'TIPOS', 'origen': ['TIPOS']}, …` | Que se copia del Access. |
 | `COL_CLAVE_ACCESS` | `'Clave Año_Mes'` | Columnas del periodo, para comprobar que los retiros y los sobrecostos sean del MISMO mes antes de prorratear. |
 | `COL_CLAVE_RETIROS` | `'Clave_Anio_Mes'` |  |
 | `TABLA_RETIROS` | `'Retiros'` |  |
@@ -1829,7 +1831,7 @@ Devuelve (ok, resumen).
 | `TABLA_REPORTE` | `'Pago_Retiro_reporte_tabla'` |  |
 | `SQL_REPORTE` | `'\nSELECT Tipo_sobrecosto, Concepto, Barra, Suministrador, Retiro, clave, Tipo,\n SUM(pag…` |  |
 | `CHUNK` | `20000` |  |
-| `LARGO_TEXTO` | `255` | Largo de las columnas de texto al crear las tablas.  |
+| `LARGO_TEXTO` | `255` | Largo de las columnas de texto al crear las tablas. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
 | `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
 | `TRASPASO_VERSION_MAX` | `1` |  |
@@ -1926,23 +1928,791 @@ Devuelve (ok, resumen).
 
 ---
 
+## `Comparadores/Comparador_Etapas.py`
+
+> Comparador_Etapas.py
+>
+> Consolida los sobrecostos horarios de los .mdb de las tres etapas del proceso
+> (Definitivo, Reliquidacion Preliminar, Reliquidacion Definitiva) para los 12
+> meses de un anio, y exporta un Excel de comparacion con el detalle horario por
+> central (una hoja por mes).
+>
+> Por cada mes y etapa hay DOS Access:
+>     slot "sscc" -> 03b ENTRADA_SOB_SSCC_AAMM_*.mdb   (tipos SCCF, CO, CCA)
+>     slot "sob"  -> 03b ENTRADA_SOB_AAMM_*.mdb        (tipos SCMT, SCPC)
+>
+> De cada .mdb se leen:
+>     - tabla Sobrecostos  (Clave Anio_Mes, Tipo_sobrecosto, Central, Hora Mensual, Sobrecosto)
+>     - tabla Central_Empresa_Actualizada, y si no existe, Central_Empresa
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `REQUISITOS` | `['pyodbc', 'pandas', 'pyarrow', 'duckdb', 'xlsxwriter', 'openpyxl']` | Dependencias externas Se comprueban antes de importarlas: si falta alguna se avisa en una ventana y se sale, en vez de reventar con un ModuleNotFoundError pelado. |
+| `FALTAN` | `[n for n in REQUISITOS if _falta(n)]` |  |
+| **— Constantes —** | | |
+| `APP_TITULO` | `'Comparador de etapas — Def / Rpre / Rdef'` |  |
+| `BASE` | `Path(__file__).resolve().parent` |  |
+| `DIR_REVISOR` | `_hallar_revisor(BASE.parent)` |  |
+| `CONFIG_PATH` | `DIR_REVISOR / 'config.json'` |  |
+| `SALIDAS` | `_sal.raiz_salidas(BASE)` |  |
+| `CLAVE_JSON_PROPIA` | `'comparador_etapas'` | Clave nueva y propia dentro del JSON de traspaso del revisor. |
+| `NOMBRE_JSON_MES` | `'_traspaso_actualizador.json'` |  |
+| `ETAPAS` | `['def', 'rpre', 'rdef']` |  |
+| `ETIQUETA` | `{'def': 'Def', 'rpre': 'Rpre', 'rdef': 'Rdef'}` |  |
+| `SLOTS` | `['sscc', 'sob']` |  |
+| `ETIQUETA_SLOT` | `{'sscc': 'SOB_SSCC', 'sob': 'SOB'}` |  |
+| `PAT_SSCC` | `re.compile('ENTRADA[\\s_]*SOB[\\s_]*SSCC', re.IGNORECASE)` | Patrones de nombre de archivo Sin anclar al inicio: en el Definitivo los archivos NO empiezan con "03b", asi que lo que identifica a cada uno es el trozo ENTRADA_SOB(_SSCC), donde sea que aparezca en… |
+| `PAT_SOB` | `re.compile('ENTRADA[\\s_]*SOB(?![\\s_]*SSCC)', re.IGNORECASE)` |  |
+| `PAT_COPIA` | `re.compile('(-\\s*copia\|-\\s*copy\|\\(\\d+\\))\\s*$', re.IGNORECASE)` |  |
+| `PAT_REMUN` | `re.compile('^4[\\s_]*REMUNERACI[OÓ]N[\\s_]*SC[\\s_]*CO', re.IGNORECASE)` | Maestro del propietario vigente: T:\Facturacion\<AAAA>\<MM Mes>\{02 Definitivo\|01 Preliminar}\SSCC\ 4_REMUNERACION_SC_CO_AAMM_*.xlsx\|xlsm -> hoja "Configuracion Empresa", A y B |
+| `PAT_ANIO_DIR` | `re.compile('^(20\\d{2})$')` |  |
+| `PAT_MES_DIR` | `re.compile('^(\\d{1,2})\\b')` |  |
+| `RAMAS_FACT` | `['02 Definitivo', '01 Preliminar']` |  |
+| `HOJA_CONFIG_EMPRESA` | `'Configuracion Empresa'` |  |
+| `COLOR_ROJO` | `'#c0392b'` |  |
+| `COLOR_AMARILLO` | `'#b8860b'` |  |
+| `COLOR_VERDE` | `'#1e7a1e'` |  |
+| `COLOR_GRIS` | `'#7f8c8d'` |  |
+| `MAPA_SOB` | `dict de 7 claves: 'claveaniomes', 'claveanomes', 'clavea_omes', …` | Nombres de columna que se buscan en la tabla Sobrecostos (normalizados) |
+| `MAPA_CEN` | `{'central': 'central', 'empresa': 'empresa'}` |  |
+| `_CACHE_DIR` | `{}` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
+| `TRAMOS_DEF` | `lista de 3 elementos: ('Sobrecostos', ('Sobrecosto',)), ('02 Definitivo', ('Definitivo',)), ('Auxiliares', ('Auxiliar', 'Auxiliares Definitivo')), …` | Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares. |
+| `SUB_POR_SLOT` | `dict de 2 claves: 'sscc', 'sob', …` | Subcarpetas del arbol de reliquidacion donde vive cada .mdb |
+| `COLUMNAS_VISTA` | `lista de 23 elementos: 'aamm', 'central', 'empresa', …` | Si se agrega una columna a la vista, las vistas ya escritas en disco quedan viejas. |
+| `COLUMNAS_EXCEL` | `lista de 21 elementos: ('central', 'Central'), ('empresa', 'Empresa'), ('tipo', 'Tipo'), …` |  |
+| `COL_DELTAS` | `(7, 8, 9)` |  |
+| `COL_NUM` | `(4, 5, 6, 7, 8, 9)` |  |
+| `COL_HORA` | `3` |  |
+| `LIMITE_FILAS_HOJA` | `1048000` |  |
+| `FAMILIAS` | `[('SSCC', ['CCA', 'CO', 'SCCF']), ('Energia', ['SCMT', 'SCPC'])]` | Tipos de sobrecosto de cada familia, en el orden en que se muestran |
+| `HOJAS_PROPIAS_FIJAS` | `['RESUMEN SSCC', 'RESUMEN ENERGIA', 'PROPIETARIOS']` | Hojas que genera este programa. |
+| `CAB_RESUMEN` | `['', 'Def', 'Rpre', 'Rdef', 'Rpre - Def', 'Rdef - Rpre', 'Rdef - Def']` |  |
+| `CAB_PROP` | `lista de 10 elementos: 'Mes', 'Central', 'Emp Def', …` |  |
+| `SQL_PROP` | `"\n SELECT DISTINCT central, emp_def, emp_rpre, emp_rdef, empresa_actual,\n empresa_cambi…` |  |
+
+### Clases
+
+#### `class _Perezoso`
+
+Carga un modulo la PRIMERA vez que se usa, no al arrancar.
+
+pandas, pyarrow y duckdb tardan varios segundos en importarse cuando el
+antivirus corporativo revisa cada archivo del paquete, y ese costo se
+pagaba antes de dibujar la ventana. Con esto la ventana aparece de
+inmediato y el costo se paga recien al consolidar, donde ademas se ve
+en la barra de progreso.
+
+Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
+
+- `def __init__(self, nombre)`
+
+#### `class _Entrada`
+
+Un archivo o carpeta, con lo que hace falta ya leido.
+
+- `def __init__(self, nombre, ruta, es_dir, mtime, size)`
+
+**— Ventana —**
+
+#### `class App`
+
+- `def __init__(self, root)`
+- `def log(self, msg)`
+- `def set_estado(self, txt)`
+- `def tick(self)`
+- `def botones(self, activos)`
+- `def lanzar(self, funcion, **kw)` — Corre en hilo aparte para que la ventana no se congele.
+- `def elegir_cmg(self)`
+- `def elegir_fact(self)`
+- `def actualizar_actual(self, forzar=False)`
+- `def pintar_actual(self)`
+- `def elegir_carpeta(self, aamm, etapa)` — Una sola carpeta y de ahi salen los dos .mdb.
+- `def elegir_mdb(self, aamm, etapa, slot)`
+- `def refrescar(self, solo=None)` — Busca los archivos en segundo plano, para no congelar la ventana.
+- `def construir_filas(self, meses)`
+- `def cambiar_inclusion(self, m)` — Marcar/desmarcar un mes para el consolidado anual.
+- `def alternar(self, m)`
+- `def pintar(self)`
+- `def meses_visibles(self)`
+- `def confirmar_todo(self)`
+- `def consolidar(self, meses=None, forzar=False)`
+- `def rearmar_vista(self, meses=None)`
+- `def exportar(self)` — Excel por mes en 00_Salidas/AAAA/MM Mes + consolidado anual en _comparador.
+
+### Funciones
+
+#### `def cdir(anio)`
+
+#### `def dir_parquet(anio)`
+
+#### `def dir_sob_raiz(anio)`
+
+#### `def dir_cen_raiz(anio)`
+
+#### `def dir_vistas(anio)`
+
+#### `def dir_actual(anio)`
+
+#### `def actual_parquet(anio)`
+
+#### `def estado_path(anio)`
+
+#### `def rutas_path(anio)`
+
+#### `def normalizar(texto)`
+
+Sin tildes, sin espacios/guiones bajos, en minusculas.
+
+#### `def normalizar_suave(texto)`
+
+Sin tildes, espacios colapsados, minusculas (para nombres de carpeta).
+
+#### `def limpiar_cache()`
+
+Se llama al empezar cada refresco, para no mostrar datos viejos.
+
+#### `def listar(carpeta)`
+
+Contenido de una carpeta en UNA sola consulta al disco (con cache).
+
+#### `def huella_entrada(ruta)`
+
+mtime+tamano de un archivo, aprovechando el listado ya leido.
+
+#### `def get_usuario()`
+
+#### `def leer_json(path, defecto=None)`
+
+#### `def escribir_json_atomico(path, data)`
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=True)`
+
+#### `def huella(ruta)`
+
+Identidad barata de un archivo en disco de red: mtime + tamanio.
+
+Se apoya en el listado ya leido de la carpeta, para no hacer un viaje
+extra por cada archivo.
+
+#### `def es_copia(nombre)`
+
+#### `def subcarpeta(padre, nombre_buscado)`
+
+Subcarpeta por nombre normalizado (tolera tildes y mayusculas).
+
+#### `def buscar_mdb(carpeta, patron)`
+
+Mas reciente que calce con el patron, descartando copias de Windows.
+
+#### `def meses_del_anio(anio)`
+
+['2401', '2402', ... '2412'] a partir de 2024 o de '24'.
+
+#### `def fmt_tiempo(seg)`
+
+#### `def ahora()`
+
+**— Resolucion de rutas de los .mdb —**
+
+#### `def ruta_json_mes(aamm)`
+
+#### `def rutas_desde_json_mes(aamm)`
+
+Lee el JSON de traspaso del mes. Devuelve (rdef, rpre) como dicts.
+
+#### `def guardar_rpre_en_json_mes(aamm, slot, ruta, log=print)`
+
+Agrega la ruta Rpre al JSON del mes bajo una clave propia.
+
+Solo agrega/actualiza `comparador_etapas`; nunca toca `rutas`, `planilla`
+ni ninguna otra clave, asi que los demas scripts siguen leyendo lo mismo.
+
+#### `def buscar_mdb_arbol(base, patron, profundidad=4)`
+
+Ultimo recurso: baja por el arbol buscando el .mdb que calce.
+
+Se limita la profundidad y se saltan las carpetas de detalles diarios, que
+son las caras en un disco de red.
+
+#### `def carpeta_definitivo(raiz_cmg, aamm)`
+
+Devuelve (carpeta_auxiliares | None, hasta_donde_se_llego).
+
+El segundo valor es para mostrarlo en la ventana: si la estructura cambio,
+conviene ver en que tramo se corto en lugar de un "sin ruta" pelado.
+
+#### `def mdb_presentes(base, tope=6, profundidad=3)`
+
+Nombres de los .mdb que hay bajo una carpeta, para poder diagnosticar.
+
+Cuando el patron no calza con nada, saber que archivos hay ahi es lo unico
+que permite entender por que.
+
+#### `def mdb_en_carpeta(carpeta, log=print)`
+
+Encuentra los dos .mdb a partir de UNA carpeta.
+
+Sirve igual para la carpeta `02 CASO RELIQUIDACION` (busca en
+`01 Sobrecostos` y `01.a Sobrecostos de Energia`) y para una carpeta
+`Auxiliares` donde los dos estan juntos. Si no los ve donde deberian,
+baja por el arbol como ultimo recurso.
+
+Devuelve ({slot: ruta}, diagnostico).
+
+#### `def resolver_rutas(aamm, raiz_cmg, rutas_manuales)`
+
+({etapa: {slot: ruta|None}}, {etapa: diagnostico}) para un mes.
+
+Prioridad, de menor a mayor: autodeteccion > JSON del mes >
+carpeta elegida a mano > archivo elegido a mano.
+
+**— Lectura de los .mdb —**
+
+#### `def driver_access()`
+
+#### `def conectar(ruta_mdb)`
+
+#### `def tablas(con)`
+
+#### `def tabla_por_nombre(nombres, candidatos)`
+
+Primer candidato presente, comparando normalizado.
+
+#### `def mapear_columnas(cols, mapa)`
+
+{nombre_real: nombre_canonico} segun el mapa normalizado.
+
+#### `def leer_sobrecostos(ruta_mdb, aamm, log=print)`
+
+DataFrame con clave_aamm, tipo, central, hora_mes, sobrecosto.
+
+#### `def leer_centrales(ruta_mdb, log=print)`
+
+DataFrame con central, empresa, tabla_origen.
+
+Busca Central_Empresa_Actualizada; si no esta, Central_Empresa.
+
+#### `def carpetas_facturacion(raiz)`
+
+[(anio, mes_num, carpeta_mes)] de la mas nueva a la mas vieja.
+
+#### `def buscar_maestro_actual(raiz_fact, log=print)`
+
+El 4_REMUNERACION_SC_CO mas nuevo disponible.
+
+Recorre anio y mes de mas nuevo a mas viejo; dentro de cada mes prueba
+primero `02 Definitivo\SSCC` y despues `01 Preliminar\SSCC`. El primero
+que encuentre gana. Devuelve (ruta, etiqueta) o (None, None).
+
+#### `def buscar_archivo(carpeta, patron, extensiones)`
+
+Mas reciente que calce, descartando copias de Windows.
+
+#### `def leer_config_empresa(ruta, log=print)`
+
+Hoja 'Configuracion Empresa', columnas A y B, datos desde la fila 2.
+
+#### `def consolidar_actual(anio, raiz_fact, est, forzar=False, log=print)`
+
+Deja el propietario vigente en parquet. Idempotente por huella.
+
+#### `def mes_incluido(est, aamm)`
+
+Si el mes entra al consolidado anual. Por defecto si.
+
+#### `def fijar_incluido(est, aamm, valor)`
+
+#### `def cargar_estado(anio)`
+
+#### `def guardar_estado(anio, est)`
+
+#### `def estado_etapa(est, aamm, etapa, rutas)`
+
+'falta' | 'pendiente' | 'desactualizado' | 'ok'
+
+#### `def color_de(estado)`
+
+#### `def estado_mes(est, aamm, rutas)`
+
+**— Consolidacion -> parquet —**
+
+#### `def dir_sob(aamm, etapa)`
+
+#### `def dir_cen(aamm, etapa)`
+
+#### `def path_vista(aamm)`
+
+#### `def path_excel_mes(aamm)`
+
+El Excel propio del mes, en su carpeta 00_Salidas/AAAA/MM Mes.
+
+#### `def path_excel_anual(anio_aa)`
+
+El consolidado con todos los meses disponibles, en _comparador.
+
+#### `def firma_vistas(meses)`
+
+Que meses entran al consolidado y con que version de su vista.
+
+Si esta firma no cambio, el consolidado anual ya esta al dia y no hay para
+que reescribirlo.
+
+#### `def consolidar_etapa(aamm, etapa, rutas, est, log=print)`
+
+Lee los 2 .mdb de una etapa y reescribe SOLO su particion.
+
+#### `def una_fila(cur, defecto=None)`
+
+fetchone() que nunca devuelve None: un COUNT/SUM siempre trae fila,
+pero el tipo declarado es Optional y hay que desempaquetarlo con cuidado.
+
+#### `def etapas_consolidadas(aamm)`
+
+#### `def construir_vista(aamm, log=print)`
+
+Pivotea las etapas del mes en una tabla ancha y la deja en cache.
+
+#### `def vista_completa(aamm)`
+
+True si la vista existe y trae todas las columnas que se esperan hoy.
+
+#### `def asegurar_vista(aamm, log=print)`
+
+Rearma la vista del mes si falta o si quedo con el formato viejo.
+
+#### `def es_hoja_propia(nombre, meses=None)`
+
+True si la hoja la genera este programa (y por lo tanto se puede pisar).
+
+Una hoja de mes se reconoce por su nombre (AAMM o AAMM_2), no por estar en
+la lista de meses que se exporta ahora: si un mes se saca del consolidado,
+su hoja tiene que desaparecer, no quedar congelada como si fuera de otro.
+
+#### `def datos_resumen(con, pvs_por_mes, familia_tipos)`
+
+Bloques del resumen: por cada mes, una fila por tipo mas el total.
+
+Devuelve [(aamm, [(etiqueta, def, rpre, rdef, d1, d2, d3), ...]), ...]
+
+#### `def datos_hoja_mes(con, pvs, claves, filtro, orden=True)`
+
+Cursor con las filas del detalle de un mes.
+
+#### `def exportar_excel(destino, meses, solo_dif, tolerancia, log=print, preservar=True)`
+
+Escribe el libro de comparacion.
+
+Si el archivo ya existe y alguien agrego hojas propias, se conservan: se
+reescriben unicamente las hojas que genera este programa.
+
+#### `def hojas_ajenas(destino, log=print)`
+
+Hojas del archivo que NO genera este programa.
+
+#### `def escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log)`
+
+Camino rapido: el archivo no existe o no tiene hojas de nadie mas.
+
+#### `def escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log)`
+
+Reescribe solo las hojas propias, dejando intactas las de los demas.
+
+Es mas lento que escribir de cero porque hay que cargar el libro entero en
+memoria, pero es la unica forma de no borrar el trabajo de otra persona.
+
+#### `def respaldar(destino, anio, log=print)`
+
+Copia el archivo antes de reescribirlo. Deja las ultimas 5.
+
+#### `def main()`
+
+
+---
+
+## `Comparadores/Comparador_Tabulado.py`
+
+> Comparador_Tabulado.py
+>
+> Compara, por central y hora, el SOBRECOSTO junto con las tres variables que lo
+> explican -- Generacion, CV y CMg -- entre las tres etapas del proceso
+> (Definitivo, Reliquidacion preliminar, Reliquidacion definitiva), leyendo el
+> archivo "02 Consolidado_Tabulado" de cada etapa.
+>
+> Es un programa INDEPENDIENTE de Comparador_Etapas.py (el de los .mdb). Comparte
+> la misma carpeta base y el mismo estilo de ventana, pero su almacenamiento y
+> sus Excel son propios, asi que se pueden correr por separado sin pisarse.
+>
+> De la hoja "Sobrecostos" se leen las columnas A:E, G, I:J y W. La fila 2 es el
+> encabezado, los datos parten en la 3.
+>
+> Como encuentra los archivos
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `comun`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `REQUISITOS` | `['pandas', 'pyarrow', 'duckdb', 'xlsxwriter', 'openpyxl']` | Dependencias externas Se comprueban antes de importarlas: si falta alguna se avisa en una ventana y se sale, en vez de reventar con un ModuleNotFoundError pelado. |
+| `FALTAN` | `[n for n in REQUISITOS if _falta(n)]` |  |
+| `TIENE_CALAMINE` | `not _falta('python_calamine')` | python_calamine es OPCIONAL: acelera varias veces la lectura de los .xlsm. |
+| **— Constantes —** | | |
+| `APP_TITULO` | `'Comparador de consolidados tabulados — Def / Rpre / Rdef'` |  |
+| `BASE` | `Path(__file__).resolve().parent` |  |
+| `DIR_REVISOR` | `_hallar_revisor(BASE.parent)` |  |
+| `CONFIG_PATH` | `DIR_REVISOR / 'config.json'` |  |
+| `SALIDAS` | `_sal.raiz_salidas(BASE)` |  |
+| `NOMBRE_JSON_MES` | `'_traspaso_actualizador.json'` |  |
+| `CLAVE_JSON_PROPIA` | `'comparador_etapas'` |  |
+| `ETAPAS` | `['def', 'rpre', 'rdef']` |  |
+| `ETIQUETA` | `{'def': 'Def', 'rpre': 'Rpre', 'rdef': 'Rdef'}` |  |
+| `SLOTS` | `['sscc', 'sob']` |  |
+| `ETIQUETA_SLOT` | `{'sscc': 'SOB_SSCC', 'sob': 'SOB'}` |  |
+| `PAT_SSCC` | `re.compile('ENTRADA[\\s_]*SOB[\\s_]*SSCC', re.IGNORECASE)` |  |
+| `PAT_SOB` | `re.compile('ENTRADA[\\s_]*SOB(?![\\s_]*SSCC)', re.IGNORECASE)` |  |
+| `PAT_COPIA` | `re.compile('(-\\s*copia\|-\\s*copy\|\\(\\d+\\))\\s*$', re.IGNORECASE)` |  |
+| `COLOR_ROJO` | `'#c0392b'` |  |
+| `COLOR_AMARILLO` | `'#b8860b'` |  |
+| `COLOR_VERDE` | `'#1e7a1e'` |  |
+| `COLOR_GRIS` | `'#7f8c8d'` |  |
+| `LIMITE_FILAS_HOJA` | `1048000` |  |
+| **— lectura del Consolidado_Tabulado —** | | |
+| `NOMBRE_CARPETA_DETALLES` | `'Detalles diarios'` |  |
+| `EXT_CONSOL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
+| `COLS_CONSOL` | `dict de 9 claves: 'A', 'B', 'C', …` | Columnas de la hoja "Sobrecostos", por letra. |
+| `FILA_ENCABEZADO_CONSOL` | `2` |  |
+| `_CACHE_DIR` | `{}` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
+| `HOJAS_PROPIAS_FIJAS` | `['RESUMEN']` | Hojas que genera este programa; cualquier otra es de alguien mas. |
+| `TRAMOS_DEF` | `lista de 3 elementos: ('Sobrecostos', ('Sobrecosto',)), ('02 Definitivo', ('Definitivo',)), ('Auxiliares', ('Auxiliar', 'Auxiliares Definitivo')), …` | Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares. |
+| `IDX_CONSOL` | `{_col_a_indice(l): nom for l, nom in COLS_CONSOL.items()}` |  |
+| `COLUMNAS_VISTA` | `lista de 25 elementos: 'aamm', 'central', 'tipo', …` |  |
+| `CAB` | `lista de 24 elementos: 'Central', 'Tipo', 'Hora Mensual', …` |  |
+
+### Clases
+
+#### `class _Perezoso`
+
+Carga un modulo la PRIMERA vez que se usa, no al arrancar.
+
+pandas, pyarrow y duckdb tardan varios segundos en importarse cuando el
+antivirus corporativo revisa cada archivo del paquete, y ese costo se
+pagaba antes de dibujar la ventana. Con esto la ventana aparece de
+inmediato y el costo se paga recien al consolidar, donde ademas se ve
+en la barra de progreso.
+
+Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
+
+- `def __init__(self, nombre)`
+
+#### `class _Entrada`
+
+Un archivo o carpeta, con lo que hace falta ya leido.
+
+- `def __init__(self, nombre, ruta, es_dir, mtime, size)`
+
+**— Ventana —**
+
+#### `class App`
+
+- `def __init__(self, root)`
+- `def log(self, msg)`
+- `def set_estado(self, txt)`
+- `def tick(self)`
+- `def botones(self, activos)`
+- `def lanzar(self, funcion, **kw)`
+- `def elegir_cmg(self)`
+- `def elegir_archivo(self, aamm, etapa)`
+- `def elegir_carpeta(self, aamm, etapa)` — Apuntar directo a una carpeta 'Detalles diarios'.
+- `def olvidar_manual(self, aamm, etapa)`
+- `def refrescar(self, solo=None)` — Busca los archivos en segundo plano, para no congelar la ventana.
+- `def construir_filas(self, meses)`
+- `def cambiar_inclusion(self, m)`
+- `def alternar(self, m)`
+- `def pintar(self)`
+- `def meses_visibles(self)`
+- `def tolerancia(self)`
+- `def confirmar_todo(self)`
+- `def consolidar(self, meses=None, forzar=False)`
+- `def rearmar_vista(self, meses=None)`
+- `def exportar(self)`
+
+### Funciones
+
+#### `def cdir(anio)`
+
+#### `def dir_parquet(anio)`
+
+#### `def dir_vistas(anio)`
+
+#### `def estado_path(anio)`
+
+#### `def rutas_path(anio)`
+
+#### `def cdir_mdb(anio)`
+
+Carpeta del comparador de .mdb: se consulta en modo solo lectura.
+
+#### `def rutas_mdb_path(anio)`
+
+#### `def normalizar(texto)`
+
+Sin tildes, sin espacios/guiones bajos, en minusculas.
+
+#### `def normalizar_suave(texto)`
+
+Sin tildes, espacios colapsados, minusculas (para nombres de carpeta).
+
+#### `def limpiar_cache()`
+
+Se llama al empezar cada refresco, para no mostrar datos viejos.
+
+#### `def listar(carpeta)`
+
+Contenido de una carpeta en UNA sola consulta al disco (con cache).
+
+#### `def huella_entrada(ruta)`
+
+mtime+tamano de un archivo, aprovechando el listado ya leido.
+
+#### `def get_usuario()`
+
+#### `def leer_json(path, defecto=None)`
+
+#### `def escribir_json_atomico(path, data)`
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=True)`
+
+#### `def huella(ruta)`
+
+Identidad barata de un archivo en disco de red: mtime + tamanio.
+
+Se apoya en el listado ya leido de la carpeta, para no hacer un viaje
+extra por cada archivo.
+
+#### `def es_copia(nombre)`
+
+#### `def subcarpeta(padre, nombre_buscado)`
+
+Subcarpeta por nombre normalizado (tolera tildes y mayusculas).
+
+#### `def buscar_mdb(carpeta, patron)`
+
+Mas reciente que calce con el patron, descartando copias de Windows.
+
+#### `def meses_del_anio(anio)`
+
+['2401', '2402', ... '2412'] a partir de 2024 o de '24'.
+
+#### `def fmt_tiempo(seg)`
+
+#### `def ahora()`
+
+#### `def una_fila(cur, defecto=None)`
+
+fetchone() que nunca devuelve None: un COUNT/SUM siempre trae fila,
+pero el tipo declarado es Optional y hay que desempaquetarlo con cuidado.
+
+#### `def es_hoja_propia(nombre, meses=None)`
+
+True si la hoja la genera este programa (y por lo tanto se puede pisar).
+
+Una hoja de mes se reconoce por su nombre (AAMM o AAMM_2), no por estar en
+la lista de meses que se exporta ahora: si un mes se saca del consolidado,
+su hoja tiene que desaparecer, no quedar congelada como si fuera de otro.
+
+#### `def hojas_ajenas(destino, log=print)`
+
+Hojas del archivo que NO genera este programa.
+
+#### `def respaldar(destino, anio, log=print)`
+
+Copia el archivo antes de reescribirlo. Deja las ultimas 5.
+
+#### `def cargar_estado(anio)`
+
+#### `def guardar_estado(anio, est)`
+
+#### `def mes_incluido(est, aamm)`
+
+Si el mes entra al consolidado anual. Por defecto si.
+
+#### `def fijar_incluido(est, aamm, valor)`
+
+#### `def firma_vistas(meses)`
+
+Que meses entran al consolidado y con que version de su vista.
+
+Si esta firma no cambio, el consolidado anual ya esta al dia y no hay para
+que reescribirlo.
+
+#### `def color_de(estado)`
+
+#### `def carpeta_definitivo(raiz_cmg, aamm)`
+
+Devuelve (carpeta_auxiliares | None, hasta_donde_se_llego).
+
+El segundo valor es para mostrarlo en la ventana: si la estructura cambio,
+conviene ver en que tramo se corto en lugar de un "sin ruta" pelado.
+
+**— Resolucion de rutas del Consolidado_Tabulado —**
+
+#### `def ruta_json_mes(aamm)`
+
+#### `def rutas_desde_json_mes(aamm)`
+
+(rdef, rpre) con las rutas de los .mdb que dejo el otro programa.
+
+#### `def rutas_manuales_mdb(anio)`
+
+Las carpetas que el usuario ya eligio en el comparador de .mdb.
+
+Se leen en modo solo lectura: este programa nunca escribe ese archivo.
+
+#### `def excel_en_detalles(carpeta, log=print)`
+
+El Consolidado_Tabulado de una carpeta 'Detalles diarios'.
+
+NO se exige un nombre exacto: se toma el unico Excel que haya. Si hay
+varios, se descartan las copias ("- copia", "- Copy", "(2)") y los
+temporales de Excel, y se prefiere el que mencione "Consolidado" o
+"Tabulado"; a igualdad, el mas reciente.
+
+#### `def detalles_junto_al_mdb(ruta_mdb)`
+
+La carpeta 'Detalles diarios' que corresponde a un .mdb de SSCC.
+
+Se busca primero DENTRO de la carpeta del .mdb (caso Rpre/Rdef, donde
+cuelga de '01 Sobrecostos') y despues como HERMANA (caso Definitivo,
+donde el .mdb esta en 'Auxiliares' y 'Detalles diarios' esta al lado).
+Asi la misma funcion sirve para las tres etapas sin ramificar.
+
+#### `def mdb_sscc_de_etapa(aamm, etapa, raiz_cmg, manual_mdb)`
+
+Ubica el .mdb de SSCC de una etapa, que es el ancla de la busqueda.
+
+#### `def resolver_rutas(aamm, raiz_cmg, manuales, manual_mdb)`
+
+({etapa: ruta|None}, {etapa: diagnostico}) del Consolidado_Tabulado.
+
+#### `def tabla_por_nombre(nombres, candidatos)`
+
+Primer candidato presente, comparando normalizado.
+
+#### `def leer_consolidado_tabulado(ruta, log=print)`
+
+DataFrame: central, tipo, dia, hora_dia, sobrecosto, gen, cv, cmg, usd.
+
+Usa python_calamine si esta disponible (varias veces mas rapido que
+openpyxl en archivos grandes, que es el "truquito" para que esto no se
+demore como los .mdb por red); si no esta instalado, cae a openpyxl.
+
+#### `def hora_mensual(dia, hora_dia, acumulado_por_dia_dict)`
+
+hora_mes = horas de los dias 1..dia-1 + hora_dia.
+
+acumulado_por_dia_dict: {dia: horas_acumuladas_antes_de_ese_dia}, calculado
+sobre las horas que realmente trae el archivo (asi un dia de 23 o 25
+horas por cambio de hora no desalinea los dias siguientes: el archivo
+manda, no el calendario).
+
+#### `def acumulado_por_dia(df)`
+
+{dia: horas_acumuladas_antes_de_ese_dia} a partir de lo que trae el df.
+
+#### `def dir_datos(aamm, etapa)`
+
+#### `def path_vista(aamm)`
+
+#### `def path_excel_mes(aamm)`
+
+#### `def path_excel_anual(aa)`
+
+#### `def estado_etapa(est, aamm, etapa, rutas)`
+
+#### `def consolidar_etapa(aamm, etapa, ruta, est, log=print)`
+
+#### `def etapas_consolidadas(aamm)`
+
+#### `def vista_completa(aamm)`
+
+#### `def construir_vista(aamm, tol=0.01, log=print)`
+
+Pivotea SC/Gen/CV/CMg de las etapas disponibles y arma las banderas.
+
+'cambia_X' es cierto si esa variable difiere en mas de `tol` (proporcion,
+ej. 0.01 = 1%) entre alguna pareja de etapas que si estan consolidadas.
+'formula_mismatch' es cierto si en alguna etapa Sobrecosto no calza con
+(CV-CMg)*Gen*USD mas alla de la tolerancia.
+
+#### `def asegurar_vista(aamm, tol=0.01, log=print)`
+
+#### `def exportar_excel(destino, meses, solo_dif, tolerancia, log=print, preservar=True)`
+
+Igual espiritu que exportar_excel: solo pisa sus propias hojas.
+
+#### `def main()`
+
+
+---
+
 ## Constantes definidas en más de un archivo
 
 Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. Candidatas a mudarse a `comun/`.
 
 | Constante | Archivos |
 |---|---|
+| `APP_TITULO` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `BASE` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `CENTRALES_EMBALSE` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py` |
 | `CHUNK` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
-| `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `CLAVE_JSON_PROPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COLOR_AMARILLO` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COLOR_GRIS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COLOR_ROJO` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COLOR_VERDE` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COLUMNAS_VISTA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
+| `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `ETAPAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `ETIQUETA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `ETIQUETA_SLOT` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `FALTAN` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `FUENTES` | `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py` |
+| `HOJAS_PROPIAS_FIJAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `LARGO_TEXTO` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `LIMITE_FILAS_HOJA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `NOMBRE_JSON_MES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `NS_REL` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
 | `NS_XL` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
+| `PAT_COPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `PAT_SOB` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `PAT_SSCC` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `REQUISITOS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `SALIDAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `SERVER` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `SLOTS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `TRAMOS_DEF` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `_CACHE_DIR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_ENT_XML` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
 | `_NECESITA` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |
 | `_RE_ENT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |

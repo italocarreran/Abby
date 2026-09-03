@@ -40,12 +40,10 @@
       menciones viejas — se suma a la fila ya abierta de diferencias con el
       código real (arriba).
 
-- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tarea 1 (`comun/salidas.py` +
-      `dir_mes` del Revisor) terminada; faltan Tarea 2 (cablear los dos
-      comparadores), Tarea 3
-      (4 bugs encontrados) y Tarea 4 (tema oscuro, experimental). Los dos `.py`
-      ya están en `Comparadores/` pero **sin cablear: hoy no corren en esa
-      ubicación**. Borrar ese plan cuando esté todo aplicado.
+- [ ] **En curso — `docs/PLAN_comparadores.md`.** Tareas 1 (`comun/salidas.py` + `dir_mes` del Revisor) y 2 (cableado de
+      los dos comparadores) terminadas; faltan Tarea 3 (4 bugs encontrados) y
+      Tarea 4 (tema oscuro, experimental). Borrar ese plan cuando esté todo
+      aplicado.
 - [ ] **Bug 🔴 sin arreglar:** los dos comparadores escriben en la ventana desde
       el hilo de trabajo (`App.log`). Da cuelgues intermitentes en corridas
       largas. Plan, 3.1.
@@ -63,6 +61,23 @@
       del plan, después y por separado.
 
 ---
+
+## 2026-09-03 — ChatGPT — Tarea 2: cablea los dos comparadores
+
+Los dos comparadores localizan ahora la carpeta hermana que contiene
+`Revisor_Reliquidacion.py`, usan exactamente su `config.json` y comparten con el
+Revisor la lógica de `comun/salidas.py`. Todo su estado es anual:
+`_comparador`, `_comparador_tabulado`, sus `estado.json`, `rutas.json`, parquet,
+vistas y respaldos viven bajo `00_Salidas/AAAA/`; los JSON y Excel mensuales
+usan `AAAA/MM Mes`. Tabulado conserva las carpetas reales
+`parquet_variables`/`vistas_variables` y lee el `rutas.json` del comparador de
+Access del mismo año.
+
+Se registraron ambos scripts en el generador, `MAPA.md`, `README.md`, `AGENTS.md`
+y `INTERFACES.md`. La verificación de la sección 6.6 confirmó sintaxis, pruebas
+del módulo común, rutas esperadas y que ambos comparadores apuntan al mismo
+`config.json` del Revisor. Quedan fuera de alcance las Tareas 3 y 4 y la futura
+migración de sus copias de configuración a `comun/config.py`.
 
 ## 2026-09-03 — Claude — verifica la Tarea 1 y corrige dos cosas
 

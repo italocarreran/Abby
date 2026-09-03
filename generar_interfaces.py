@@ -37,7 +37,7 @@ from pathlib import Path
 # Carpetas que se recorren, en este orden. Las que no existan se saltan, y un
 # archivo ya visto no se repite: "scripts/comun" va primero solo para que el
 # modulo compartido quede arriba en el indice.
-CARPETAS = ["Revisor_Relq/comun", "Revisor_Relq"]
+CARPETAS = ["Revisor_Relq/comun", "Revisor_Relq", "Comparadores"]
 
 # Archivos que nunca entran a INTERFACES.md. __init__.py de un paquete
 # es solo el "que es esta carpeta"; su contenido ya esta en MAPA.md.
@@ -222,7 +222,7 @@ def primera_frase(texto: str, largo: int = MAX_NOTA) -> str:
         return ""
     corte = re.search(r"(?<=\.)\s", plano)
     if corte and corte.start() + 1 <= largo:
-        plano = plano[: corte.start() + 1]
+        plano = plano[:corte.start()]
     if len(plano) > largo:
         plano = plano[: largo - 1].rstrip() + "…"
     return plano

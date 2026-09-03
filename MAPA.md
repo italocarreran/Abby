@@ -14,6 +14,10 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 **Dónde vive cada uno:**
 
 ```
+Comparadores/                      herramientas anuales, hermanas del Revisor
+├── Comparador_Etapas.py
+└── Comparador_Tabulado.py
+00_Salidas/                        salidas compartidas por año y mes
 Revisor_Relq/
 ├── Revisor_Reliquidacion.py     ← el único que va suelto en la raíz
 ├── comun/                        lo compartido (ver más abajo)
@@ -276,6 +280,34 @@ propia `Auxiliares/`, como siempre.
   no existe; **el parquet no se modifica**. No la aplica si el archivo ya viene
   corrido (la hora del cambio no existe en los datos) ni si el mes está completo.
 
+## `Comparadores/Comparador_Etapas.py`
+
+- **Qué hace:** consolida y compara por central y hora los sobrecostos de los dos
+  Access de las etapas Definitivo, Rpre y Rdef para los doce meses de un año.
+- **Consume:** los `.mdb` de cada etapa, el JSON mensual de traspaso del Revisor,
+  el `config.json` compartido y el maestro vigente de central/empresa.
+- **Produce:** parquet, vistas, estado y rutas en
+  `00_Salidas/AAAA/_comparador/`; Excel mensual en `AAAA/MM Mes/` y consolidado
+  anual en `_comparador/`.
+- **Expone:** `cdir(anio)`, `ruta_json_mes(aamm)`, `path_excel_mes(aamm)` y el
+  bloque propio `comparador_etapas` del JSON mensual.
+- **Depende de:** `Revisor_Relq/comun/salidas.py`; localiza la carpeta del Revisor
+  por `Revisor_Reliquidacion.py`, no por su nombre.
+
+## `Comparadores/Comparador_Tabulado.py`
+
+- **Qué hace:** compara sobrecosto, generación, CV, CMg y USD entre Definitivo,
+  Rpre y Rdef, por central y hora, desde los Consolidados Tabulados de un año.
+- **Consume:** Consolidados Tabulados, JSON mensuales, el `config.json` compartido
+  y `00_Salidas/AAAA/_comparador/rutas.json` del comparador de Access.
+- **Produce:** parquet de variables, vistas, estado y rutas en
+  `00_Salidas/AAAA/_comparador_tabulado/`; Excel mensual en `AAAA/MM Mes/` y
+  consolidado anual en `_comparador_tabulado/`.
+- **Expone:** `cdir(anio)`, `dir_parquet(anio)`, `ruta_json_mes(aamm)` y
+  `path_excel_mes(aamm)`.
+- **Depende de:** `Revisor_Relq/comun/salidas.py` y, para no pedir las mismas
+  carpetas dos veces, del `rutas.json` de `_comparador` **del mismo año**.
+
 ## `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`
 
 - **Qué hace:** arma la tabla de empresas con RUT y la de reemplazos, y las escribe
@@ -340,7 +372,7 @@ código.** Corregir el documento cuando haya oportunidad:
   `carpetas_legado(dir_salidas)`.
 - **Reglas:** nunca lee ni escribe en carpetas planas AAMM antiguas; las detecta
   solo para avisar. Tolera variantes existentes como `7 Julio` o `07 julio`,
-  pero `crear=True` crea siempre el nombre canónico.
+  y, también con `crear=True`, reutiliza esa variante para no partir el mes en dos carpetas.
 - **Pruebas:** `Revisor_Relq/comun/test_salidas.py`, solo stdlib.
 
 ### `Revisor_Relq/comun/config.py` — **hecho**
@@ -370,13 +402,13 @@ código.** Corregir el documento cuando haya oportunidad:
 
 ### Lo que sigue
 
-El generador detectó **15 constantes definidas
+El generador detectó **40 constantes definidas
 en más de un archivo** (la tabla completa está al final de `INTERFACES.md`). Ordenadas
 por cuánto rinde sacarlas:
 
 | Constante | En cuántos archivos | Qué es |
 |---|---|---|
-| `CONFIG_PATH` | **10 de 10** | la ruta del `config.json` |
+| `CONFIG_PATH` | **12 archivos** | la ruta del `config.json` |
 | `TRASPASO_ORIGEN`, `TRASPASO_VERSION_MAX` | 9 | el contrato del JSON del revisor |
 | `DIR_SCRIPT` | 7 | la carpeta del script |
 | `NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` | 2 | el lector de Excel por ZIP/XML, duplicado entre el Revisor y `Actualiza_Data_Access` |
