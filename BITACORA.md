@@ -17,6 +17,16 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **Aplicar `docs/PLAN_reorganizacion_config.md`** — mover `comun/` a
+      `__comun__/` (hermana, se sube al repo) y sacar todos los `.json` del
+      repo a `__config__/` (hermana, NO se sube — la usuaria la arma a mano
+      con la misma estructura `AAAA/MM Mes` que `00_Salidas`). `00_Salidas/`
+      queda solo con los `.xlsx` finales. Plan en 3 tareas, cada una con su
+      verificación — ver el archivo para el detalle exacto. Mientras esto no
+      esté aplicado, varios de los pendientes de abajo (el módulo se llama
+      `comun/config.py`, rutas de `00_Salidas` para estado) van a quedar
+      obsoletos apenas se aplique: no corregirlos dos veces, corregirlos ya
+      con el nombre y la ruta nueva cuando se toquen esos archivos.
 - [ ] El usuario no probó todavía ningún actualizador real de punta a punta
       (solo los verificadores del Revisor, que funcionan bien). Falta correr
       al menos uno contra archivos reales.
@@ -50,6 +60,66 @@
       `guardar_config` / `escribir_json_atomico`. Migrarlas a `comun/config.py`
       como ya se hizo con `Actualiza_SC_CO.py` — **no** dentro de las tareas
       del plan, después y por separado.
+
+---
+
+## 2026-09-03 — Claude — plan para sacar `comun/` y todos los `.json` de `Revisor_Relq/`
+
+La usuaria vio el warning del editor sobre `sys.path.insert` + `from comun
+import ...` en los comparadores y pidió una reorganización más de fondo, no
+un parche: que `comun/` y absolutamente todos los `.json` del repo queden
+afuera de `Revisor_Relq/`, en dos carpetas hermanas nuevas —
+`__comun__/` (código, se sube al repo) y `__config__/` (datos, NO se sube —
+la usuaria la arma y ordena a mano, con la misma estructura `AAAA/MM Mes`
+que ya usa `00_Salidas`). Además: `00_Salidas/` debe terminar conteniendo
+solo resultados (`.xlsx`), nada de estado ni caché.
+
+Antes de escribir el plan, hubo una pregunta pendiente: los comparadores
+guardan, junto a `estado.json`/`rutas.json`, unas carpetas `parquet/` y
+`vistas/` (datos de los `.mdb` ya leídos, para no releer Access cada vez) —
+ni son `.json` ni son el resultado final. Se le preguntó a la usuaria dónde
+debían ir; eligió la opción recomendada: junto con el estado, en
+`__config__/AAAA/_comparador/` (y `_comparador_tabulado/`). Con esa
+respuesta, `00_Salidas/AAAA/` queda con el Excel anual directo (sin la
+subcarpeta `_comparador*`) y `00_Salidas/AAAA/MM Mes/` con los dos Excel
+mensuales — nada más.
+
+Se auditó el repo entero para inventariar cada `.json` real que existe hoy
+(no de memoria): el `config.json` compartido de `Revisor_Relq/` (Revisor + 8
+actualizadores + 2 comparadores), el `config.json` propio de
+`Reemplazos REUC/Auxiliares/` (de `ActualizaRemplazos.py`, que además guarda
+ahí archivos `.xlsx` descargados que NO se mudan — solo su `.json`), y por
+mes/año: `_revisor_verificaciones.json`, `_revisor_cache_valores.json`,
+`_traspaso_actualizador.json` (que además leen los dos comparadores, no solo
+el Revisor — hay que mover las dos puntas juntas o uno lee donde el otro ya
+no escribe) y, por comparador, `estado.json`/`rutas.json` (Tabulado además
+lee el `rutas.json` de Etapas, para reusar sus rutas de `.mdb`). De paso
+apareció una carpeta huérfana en la raíz del repo, `comun/README.md` —un
+placeholder de una etapa anterior del proyecto, nunca usado por ningún
+script real (el `comun/` que sí se usa siempre vivió dentro de
+`Revisor_Relq/`) — el plan la borra en la Tarea 1 para no terminar con dos
+`comun` en el árbol.
+
+El plan completo, en 3 tareas (mover `comun/` → `__comun__/` y generalizar
+`_hallar_revisor()` a `_hallar_workroot()` — busca la carpeta que tiene
+`__comun__` al lado, en vez de buscar un archivo puntual del Revisor, porque
+después de este cambio los comparadores ya no necesitan encontrar
+`Revisor_Relq/` para nada; mover todos los `.json` a `__config__/` y
+reordenar `00_Salidas/`; actualizar toda la documentación), quedó en
+`docs/PLAN_reorganizacion_config.md`, con instrucciones línea por línea para
+cada uno de los 12 scripts que tocan config y con su propia verificación por
+tarea. Se lo confirma como listo para que lo aplique Codex.
+
+Nada de código se tocó en esta sesión — es 100% planificación, como pidió la
+usuaria ("planifica y piensa, el ejecuta"). El plan mismo dice que se borra
+una vez aplicado y verificado (mismo ciclo que tuvo
+`docs/PLAN_comparadores.md`).
+
+**Pendiente**: aplicar el plan (Codex), verificar cada tarea con pruebas de
+comportamiento reales (no solo lectura de código — ya fue el estándar en
+`PLAN_comparadores.md` y encontró bugs reales que una lectura no habría
+visto), y avisarle a la usuaria que después de aplicado tiene que armar
+`__config__/` a mano con sus archivos existentes.
 
 ---
 
