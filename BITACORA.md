@@ -17,6 +17,11 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **Validar el Revisor modularizado de punta a punta en Windows con un mes
+      real:** arranque de la ventana, árbol completo, V4…V17, OOXML y fallback
+      Excel, lectura Access, estado/caché, lanzamiento de un actualizador e
+      igualdad de `_traspaso_actualizador.json`. La extracción de la Fase 4 está
+      completa; este control requiere Excel, Access y los archivos reales.
 - [ ] **La usuaria tiene que armar `__config__/` a mano** (no se sube al
       repo, está gitignoreada), con la misma estructura `AAAA/MM Mes` que
       `00_Salidas`, migrando ahí sus `config.json`,
@@ -39,19 +44,76 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] **Confirmar en una tarea real de Codex que `scripts/sincronizar.sh`
-      corre limpio** después del arreglo del remoto `origin`. El entorno ya
-      tiene el acceso a internet activado, "Todos los métodos", y los dos
-      scripts puestos en modo Manual. Falta la corrida de punta a punta.
-- [ ] **Poner `bash scripts/sincronizar.sh || true` como script de
-      mantenimiento** del entorno de Codex (hoy tiene `codex_setup.sh`
-      repetido). El de mantenimiento corre al reanudar un contenedor desde la
-      caché, que es justo cuando el clon está viejo.
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — ChatGPT — completa la extracción de la Fase 4
+
+Se completaron los tres bloques que quedaban de la división interna del
+Revisor. `revisor/lectores.py` absorbe ahora los lectores MDB y la resolución
+cacheada de valores; `revisor/verificaciones.py` contiene sin simplificaciones
+el motor de comprobaciones V4…V17; y `revisor/lanzamiento.py` contiene las
+pruebas de bloqueo de Excel, el armado del traspaso y el lanzamiento de los
+actualizadores. `Revisor_Reliquidacion.py` sigue siendo el único punto de
+entrada y conserva wrappers con todos los nombres históricos.
+
+Los módulos nuevos no importan el punto de entrada: reciben sus dependencias una
+vez al cargarlo. La inyección evita expresamente pisar funciones propias si hay
+un nombre homónimo en el espacio histórico, caso cubierto por una prueba de
+regresión. También se prueban el sobre del traspaso, la comprobación directa de
+escritura y la salida defensiva para un tipo de verificación desconocido.
+
+**Pendiente:** la validación integral en Windows con un mes real sigue siendo
+obligatoria y se agregó a "Pendientes abiertos". El contenedor Linux no dispone
+de Excel/COM, Access ni los archivos de trabajo, por lo que no puede reemplazar
+esa corrida.
+
+## 2026-09-07 — Claude — el entorno de Codex queda configurado del todo
+
+El usuario puso `bash scripts/sincronizar.sh || true` como script de
+mantenimiento del entorno. Con eso la configuración de Codex queda completa:
+base `main`, acceso a internet activado con "Todos los métodos",
+`codex_setup.sh` como script de configuración y `sincronizar.sh` como
+mantenimiento (corre al reanudar un contenedor desde la caché, que es cuando
+el clon está viejo).
+
+No quedan pendientes del flujo Claude/Codex. Los que siguen en la lista son
+todos anteriores, del sistema de reliquidación.
+
+## 2026-09-07 — Claude — probado el caso real: una tarea abierta levanta trabajo posterior
+
+Queda cerrado lo que la entrada de abajo dejaba pendiente. Se subió `ef4d28e`
+a `main` **después** de que una tarea de Codex ya estuviera abierta y
+sincronizada, y a esa misma tarea —sin abrirla de nuevo— se le pidió correr
+`scripts/sincronizar.sh`. Trajo el commit en fast-forward, actualizó
+`BITACORA.md` y avisó sola de ir a leer "Pendientes abiertos".
+
+Ese era el problema con el que empezó todo esto: Codex no veía lo que Claude
+subía sin abrir un chat nuevo. Con el entorno configurado (internet activado,
+"Todos los métodos", `codex_setup.sh` como script de configuración) y la regla
+3b de `REGLAS.md`, el circuito funciona de punta a punta.
+
+Único pendiente del flujo: el script de mantenimiento del entorno.
+
+## 2026-09-07 — Claude — `sincronizar.sh` confirmado dentro de una tarea de Codex
+
+Corrida real, en una tarea nueva de Codex, después del arreglo del remoto:
+`bash scripts/sincronizar.sh` terminó limpio y reportó que la copia ya estaba
+al día con `main`. El circuito completo —acceso a internet activado, "Todos
+los métodos", remoto configurado por el propio script, fetch anónimo por
+HTTPS— funciona.
+
+Queda por probar el caso que de verdad importa, que es el otro: que una tarea
+**ya abierta** levante un commit subido *después* de que esa tarea arrancó.
+Esta corrida no lo demuestra, porque no había nada nuevo que traer. Se prueba
+subiendo algo a `main` desde otro lado y pidiéndole a la misma tarea de Codex
+—sin abrirla de nuevo— que corra el script.
+
+Sigue pendiente cambiar el script de mantenimiento del entorno, que hoy tiene
+`codex_setup.sh` repetido.
 
 ## 2026-09-07 — Claude — el contenedor de Codex clona sin remoto `origin`
 
