@@ -90,14 +90,31 @@ tengas para este repositorio):
 |---|---|
 | Repository | `italocarreran/Abby` |
 | Base branch | `main` |
-| Setup script | `bash scripts/codex_setup.sh` |
+| Script de configuración | **Manual** → `bash scripts/codex_setup.sh` |
+| Script de mantenimiento | **Manual** → `bash scripts/sincronizar.sh \|\| true` |
 | Container image | la que venga por defecto (universal) |
 
-El setup script está en el repositorio, en `scripts/codex_setup.sh`. Instala
-`tkinter` (que en el contenedor no viene y lo necesita un test), le pone
-identidad de git al agente para que sus commits no salgan con tu nombre, y deja
-corrida una verificación inicial. Se ejecuta una sola vez, al armar el
-contenedor, cuando todavía hay red.
+**Script de configuración** (`scripts/codex_setup.sh`): corre una sola vez, al
+armar el contenedor. Instala `tkinter` (que no viene y lo necesita un test),
+**configura el remoto `origin`** (ver el aviso de abajo), le pone identidad de
+git al agente para que sus commits no salgan con tu nombre, y deja corrida una
+verificación inicial.
+
+**Script de mantenimiento** (`scripts/sincronizar.sh`): corre cada vez que se
+reanuda un contenedor desde la caché, después de comprobar la rama. Es
+exactamente el momento en que el clon está viejo, así que poner acá la
+sincronización hace que buena parte del trabajo se haga sola. El `|| true` es
+a propósito: si hay un conflicto, que quede anotado en el log pero que no
+tumbe el arranque del contenedor — el agente lo resuelve después.
+
+> **Aviso importante: el contenedor de Codex clona el repositorio sin dejar
+> configurado el remoto `origin`.** Por eso un `git fetch origin` pelado
+> falla con `'origin' does not appear to be a git repository`, aunque el
+> acceso a internet esté bien. Los dos scripts lo configuran solos apuntando
+> a `https://github.com/italocarreran/Abby.git`. Como el repositorio es
+> **público**, el fetch anónimo alcanza: no hacen falta tokens ni
+> credenciales en el entorno. Si algún día pasa a privado, esto deja de
+> funcionar y hay que agregar un token como secreto del entorno.
 
 ---
 
@@ -108,13 +125,24 @@ settings" según la versión):
 
 | Campo | Qué poner |
 |---|---|
-| Internet access | **On** |
-| Domain allowlist | `github.com`, `codeload.github.com`, `objects.githubusercontent.com` |
-| Allowed HTTP methods | `GET`, `HEAD`, `OPTIONS` **y `POST`** |
+| Acceso a Internet del agente | **Activado** |
+| Lista de dominios permitidos | `Dependencias comunes` (o la más chica que te deje) |
+| Dominios permitidos adicionales | `github.com, codeload.github.com, objects.githubusercontent.com` |
+| Métodos HTTP permitidos | **Todos los métodos** |
 
-**`POST` no es opcional.** Git sobre HTTPS negocia el `fetch` con un POST; si
-dejás solo los métodos de lectura, el `git fetch` falla y volvés al punto de
-partida.
+**Lo de los métodos no es opcional y el desplegable solo ofrece dos opciones:**
+"Todos los métodos" o "GET, HEAD y OPTIONS". Git sobre HTTPS negocia el `fetch`
+con un `POST`, así que la segunda opción no sirve — hay que dejar **Todos los
+métodos**.
+
+Sobre el cartel de **RIESGO ELEVADO** que muestra esa pantalla: es real y vale
+la pena entenderlo, no ignorarlo. Los riesgos que enumera son inyección de
+instrucciones desde contenido que el agente traiga de la red, y filtración de
+código o secretos hacia afuera. En este repositorio en particular el segundo
+pesa poco, porque **el repositorio ya es público** y `__config__/` (donde
+viven las rutas y datos reales) está gitignoreado y nunca se sube. Lo que sí
+conviene: mantener la lista de dominios lo más corta que la interfaz permita,
+y mirar el registro de actividad de Codex si algo sale raro.
 
 Si el acceso a internet queda en **Off**, nada de lo de abajo funciona: el
 contenedor queda incomunicado y la única forma de traer novedades vuelve a ser
@@ -218,7 +246,8 @@ Vale la pena tenerlo claro para no perseguir una opción que no existe:
 
 | Síntoma | Causa casi segura |
 |---|---|
-| `scripts/sincronizar.sh` falla en el `fetch` | Acceso a internet apagado, o falta `POST` en los métodos permitidos (paso 3) |
+| `'origin' does not appear to be a git repository` | El contenedor clona sin remoto. Los scripts ya lo configuran solos; si ves esto, el entorno está usando una versión vieja de `main` — sincronizá |
+| `scripts/sincronizar.sh` falla en el `fetch` | Acceso a internet desactivado, o los métodos HTTP en "GET, HEAD y OPTIONS" en vez de "Todos los métodos" (paso 3) |
 | Codex no ve un commit reciente | La tarea arrancó antes del commit y nadie corrió `sincronizar.sh` |
 | Codex arranca de una base rara | La rama por defecto del repositorio no es `main` (paso 0) |
 | El PR sale contra la rama equivocada | El entorno tiene otra Base branch configurada (paso 2) |

@@ -29,6 +29,20 @@ else
 fi
 
 echo
+echo "== git: remoto 'origin' =="
+# El contenedor de Codex clona el repositorio SIN dejar remoto configurado, y
+# entonces cualquier 'git fetch origin' falla con "does not appear to be a git
+# repository". Como el repositorio es público, alcanza con apuntarlo por HTTPS:
+# no hacen falta credenciales.
+if git remote get-url origin >/dev/null 2>&1; then
+    git remote get-url origin | sed 's/^/  ya estaba: /'
+else
+    git remote add origin "https://github.com/italocarreran/Abby.git" \
+        && echo "  configurado: https://github.com/italocarreran/Abby.git" \
+        || echo "  no se pudo configurar; scripts/sincronizar.sh lo reintenta solo"
+fi
+
+echo
 echo "== git: identidad para los commits del agente =="
 # Sin esto los commits de Codex quedan con el nombre del usuario y REGLAS.md
 # punto 1 (mirar el autor del commit para saber quién tocó qué) deja de servir.

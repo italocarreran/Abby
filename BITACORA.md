@@ -39,20 +39,55 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] **Falta terminar de configurar el entorno de Codex**
-      (`docs/FLUJO_CLAUDE_CODEX.md`, pasos 2 y 3). El setup script ya quedó
-      puesto en modo Manual (`bash scripts/codex_setup.sh`). Falta confirmar
-      que la base branch sea `main` y, sobre todo, **encender el internet
-      access con `github.com` y el método `POST` permitido**: sin `POST` el
-      `git fetch` del agente falla y no hay sincronización posible dentro de
-      una tarea. Ojo con el cartel "el acceso a la red siempre está
-      habilitado en este paso" de la pantalla del setup script: vale solo
-      para el setup, no para cuando el agente trabaja.
+- [ ] **Confirmar en una tarea real de Codex que `scripts/sincronizar.sh`
+      corre limpio** después del arreglo del remoto `origin`. El entorno ya
+      tiene el acceso a internet activado, "Todos los métodos", y los dos
+      scripts puestos en modo Manual. Falta la corrida de punta a punta.
+- [ ] **Poner `bash scripts/sincronizar.sh || true` como script de
+      mantenimiento** del entorno de Codex (hoy tiene `codex_setup.sh`
+      repetido). El de mantenimiento corre al reanudar un contenedor desde la
+      caché, que es justo cuando el clon está viejo.
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — el contenedor de Codex clona sin remoto `origin`
+
+Primera corrida real de `scripts/sincronizar.sh` dentro de una tarea de Codex:
+falló con `fatal: 'origin' does not appear to be a git repository`. **El
+contenedor de Codex clona el repositorio sin dejar configurado ningún
+remoto.** El script daba por sentado que `origin` existía; era un supuesto mío,
+mal puesto, no un problema del entorno del usuario ni de la red.
+
+Arreglo: `sincronizar.sh` y `codex_setup.sh` ahora resuelven el remoto solos.
+Si `origin` no existe, lo configuran apuntando a
+`https://github.com/italocarreran/Abby.git`. **El repositorio es público**
+(verificado contra la API), así que el fetch anónimo por HTTPS alcanza y no
+hacen falta tokens ni secretos en el entorno. Si algún día pasa a privado esto
+deja de funcionar, y el mensaje de error del script lo dice como cuarta causa
+posible.
+
+`sincronizar.sh` además dejó de usar `origin/<rama>` y ahora trabaja contra
+`FETCH_HEAD`: en un clon sin remoto esa referencia no existe, así que era la
+segunda mitad del mismo bug.
+
+**Probado de punta a punta** reproduciendo el caso: clon sin remoto, dos
+commits atrás de `main`. El script avisa que no había remoto, lo configura,
+lista los dos commits con autor y fecha, fusiona y muestra el `diff --stat`.
+
+También se descubrió que la pantalla del entorno tiene **dos** campos de
+script. El de mantenimiento corre al reanudar un contenedor desde la caché,
+"después de comprobar la rama" — que es exactamente cuando el clon está viejo.
+Ahí va `bash scripts/sincronizar.sh || true` (con el `|| true` para que un
+conflicto quede en el log pero no tumbe el arranque). Queda anotado como
+pendiente porque hoy tiene `codex_setup.sh` repetido.
+
+Y el desplegable de métodos HTTP solo ofrece "Todos los métodos" o
+"GET, HEAD y OPTIONS": hay que dejar el primero, porque git negocia el fetch
+con un POST. `docs/FLUJO_CLAUDE_CODEX.md` se corrigió con todo esto, incluida
+una nota honesta sobre el cartel de RIESGO ELEVADO de esa pantalla.
 
 ## 2026-09-07 — Claude — `main` queda como rama base y recibe los scripts
 
