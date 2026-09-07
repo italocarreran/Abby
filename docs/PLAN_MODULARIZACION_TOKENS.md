@@ -9,7 +9,7 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 
 | Fase | Estado | Resultado esperado |
 |---|---|---|
-| 1. Configuración y traspaso | **Implementada en esta rama; pendiente revisión de Claude** | Una sola implementación de persistencia y del contrato opcional del Revisor |
+| 1. Configuración y traspaso | **Hecha.** Revisada y fusionada el 2026-09-07 (`2645788`); ver `BITACORA.md` | Una sola implementación de persistencia y del contrato opcional del Revisor |
 | 2. Lectura y utilidades comunes | Pendiente | OOXML, normalización y búsqueda segura sin copias |
 | 3. Infraestructura de comparadores | Pendiente | Compartir estado, cola UI y salida Excel sin mezclar sus motores |
 | 4. División interna del Revisor | Pendiente | Separar UI, estado, lectores, verificaciones y lanzamiento |
@@ -34,7 +34,13 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 5. Se agregaron pruebas del traspaso y un caso defensivo de configuración donde
    el bloque del usuario no es un diccionario.
 
-### Puntos que Claude debe revisar
+### Puntos que Claude revisó — todos confirmados
+
+Los cinco puntos de abajo se verificaron el 2026-09-07 y quedaron OK. La única
+corrección que hizo falta fue que los `from __comun__ import ...` nuevos venían
+**sin `try/except ImportError`**; está detallada en `BITACORA.md`.
+
+### Lo que se pidió revisar
 
 - Confirmar que los doce `CONFIG_PATH` no cambiaron.
 - Confirmar que el JSON roto jamás se sobrescribe y que una escritura conserva
