@@ -17,15 +17,30 @@
 1. **`git log -n 15`** (o más si hace falta). El autor de cada commit dice
    quién lo hizo — los de Claude quedan firmados `Claude
    <noreply@anthropic.com>`, los que suba el usuario a mano quedan a su
-   nombre, un commit de ChatGPT va a tener su propia firma. Si hay uno
-   reciente que no es propio, **leer el mensaje completo** antes de asumir
-   en qué estado está el repo.
+   nombre. Los de Codex **pueden salir con el nombre del usuario**, porque
+   quien abre el PR es su cuenta: por eso todo commit hecho por Codex lleva
+   el prefijo `codex:` en el mensaje. Si hay un commit reciente que no es
+   propio, **leer el mensaje completo** antes de asumir en qué estado está
+   el repo.
 2. **Leer `BITACORA.md` entero**, empezando por "Pendientes abiertos". Es lo
    que `git log` no cuenta: qué falta probar, qué quedó a medias, qué se
    decidió y por qué.
-3. **`git pull`** (traer la rama al día) antes del primer cambio. Trabajar
-   sobre una copia vieja es la forma más común de pisar el trabajo del otro
-   asistente sin que nadie se entere hasta después.
+3. **Traer la rama al día antes del primer cambio**, con
+   `bash scripts/sincronizar.sh` (hace el fetch contra `main`, muestra qué
+   llegó y de quién, y fusiona). Trabajar sobre una copia vieja es la forma
+   más común de pisar el trabajo del otro asistente sin que nadie se entere
+   hasta después.
+
+3b. **Y de nuevo al empezar cada turno, no solo al abrir la sesión.** Esto es
+   para Codex sobre todo: una tarea suya clona el repositorio una sola vez,
+   al crearse, y ese clon **no se actualiza nunca solo**. Todo lo que Claude
+   o el usuario suban después es invisible hasta que alguien corra
+   `scripts/sincronizar.sh`. Si el fetch falla, el entorno tiene el acceso a
+   internet apagado — está explicado en `docs/FLUJO_CLAUDE_CODEX.md`, y hay
+   que decírselo al usuario en vez de seguir a ciegas sobre una copia vieja.
+
+3c. **La rama base es `main`.** Todo sale de ahí y todo vuelve ahí. Una rama
+   de trabajo se fusiona a `main` y se borra; no se acumulan ramas vivas.
 
 ## Mientras se trabaja
 
@@ -36,8 +51,10 @@
    Nunca dejarlo mudo — "la próxima sesión" puede ser el otro asistente, sin
    el contexto de esta.
 5. **Antes de dar un cambio por terminado:** correr
-   `python generar_interfaces.py --check` y, si existe, el test suite del
-   módulo tocado (por ejemplo `python __comun__/test_config.py`).
+   `bash scripts/verificar.sh`, que hace `generar_interfaces.py --check` y
+   corre todos los tests del repositorio de una vez. Tiene que terminar en
+   `TODO OK`. (`test_tema.py` se omite solo en contenedores sin tkinter:
+   eso es del entorno, no del cambio.)
    Si el cambio toca algo que lee o escribe `config.json`, verificar de
    punta a punta que sigue siendo el mismo archivo compartido — no alcanza
    con que el `.py` compile.
@@ -52,7 +69,7 @@
 8. **Actualizar `MAPA.md` y/o `AGENTS.md`** si cambió algo estructural, una
    firma, o se tomó una decisión de diseño.
 9. **Regenerar `INTERFACES.md`** (`python generar_interfaces.py`) si cambió
-   la firma de algo.
+   la firma de algo, y dejar `bash scripts/verificar.sh` en verde.
 10. **Commitear y pushear.** Un cambio que queda solo en el working tree de
     esta sesión no existe para el otro asistente.
 

@@ -66,6 +66,27 @@ para no tener dos copias de la misma lista desincronizándose con el tiempo.
 pendiente — lo que un `git log` no cuenta. Toda sesión que cambia algo real
 le agrega una entrada, según `REGLAS.md`.
 
+**Scripts de apoyo** (`scripts/`, se corren desde la raíz del repositorio):
+
+- `bash scripts/sincronizar.sh` — trae `main` al día y muestra qué llegó y de
+  quién. Se corre al empezar cada turno (`REGLAS.md` 3 y 3b).
+- `bash scripts/verificar.sh` — `generar_interfaces.py --check` más todos los
+  tests, de una vez. Tiene que dar `TODO OK` antes de cerrar (`REGLAS.md` 5).
+- `bash scripts/codex_setup.sh` — solo lo corre el entorno de Codex al armar
+  el contenedor. No hace falta invocarlo a mano.
+
+**Si sos Codex y estás en la web:** tu contenedor clonó el repositorio una sola
+vez, cuando se creó la tarea, y no se actualiza solo nunca. Todo lo que Claude
+o el usuario hayan subido después no existe para vos hasta que corras
+`scripts/sincronizar.sh`. Hacelo antes de leer nada, en cada turno. Entregás
+por el botón de la tarea (Create PR contra `main`), no por `git push`, y el
+mensaje de tus commits empieza con `codex:`.
+
+La configuración del entorno de Codex que hace posible todo esto —rama base,
+setup script, acceso a internet— está en `docs/FLUJO_CLAUDE_CODEX.md`. Ese
+documento es para el usuario; si algo del flujo no funciona, es el lugar donde
+mirar antes de improvisar.
+
 > **Si en algún momento se vuelve al flujo original** (el usuario sube y baja
 > archivos por la web, sin que un asistente tenga push directo): entregar
 > siempre el archivo completo, nunca un diff ni "reemplazá la línea 240 por

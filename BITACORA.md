@@ -39,11 +39,67 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+- [ ] **El usuario tiene que hacer el paso 0 de
+      `docs/FLUJO_CLAUDE_CODEX.md`**: crear la rama `main` desde
+      `claude/eso-uozpi4`, dejarla como rama por defecto en GitHub y borrar
+      las ramas `codex/*` y `claude/*` viejas (todas ya fusionadas). Hasta
+      que eso pase, `scripts/sincronizar.sh` no encuentra `main` y hay que
+      pasarle la rama a mano: `bash scripts/sincronizar.sh claude/eso-uozpi4`.
+- [ ] **El usuario tiene que configurar el entorno de Codex** (pasos 2 y 3 del
+      mismo documento): base branch `main`, setup script
+      `bash scripts/codex_setup.sh`, e **internet access encendido con
+      `github.com` y el método `POST` permitido** — sin `POST` el `git fetch`
+      del agente falla y no hay sincronización posible dentro de una tarea.
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — flujo Claude/Codex: sincronización dentro de la tarea
+
+Nada de código del sistema: es configuración de cómo trabajan los dos
+asistentes sobre el repositorio.
+
+**El problema que se resolvió.** Una tarea de Codex en la web clona el
+repositorio una sola vez, al crearse, y ese clon no se actualiza nunca solo.
+Todo lo que Claude o el usuario suban después es invisible para esa tarea, y
+por eso el usuario tenía que abrir un chat nuevo cada vez que algo cambiaba.
+No hay ninguna opción que haga que una tarea ya empezada se sincronice sola —
+lo que sí se puede es que haga `fetch` en cada turno, y eso es lo que se
+montó.
+
+**Lo que se agregó:**
+
+- `docs/FLUJO_CLAUDE_CODEX.md` — la configuración paso a paso, para el
+  usuario: rama `main` por defecto, entorno de Codex, acceso a internet con
+  `POST` habilitado, y el atajo de `@codex` sobre un PR (que arranca desde el
+  HEAD actual del PR y por eso nunca queda viejo).
+- `scripts/sincronizar.sh` — `fetch` de `main`, resumen de qué llegó y de
+  quién, merge, y aviso de que conviene releer los pendientes.
+- `scripts/verificar.sh` — `generar_interfaces.py --check` más los 11 tests
+  del repositorio de una sola vez. `test_tema.py` se omite solo si no hay
+  `tkinter` (contenedores headless); eso es del entorno, no del cambio.
+- `scripts/codex_setup.sh` — setup script del entorno de Codex: instala
+  `python3-tk`, le pone identidad de git al agente y corre la verificación.
+
+**Lo que se cambió:** `REGLAS.md` punto 3 ahora manda correr
+`scripts/sincronizar.sh` y suma el 3b (repetirlo en cada turno, no solo al
+abrir la sesión) y el 3c (`main` es la base). El punto 1 avisa que los commits
+de Codex pueden salir con el nombre del usuario y por eso llevan prefijo
+`codex:`. El punto 5 apunta a `scripts/verificar.sh`. `AGENTS.md` §3 lista los
+scripts y explica en un párrafo qué tiene que hacer Codex al empezar.
+
+**Estado del repositorio al hacer esto:** no existe rama `main`; la rama por
+defecto es `claude/eso-uozpi4` y hay once ramas `codex/*` y `claude/*`
+colgando, **todas fusionadas** (verificado con `git rev-list --count` contra
+la rama por defecto: cero commits adelante en las once). Nada que rescatar
+antes de borrarlas.
+
+**Qué queda pendiente:** los dos ítems nuevos de "Pendientes abiertos" — son
+acciones en la interfaz de GitHub y de ChatGPT que ningún asistente puede
+hacer por el usuario. Mientras `main` no exista, `scripts/sincronizar.sh` hay
+que llamarlo con la rama explícita.
 
 ## 2026-09-07 — Claude — revisa los lectores Excel: sin correcciones
 

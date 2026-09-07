@@ -32,6 +32,7 @@ convenciones del código y las trampas conocidas. Después:
 | conectar código nuevo con el existente | `INTERFACES.md` — firmas sin cuerpos |
 | saber en qué hoja/celda/columna vive un dato | `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` (buscá la sección, no lo leas entero) |
 | modificar un script | ahí sí, abrí ese `.py` completo — **y solo ese** |
+| configurar Codex para que vea lo que sube Claude | `docs/FLUJO_CLAUDE_CODEX.md` |
 
 ## Estructura
 
@@ -42,7 +43,8 @@ AGENTS.md                       cómo se trabaja acá (documento vivo)
 MAPA.md                         qué hace cada script y de qué depende
 INTERFACES.md                   generado — firmas, constantes y dependencias
 generar_interfaces.py           el generador de INTERFACES.md
-docs/                           referencia de dominio
+docs/                           referencia de dominio y flujo de trabajo
+scripts/                        sincronizar.sh, verificar.sh, codex_setup.sh
 __comun__/                     código común y sus pruebas
 __config__/                     configuración/estado/caché local (ignorada por Git)
 Comparadores/                   comparadores anuales (hermana del Revisor)

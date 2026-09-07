@@ -14,6 +14,7 @@ Convención de cada bloque: **qué hace · consume · produce · expone · depen
 **Dónde vive cada uno:**
 
 ```
+scripts/                           utilidades de sesión (sincronizar, verificar)
 __comun__/                        código compartido y sus pruebas
 __config__/                        JSON, estados y datos intermedios locales
 Comparadores/                      herramientas anuales, hermanas del Revisor
