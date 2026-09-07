@@ -433,12 +433,22 @@ código.** Corregir el documento cuando haya oportunidad:
   funcionando solo y busca sus archivos manualmente.
 - **Pruebas:** `__comun__/test_traspaso.py`, 8 casos, solo stdlib.
 
+### `_morir()` se queda duplicado a propósito
+
+Cada ejecutable define su propio `_morir()` (ventana + `SystemExit(1)`) y hace
+`from __comun__ import ...` **adentro de un `try/except ImportError`**. No se
+puede centralizar: es justamente lo que avisa cuando lo que falta es
+`__comun__/`. Lanzados por el Revisor con `pythonw` no hay consola, así que un
+`ImportError` suelto mata el script en silencio y solo se ve que la ventana
+nunca apareció.
+
 ### Lo que sigue
 
 El generador detecta **40 nombres de constante repetidos** (la tabla completa
-está al final de `INTERFACES.md`). Es una detección sintáctica: `CONFIG_PATH`
-debe seguir siendo local porque se calcula desde cada ejecutable, y los dos
-nombres `TRASPASO_*` ya son aliases del contrato único, no valores duplicados.
+está al final de `INTERFACES.md`). Es una detección sintáctica, y tres de esos
+nombres **tienen que** seguir repetidos: `CONFIG_PATH` y `_RAIZ_COMUN` se
+calculan desde la ubicación de cada ejecutable, y los dos `TRASPASO_*` ya son
+aliases del contrato único, no valores duplicados.
 Entre las duplicaciones todavía reales, las que más rinden son:
 
 | Constante | En cuántos archivos | Qué es |

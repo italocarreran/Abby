@@ -32,13 +32,6 @@ DIR_SCRIPT = Path(__file__).resolve().parent
 # DIR_SCRIPT / "config.json" porque este script esta en actualizadores/.
 CONFIG_PATH = DIR_SCRIPT.parent.parent / "__config__" / "config.json"
 
-# Implementaciones compartidas; los envoltorios conservan la interfaz historica.
-_RAIZ_COMUN = Path(__file__).resolve().parents[2]
-if str(_RAIZ_COMUN) not in sys.path:
-    sys.path.insert(0, str(_RAIZ_COMUN))
-from __comun__ import config as _cfg
-from __comun__ import traspaso as _traspaso
-
 # --- motor de Access, reutilizado ------------------------------------------
 # Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py,
 # que tiene que estar en la MISMA carpeta y ser una version que soporte fuentes
@@ -63,6 +56,22 @@ def _morir(titulo, mensaje):
         pass
     print(f"{titulo}\n\n{mensaje}", file=sys.stderr)
     raise SystemExit(1)
+
+# Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+# Va detras de _morir a proposito: lanzado por el Revisor con pythonw no hay
+# consola, asi que un ImportError suelto moriria callado.
+_RAIZ_COMUN = Path(__file__).resolve().parents[2]
+if str(_RAIZ_COMUN) not in sys.path:
+    sys.path.insert(0, str(_RAIZ_COMUN))
+try:
+    from __comun__ import config as _cfg
+    from __comun__ import traspaso as _traspaso
+except ImportError as e:
+    _morir("Falta la carpeta __comun__/",
+           "No se pudo cargar __comun__/config.py ni __comun__/traspaso.py.\n\n"
+           "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
+           "Baja el repositorio completo, no los .py sueltos.\n\n"
+           f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
 
 
 try:

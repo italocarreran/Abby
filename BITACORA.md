@@ -48,6 +48,69 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — revisa la Fase 1 de ChatGPT y le tapa un agujero real
+
+Revisión de `codex/reorganizar-codigo-para-modularidad` (1 commit sobre la rama
+principal) y fusión a `claude/eso-uozpi4`.
+
+**El trabajo de ChatGPT está bien hecho.** `__comun__/traspaso.py` es una
+traducción fiel de las nueve copias de `leer_traspaso()`, los envoltorios
+conservan los nombres históricos y ningún punto de llamada cambió. La mejora de
+`config.leer()` (bloque propio que no es dict → `{}`) reemplaza correctamente
+al `or {}` que tenían los comparadores.
+
+**Lo que había que corregir — una regresión real, no cosmética.** El commit
+agregó 20 `from __comun__ import ...` **sin `try/except ImportError`**, en 8
+scripts que hasta ese commit **no dependían de `__comun__` para nada** (tenían
+su propia copia del config). En `Actualiza_Energia.py` y `Actualiza_Access_P9.py`
+el import quedó además *arriba* de la definición de `_morir()`, así que ni
+siquiera se podía guardar sin reordenar.
+
+Por qué importa: el Revisor lanza estos scripts con `pythonw`, sin consola. Un
+`ImportError` suelto los mata en silencio — la usuaria solo ve que la ventana
+nunca aparece. Es exactamente el caso que ya defendían con `_morir()` el
+Revisor, los dos comparadores y `Actualiza_SC_CO.py`, y el que AGENTS.md nombra
+como "baja el repositorio completo, no los .py sueltos".
+
+Arreglo, con el idioma que ya usaba el repo:
+
+- 4 archivos que ya tenían guarda (Revisor, los 2 comparadores,
+  `Actualiza_SC_CO.py`): los imports nuevos se movieron adentro del `try`.
+- 2 que tenían `_morir()` pero definido después (`Actualiza_Energia.py`,
+  `Actualiza_Access_P9.py`): el bloque se bajó detrás de `_morir()`, ya con guarda.
+- 6 que no tenían `_morir()` (`Actualiza_datos`, `Actualiza_Cuadro0`,
+  `Actualiza_Data_Access`, `Carga_Retiros`, `Prorratear`, `ActualizaRemplazos`):
+  se les agregó. **`_morir()` no puede vivir en `__comun__/`**: es justamente lo
+  que avisa cuando `__comun__/` es lo que falta. Queda anotado en MAPA.md y como
+  trampa en AGENTS.md.
+
+**Verificado en este entorno** (Linux, sin Windows ni Excel), con `tkinter` y las
+libs de Windows simuladas:
+
+- Los 10 ejecutables abortan con `rc=1` y el mensaje de `__comun__` cuando se
+  corren desde una copia sin la carpeta. Los 2 comparadores no llegan a ese punto
+  acá porque antes cortan por librerías faltantes (`pyarrow`, `duckdb`…); en
+  esos dos el arreglo fue mover una línea adentro de un `try` que ya existía.
+- Con `__comun__` presente, los 10 pasan el import y llegan a construir la
+  ventana.
+- Los envoltorios de los 10, contra un `config.json` temporal: round-trip
+  guardar/leer, un config roto **no se pisa**, y las claves de otro equipo
+  **no se borran**. Más `leer_traspaso()`: sin argumento → modo manual; con un
+  JSON válido → lo lee.
+- `CONFIG_PATH` idéntico a la rama principal en los 12. `ORIGEN` y
+  `VERSION_ACTUAL` = 1, y el Revisor sigue escribiendo versión 1.
+- `test_config.py` (14), `test_salidas.py` (13) y `test_traspaso.py` (8): OK.
+  `test_tema.py` no corre acá porque este contenedor no tiene `tkinter` — ya
+  pasaba antes de este cambio.
+- `generar_interfaces.py --check`: al día.
+
+**Pendiente:** nada de este cambio. Sigue en pie que nadie probó un actualizador
+real de punta a punta en Windows. La Fase 2 (`excel_xml.py`, `texto.py`,
+`archivos.py`) está planificada en `docs/PLAN_MODULARIZACION_TOKENS.md` y **no**
+se empezó.
+
+---
+
 ## 2026-09-07 — ChatGPT — Fase 1 de modularización: config y traspaso
 
 La usuaria pidió ejecutar la primera fase del plan orientado a reducir tokens y

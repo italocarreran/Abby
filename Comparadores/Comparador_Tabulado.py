@@ -196,6 +196,7 @@ sys.path.insert(0, str(DIR_RAIZ))
 try:
     from __comun__ import salidas as _sal
     from __comun__ import tema as _tema
+    from __comun__ import config as _cfg
 except ImportError as e:
     _morir(
         "Falta la carpeta __comun__/",
@@ -203,8 +204,6 @@ except ImportError as e:
         "Comparadores. Baja el repositorio completo, no los .py sueltos.\n\n"
         f"Carpeta actual: {DIR_RAIZ}\n\nDetalle: {e}",
     )
-
-from __comun__ import config as _cfg
 
 CONFIG_RAIZ = _sal.raiz_config(BASE)
 CONFIG_PATH = CONFIG_RAIZ / "config.json"

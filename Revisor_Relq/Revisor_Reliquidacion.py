@@ -44,15 +44,14 @@ if str(DIR_RAIZ_CODIGO) not in sys.path:
     sys.path.insert(0, str(DIR_RAIZ_CODIGO))
 try:
     from __comun__ import salidas as _sal
+    from __comun__ import config as _cfg
+    from __comun__ import traspaso as _traspaso
 except ImportError as e:
     _morir_import(
         "No se pudo cargar __comun__/salidas.py.\n\n"
         "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
         "Baja el repositorio completo, no los .py sueltos.\n\n"
         f"Carpeta actual: {DIR_RAIZ_CODIGO}\n\nDetalle: {e}")
-
-from __comun__ import config as _cfg
-from __comun__ import traspaso as _traspaso
 
 # =============================================================================
 #  >>> ZONA A AJUSTAR <<<

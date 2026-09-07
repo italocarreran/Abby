@@ -29,18 +29,18 @@ Convenciones de esta página:
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
 - [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
-- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1831 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6850 líneas — Revisor de entregables - CASO RELIQUIDACION
-- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1091 líneas — Actualiza el Access de la planilla 9
-- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 984 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1551 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 763 líneas — Actualizar Energia
-- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 890 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1293 líneas
-- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 844 líneas — Carga Retiros_h.parquet a SQL Server
-- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 876 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2575 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1890 líneas — Comparador_Tabulado.py
+- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1855 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6849 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1100 líneas — Actualiza el Access de la planilla 9
+- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1007 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1574 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 772 líneas — Actualizar Energia
+- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 889 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1316 líneas
+- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 867 líneas — Carga Retiros_h.parquet a SQL Server
+- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 899 líneas — Prorratear: del Access a SQL Server
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2574 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1889 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -269,7 +269,7 @@ Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pandas`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
+**Importa:** `datetime`, `json`, `os`, `pandas`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
 
 ### Constantes
 
@@ -277,7 +277,7 @@ Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
 |---|---|---|
 | `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios. |
 | `CONFIG_PATH` | `Path(__file__).resolve().parents[2] / '__config__' / 'reemplazos_reuc.json'` |  |
-| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` |  |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 | **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
@@ -485,7 +485,7 @@ manteniendo el formato de las celdas.
 > Para .mdb se necesita el "Microsoft Access Driver (*.mdb, *.accdb)" con la misma
 > arquitectura (32/64 bits) que el Python que ejecuta el script.
 
-**Importa:** `__comun__`, `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -958,7 +958,7 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1093,7 +1093,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1225,7 +1225,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `decimal`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `decimal`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1445,7 +1445,7 @@ archivo actualizado".
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1453,8 +1453,8 @@ archivo actualizado".
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
-| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
 | `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
 | `FILA_DATOS_TABULADO` | `3` | CONFIGURACION El encabezado del "02 Consolidado_Tabulado" (hoja Sobrecostos) esta en la fila 2, asi que los datos arrancan en la 3. |
@@ -1514,7 +1514,7 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1600,7 +1600,7 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 
 ## `Revisor_Relq/actualizadores/Actualiza_datos.py`
 
-**Importa:** `__comun__`, `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1714,7 +1714,7 @@ Retorna (ok, lista_rutas_modificadas)
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1828,7 +1828,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -1958,7 +1958,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2372,7 +2372,7 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `__comun__`, `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
