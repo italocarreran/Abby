@@ -12,7 +12,7 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 | 1. Configuración y traspaso | **Hecha.** Revisada y fusionada el 2026-09-07 (`2645788`) | Una sola implementación de persistencia y del contrato opcional del Revisor |
 | 2. Lectura y utilidades comunes | **Hecha.** Revisada y fusionada el 2026-09-07; ver `BITACORA.md` | OOXML, normalización y filtros seguros sin copias |
 | 3. Infraestructura de comparadores | **Hecha.** Revisada y fusionada el 2026-09-07; dos regresiones corregidas, ver `BITACORA.md` | Estado, caché, cola UI y salida Excel sin mezclar sus motores |
-| 4. División interna del Revisor | **No iniciada: frontera de riesgo alto** | Separar UI, estado, lectores, verificaciones y lanzamiento |
+| 4. División interna del Revisor | **En curso: puntos 1 y 2 completos; 3 iniciado** | Separar UI, estado, lectores, verificaciones y lanzamiento |
 
 ## Fase 1 — configuración y traspaso
 
@@ -109,10 +109,14 @@ Implementado en esta etapa:
 - **2. Búsqueda y caché temporal del árbol:** `revisor/archivos.py`, sin
   dependencia de la ventana. El punto de entrada reexporta los nombres
   históricos, incluido `cache_directorios`.
-- Ambos módulos tienen pruebas stdlib y controles de paridad estructural por AST
+- **3. Adaptadores de lectura, parte Excel:** `revisor/lectores.py` contiene la
+  suma de columnas con fallback, diagnósticos y escaneos OOXML, resolución de
+  hojas y armado de tablas. El punto de entrada reexporta los nombres históricos.
+- Los tres módulos tienen pruebas stdlib y controles de paridad estructural por AST
   contra el commit base.
 
 Todavía no implementado, para no mezclar fronteras sin verificarlas: **3.
-lectores Excel/MDB; 4. motores V4…V17; 5. traspaso y lanzamiento**. La Fase 4 no
+lectores MDB y los adaptadores Excel que siguen ligados al cuadro de pago; 4.
+motores V4…V17; 5. traspaso y lanzamiento**. La Fase 4 no
 se considera completa hasta extraer y probar esos bloques y ejecutar la
 validación real solicitada en Windows.

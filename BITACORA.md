@@ -45,6 +45,25 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — ChatGPT — continúa la Fase 4 con los lectores Excel
+
+Se extrajo a `Revisor_Relq/revisor/lectores.py` el primer bloque cohesivo de
+adaptadores Excel del Revisor: suma de columnas con fallback openpyxl/xlwings,
+escaneo de marcas y fórmulas, lectura y diagnóstico OOXML, resolución de hojas y
+armado de tablas. `Revisor_Reliquidacion.py` conserva los nombres históricos
+mediante imports guardados con `_morir_import()`; el módulo nuevo no importa la
+ventana ni las reglas V4…V17.
+
+La extracción conserva el cuerpo de las funciones sin simplificarlo y mantiene
+el mismo `CACHE_COLUMNAS`. Se agregaron pruebas stdlib para conversiones de
+columnas, nombres de hojas, casos significativos y el contrato histórico de
+`armar_tabla`. Se regeneró `INTERFACES.md` y se actualizaron el mapa y el plan.
+
+**Pendiente de la Fase 4:** completar los lectores MDB y los adaptadores Excel
+que siguen ligados al cuadro de pago; después extraer motores V4…V17 y finalmente
+traspaso/lanzamiento. Sigue pendiente la validación integral del Revisor en
+Windows con Excel, Access y archivos reales.
+
 ## 2026-09-07 — Claude — revisa la Fase 4 (parcial) sobre la rama de Codex
 
 La usuaria probó los actualizadores contra archivos reales y **funcionan**, y le
