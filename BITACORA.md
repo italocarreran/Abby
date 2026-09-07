@@ -39,15 +39,23 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] **Poner `bash scripts/sincronizar.sh || true` como script de
-      mantenimiento** del entorno de Codex (hoy tiene `codex_setup.sh`
-      repetido). El de mantenimiento corre al reanudar un contenedor desde la
-      caché, que es justo cuando el clon está viejo.
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — el entorno de Codex queda configurado del todo
+
+El usuario puso `bash scripts/sincronizar.sh || true` como script de
+mantenimiento del entorno. Con eso la configuración de Codex queda completa:
+base `main`, acceso a internet activado con "Todos los métodos",
+`codex_setup.sh` como script de configuración y `sincronizar.sh` como
+mantenimiento (corre al reanudar un contenedor desde la caché, que es cuando
+el clon está viejo).
+
+No quedan pendientes del flujo Claude/Codex. Los que siguen en la lista son
+todos anteriores, del sistema de reliquidación.
 
 ## 2026-09-07 — Claude — probado el caso real: una tarea abierta levanta trabajo posterior
 
