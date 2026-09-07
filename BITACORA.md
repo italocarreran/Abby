@@ -36,36 +36,112 @@
 - [ ] El usuario no probó todavía ningún actualizador real de punta a punta
       (solo los verificadores del Revisor, que funcionan bien). Falta correr
       al menos uno contra archivos reales.
-- [ ] Migrar los 7 actualizadores que faltan a `__comun__/config.py` — solo
-      `Actualiza_SC_CO.py` está migrado. Uno a la vez, verificando que sigue
-      corriendo antes de seguir con el próximo (ver `MAPA.md` → "El módulo
-      común").
 - [ ] `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene 5 diferencias conocidas
       contra el código real, listadas en `MAPA.md` → "Diferencias con el
       documento de dominio". El documento de dominio todavía no se corrigió.
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] Quedaron 3 comentarios `# ... Salidas/AAMM/ ...` (sin el `00_` nuevo) en
-      `Actualiza_datos.py`, `Actualiza_Data_Access.py` y
-      `ActualizaRemplazos.py` — scripts que todavía no leen ni escriben
-      `DIR_SALIDAS` directamente, así que no son un bug funcional, pero van a
-      quedar mal si algún día alguno de esos scripts empieza a usar esa ruta.
-      Corregirlos de paso la próxima vez que se toque cualquiera de esos tres
-      archivos. `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene las mismas 2
-      menciones viejas — se suma a la fila ya abierta de diferencias con el
-      código real (arriba).
-
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
-- [ ] Los comparadores tienen su propia copia de `leer_config` /
-      `guardar_config` / `escribir_json_atomico`. Migrarlas a
-      `__comun__/config.py` como ya se hizo con `Actualiza_SC_CO.py` —
-      después y por separado.
+---
+
+## 2026-09-07 — Claude — revisa la Fase 1 de ChatGPT y le tapa un agujero real
+
+Revisión de `codex/reorganizar-codigo-para-modularidad` (1 commit sobre la rama
+principal) y fusión a `claude/eso-uozpi4`.
+
+**El trabajo de ChatGPT está bien hecho.** `__comun__/traspaso.py` es una
+traducción fiel de las nueve copias de `leer_traspaso()`, los envoltorios
+conservan los nombres históricos y ningún punto de llamada cambió. La mejora de
+`config.leer()` (bloque propio que no es dict → `{}`) reemplaza correctamente
+al `or {}` que tenían los comparadores.
+
+**Lo que había que corregir — una regresión real, no cosmética.** El commit
+agregó 20 `from __comun__ import ...` **sin `try/except ImportError`**, en 8
+scripts que hasta ese commit **no dependían de `__comun__` para nada** (tenían
+su propia copia del config). En `Actualiza_Energia.py` y `Actualiza_Access_P9.py`
+el import quedó además *arriba* de la definición de `_morir()`, así que ni
+siquiera se podía guardar sin reordenar.
+
+Por qué importa: el Revisor lanza estos scripts con `pythonw`, sin consola. Un
+`ImportError` suelto los mata en silencio — la usuaria solo ve que la ventana
+nunca aparece. Es exactamente el caso que ya defendían con `_morir()` el
+Revisor, los dos comparadores y `Actualiza_SC_CO.py`, y el que AGENTS.md nombra
+como "baja el repositorio completo, no los .py sueltos".
+
+Arreglo, con el idioma que ya usaba el repo:
+
+- 4 archivos que ya tenían guarda (Revisor, los 2 comparadores,
+  `Actualiza_SC_CO.py`): los imports nuevos se movieron adentro del `try`.
+- 2 que tenían `_morir()` pero definido después (`Actualiza_Energia.py`,
+  `Actualiza_Access_P9.py`): el bloque se bajó detrás de `_morir()`, ya con guarda.
+- 6 que no tenían `_morir()` (`Actualiza_datos`, `Actualiza_Cuadro0`,
+  `Actualiza_Data_Access`, `Carga_Retiros`, `Prorratear`, `ActualizaRemplazos`):
+  se les agregó. **`_morir()` no puede vivir en `__comun__/`**: es justamente lo
+  que avisa cuando `__comun__/` es lo que falta. Queda anotado en MAPA.md y como
+  trampa en AGENTS.md.
+
+**Verificado en este entorno** (Linux, sin Windows ni Excel), con `tkinter` y las
+libs de Windows simuladas:
+
+- Los 10 ejecutables abortan con `rc=1` y el mensaje de `__comun__` cuando se
+  corren desde una copia sin la carpeta. Los 2 comparadores no llegan a ese punto
+  acá porque antes cortan por librerías faltantes (`pyarrow`, `duckdb`…); en
+  esos dos el arreglo fue mover una línea adentro de un `try` que ya existía.
+- Con `__comun__` presente, los 10 pasan el import y llegan a construir la
+  ventana.
+- Los envoltorios de los 10, contra un `config.json` temporal: round-trip
+  guardar/leer, un config roto **no se pisa**, y las claves de otro equipo
+  **no se borran**. Más `leer_traspaso()`: sin argumento → modo manual; con un
+  JSON válido → lo lee.
+- `CONFIG_PATH` idéntico a la rama principal en los 12. `ORIGEN` y
+  `VERSION_ACTUAL` = 1, y el Revisor sigue escribiendo versión 1.
+- `test_config.py` (14), `test_salidas.py` (13) y `test_traspaso.py` (8): OK.
+  `test_tema.py` no corre acá porque este contenedor no tiene `tkinter` — ya
+  pasaba antes de este cambio.
+- `generar_interfaces.py --check`: al día.
+
+**Pendiente:** nada de este cambio. Sigue en pie que nadie probó un actualizador
+real de punta a punta en Windows. La Fase 2 (`excel_xml.py`, `texto.py`,
+`archivos.py`) está planificada en `docs/PLAN_MODULARIZACION_TOKENS.md` y **no**
+se empezó.
 
 ---
+
+## 2026-09-07 — ChatGPT — Fase 1 de modularización: config y traspaso
+
+La usuaria pidió ejecutar la primera fase del plan orientado a reducir tokens y
+dejarle a Claude el plan completo para revisar y fusionar. Los doce programas
+que manejan configuración delegan ahora en `__comun__/config.py`: Revisor, nueve
+actualizadores y dos comparadores. Se conservaron los nombres históricos como
+aliases o wrappers para no cambiar puntos de llamada, y
+`ActualizaRemplazos.py` sigue apuntando a su JSON propio. La migración corrigió
+además el riesgo pendiente de ese script: ya no puede pisar un config roto con
+`{}` y ahora escribe mediante `.tmp` + `os.replace`, igual que los demás.
+
+Se agregó `__comun__/traspaso.py` como contrato único del argumento opcional.
+Centraliza origen, versión, lectura tolerante y normalización de `rutas`; los
+nueve actualizadores mantienen `leer_traspaso()` como wrapper y el Revisor usa
+las mismas constantes al producir el JSON. Sin argumento o ante un JSON
+inválido se conserva exactamente la vía manual. También se corrigieron los tres
+comentarios viejos que todavía ubicaban ese JSON bajo `Salidas/AAMM`.
+
+El plan y los límites de las fases 2 a 4 quedaron en
+`docs/PLAN_MODULARIZACION_TOKENS.md`: OOXML/texto/archivos por piezas;
+infraestructura compartida de comparadores mediante composición; y, al final,
+división interna del Revisor sin mover su entry point. Se agregaron 8 pruebas
+del traspaso y una prueba defensiva nueva a config (14 en total). Verificado con
+los tests de los cuatro módulos comunes, compilación de todos los Python,
+chequeo del generador, comparación de los doce `CONFIG_PATH` contra `HEAD` y
+auditoría AST de wrappers/consumidores. No se pudo ejecutar Excel, Access, SQL
+Server ni las ventanas reales porque este entorno no es Windows.
+
+**Pendiente para Claude:** revisar esta rama contra la lista específica del
+plan, ejecutar al menos un actualizador real en Windows cuando haya archivos de
+trabajo y fusionar si coincide. Las fases 2, 3 y 4 no se empezaron.
 
 ## 2026-09-03 — Claude — plan para sacar `comun/` y todos los `.json` de `Revisor_Relq/`
 

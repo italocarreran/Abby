@@ -25,21 +25,22 @@ Convenciones de esta página:
 
 ## Índice
 
-- [`__comun__/config.py`](#__comun__configpy) — 117 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+- [`__comun__/config.py`](#__comun__configpy) — 118 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
 - [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
-- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1860 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6884 líneas — Revisor de entregables - CASO RELIQUIDACION
-- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1136 líneas — Actualiza el Access de la planilla 9
-- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1031 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1599 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 810 líneas — Actualizar Energia
-- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1344 líneas
-- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 891 líneas — Carga Retiros_h.parquet a SQL Server
-- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 921 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2590 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1905 líneas — Comparador_Tabulado.py
+- [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
+- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1855 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6849 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1100 líneas — Actualiza el Access de la planilla 9
+- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1007 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1574 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 772 líneas — Actualizar Energia
+- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 889 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1316 líneas
+- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 867 líneas — Carga Retiros_h.parquet a SQL Server
+- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 899 líneas — Prorratear: del Access a SQL Server
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2574 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1889 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -213,6 +214,41 @@ Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 
 ---
 
+## `__comun__/traspaso.py`
+
+> Contrato compartido del JSON que el Revisor pasa a los actualizadores.
+>
+> El argumento es opcional: si falta, no apunta a un archivo valido, el JSON esta
+> roto, viene de otro origen o usa una version futura, se devuelve ``None`` para
+> que el ejecutable conserve su modo manual. Las claves particulares dentro de
+> ``rutas`` siguen siendo responsabilidad de cada actualizador.
+
+**Importa:** `json`, `pathlib`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `ORIGEN` | `'Revisor_Reliquidacion'` |  |
+| `VERSION_ACTUAL` | `1` |  |
+
+### Funciones
+
+#### `def validar(data, version_max=VERSION_ACTUAL)`
+
+Devuelve un traspaso normalizado o ``None`` si no cumple el contrato.
+
+#### `def leer(ruta, version_max=VERSION_ACTUAL)`
+
+Lee y valida ``ruta``; nunca lanza por errores de entrada o de archivo.
+
+#### `def leer_argumento(argv, version_max=VERSION_ACTUAL)`
+
+Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
+
+
+---
+
 ## `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`
 
 > ActualizaRemplazos.py
@@ -241,8 +277,9 @@ Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 |---|---|---|
 | `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios. |
 | `CONFIG_PATH` | `Path(__file__).resolve().parents[2] / '__config__' / 'reemplazos_reuc.json'` |  |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 | **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
 | `RAIZ_PLABACOM_DEFAULT` | `'T:\\Facturacion\\Plabacom'` |  |
 | `PATRON_BALANCES` | `'balances_sen.*simplificado.*\\.xlsb$'` | Se compara contra el nombre normalizado (minúsculas, sin tildes). |
@@ -259,16 +296,11 @@ Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 
 ### Funciones
 
-#### `def get_usuario()`
-
 #### `def leer_config()`
 
 #### `def guardar_config(data)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
@@ -480,7 +512,7 @@ manteniendo el formato de las celdas.
 | `ACTUALIZADORES` | `dict de 10 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_retiros_parq', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita. |
 | `CLAVES_TRASPASO` | `dict de 16 claves: 'a_sscc_desempeno', 'a_cons_tab', 'a_prorrata', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
 | `ARCHIVO_TRASPASO` | `'_traspaso_actualizador.json'` |  |
-| `TRASPASO_VERSION` | `1` |  |
+| `TRASPASO_VERSION` | `_traspaso.VERSION_ACTUAL` |  |
 | `ACCIONES_INTERNAS` | `{'a_0_cuadros': [('Exportar CPRT', '_exportar_cprt')]}` | Acciones que corren DENTRO del revisor, sin lanzar otro proceso. |
 | `C_OK` | `'#1a7f1a'` | colores |
 | `C_FALTA` | `'#c00000'` |  |
@@ -594,13 +626,6 @@ exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
 #### `def dir_config_mes(aamm, crear=False)`
 
 __config__/AAAA/MM Mes para estado, cache y traspasos internos.
-
-#### `def escribir_json(ruta, data)`
-
-Escritura atomica: primero un .tmp y despues os.replace.
-Evita dejar el archivo truncado si algo falla a medio camino.
-
-#### `def get_usuario()`
 
 #### `def leer_config()`
 
@@ -941,6 +966,7 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | **— motor de Access, reutilizado —** | | |
 | `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
 | `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias. |
@@ -957,8 +983,8 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 | `ORDEN_PL` | `['p3', 'p5', 'p6']` |  |
 | `CARPETA_P9` | `'04 Planilla 9'` |  |
 | **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 
 ### Funciones
 
@@ -972,22 +998,13 @@ None si no se puede sacar.
 El AAMM comun a los archivos. Si no coinciden entre si, lo dice: son
 archivos de meses distintos y eso es un problema en si mismo.
 
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
 
 #### `def guardar_config(data)`
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 #### `def leer_propietarios(ruta, cfg, log)`
 
@@ -1084,6 +1101,7 @@ Devuelve (ok, resumen).
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | **— Hojas y celdas —** | | |
 | `IDX_HOJA_3` | `2` |  |
 | `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
@@ -1102,18 +1120,12 @@ Devuelve (ok, resumen).
 | `TOPE_I` | `4345` |  |
 | `BLOQUES` | `lista de 3 elementos: ('#3', 5, [('L', 'P'), ('R', 'U')], 'K'), ('SSCC', 9, [('A', 'G')], 'K'), ('SSCC', 9, [('J', 'K')], 'I'), …` | --- Bloques de formulas que hay que estirar o cortar ---------------------- (hoja, primera_fila, [(col_ini, col_fin), ...], que define el largo) "K" -> tantas filas como empresas haya en K de la hoja… |
 | **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 
 ### Funciones
 
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
 
 #### `def guardar_config(data)`
 
@@ -1129,9 +1141,6 @@ mes siguiente arrastraria la del anterior sin que se note.
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 **— UTILIDADES —**
 
@@ -1228,8 +1237,9 @@ Devuelve (ok, resumen).
 | `TABLA_ACCESS` | `'Sobrecostos'` |  |
 | `COLUMNAS_ESPERADAS` | `['Clave Año_Mes', 'Tipo_sobrecosto', 'Central', 'Hora Mensual', 'Sobrecosto']` |  |
 | `CONFIG_PATH` | `Path(__file__).resolve().parent.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto al Revisor). |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 | `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS. |
 | `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
 | `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
@@ -1237,23 +1247,11 @@ Devuelve (ok, resumen).
 
 ### Funciones
 
-**— CONFIG POR PC/USUARIO —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
-
-Escritura atomica: primero un .tmp y despues os.replace.
-Evita dejar el archivo truncado si algo falla a medio camino.
 
 #### `def guardar_config(data)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 **— UTILIDADES —**
 
@@ -1456,6 +1454,7 @@ archivo actualizado".
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
 | `_TIENE` | `set(getattr(_ADA, 'CAPACIDADES', ()))` |  |
 | `FILA_DATOS_TABULADO` | `3` | CONFIGURACION El encabezado del "02 Consolidado_Tabulado" (hoja Sobrecostos) esta en la fila 2, asi que los datos arrancan en la 3. |
@@ -1469,27 +1468,18 @@ archivo actualizado".
 | `FILA_DESTINO_INI` | `2` |  |
 | `N_COLS_CONSOLIDADO` | `10` |  |
 | **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 
 ### Funciones
 
-**— CONFIG COMPARTIDO  (mismo config.json que el Revisor y los otros dos) —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
 
 #### `def guardar_config(data)`
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 #### `def buscar_tabulado(carpeta_reliq)`
 
@@ -1550,8 +1540,8 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 | `ORDEN` | `['SC', 'CO']` |  |
 | `RE_UNIDAD` | `re.compile('-\\d+\\s*$')` | Una central "-numero" que no este en la lista es sospechosa: el sufijo indica unidad, y las unidades son justamente lo que tienen los embalses. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 
 ### Funciones
 
@@ -1562,9 +1552,6 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 **— UTILIDADES —**
 
@@ -1622,8 +1609,9 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 | **— Constantes configurables —** | | |
 | `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
 | `CONFIG_PATH` | `Path(__file__).resolve().parent.parent.parent / '__config__' / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1]. |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 | `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
 | `MAPEO_SOBRECOSTOS_CONSOLIDADO` | `lista de 1 elementos: {'hoja_origen': 'Sobrecostos', 'cols_origen': [('A', 'G'), ('I', 'J'), ('Q', 'W')], 'fila_ini_origen': 3, 'fila_det_origen': 'A', 'hoja_destino': 'SOBRECOSTOS', 'cols_destino': [('A', 'G'), ('I', 'J'), ('K', 'Q')], 'fila_ini_destino': 7, 'fila_det_destino': 'A', 'cols_formulas': [('R', 'EB')], 'filtro_col': 'C', 'filtro_valor': 'C.Frec', 'detectar_fin_primera_vacia': True, 'ajustar_formulas': True}, …` |  |
 | `MAPEO_P3_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CPF_FD', 'cols_destino': [('D', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'D', 'cols_formulas': [('A', 'B'), ('N', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CSF_FD', 'cols_destino': [('E', 'K')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('M', 'N'), ('P', 'X')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CTF_FD', 'cols_destino': [('E', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('N', 'P'), ('R', 'Y')]}, …` |  |
@@ -1633,21 +1621,11 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 
 ### Funciones
 
-#### `def get_usuario() -> str`
+#### `def leer_config()`
 
-#### `def leer_config() -> dict`
+#### `def guardar_config(data)`
 
-#### `def escribir_json(ruta, data)`
-
-Escritura atomica: primero un .tmp y despues os.replace.
-Evita dejar el archivo truncado si algo falla a medio camino.
-
-#### `def guardar_config(data: dict)`
-
-#### `def leer_traspaso(argv: list) -> dict | None`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
+#### `def leer_traspaso(argv)`
 
 **— Utilidades —**
 
@@ -1744,6 +1722,7 @@ Retorna (ok, lista_rutas_modificadas)
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | **— Configuracion —** | | |
 | `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
 | `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
@@ -1758,8 +1737,8 @@ Retorna (ok, lista_rutas_modificadas)
 | `COL_HORA` | `'Hora Mensual'` |  |
 | `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 
 ### Funciones
 
@@ -1777,22 +1756,13 @@ paso no coincidirian, que es justo el caso que falla:
 
 El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
 
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
 
 #### `def guardar_config(data)`
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-Devuelve el dict del traspaso, o None si no vino o no es valido.
-Nunca lanza: si el JSON esta roto se cae al modo manual.
 
 **— UTILIDADES —**
 
@@ -1866,6 +1836,7 @@ Devuelve (ok, resumen).
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | **— Configuracion —** | | |
 | `SERVER` | `'SRV-DTE'` |  |
 | `DRIVER_SQL` | `'ODBC Driver 17 for SQL Server'` |  |
@@ -1882,27 +1853,18 @@ Devuelve (ok, resumen).
 | `CHUNK` | `20000` |  |
 | `LARGO_TEXTO` | `255` | Largo de las columnas de texto al crear las tablas. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `'Revisor_Reliquidacion'` |  |
-| `TRASPASO_VERSION_MAX` | `1` |  |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
 
 ### Funciones
 
-**— CONFIG COMPARTIDO —**
-
-#### `def get_usuario()`
-
 #### `def leer_config()`
-
-#### `def escribir_json(ruta, data)`
 
 #### `def guardar_config(data)`
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-El dict del traspaso, o None. Nunca lanza: si el JSON esta roto se cae al
-modo manual.
 
 **— UTILIDADES —**
 
@@ -2135,11 +2097,7 @@ Contenido de una carpeta en UNA sola consulta al disco (con cache).
 
 mtime+tamano de un archivo, aprovechando el listado ya leido.
 
-#### `def get_usuario()`
-
 #### `def leer_json(path, defecto=None)`
-
-#### `def escribir_json_atomico(path, data)`
 
 #### `def leer_config()`
 
@@ -2542,11 +2500,7 @@ Contenido de una carpeta en UNA sola consulta al disco (con cache).
 
 mtime+tamano de un archivo, aprovechando el listado ya leido.
 
-#### `def get_usuario()`
-
 #### `def leer_json(path, defecto=None)`
-
-#### `def escribir_json_atomico(path, data)`
 
 #### `def leer_config()`
 
@@ -2775,5 +2729,6 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `_CACHE_DIR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_ENT_XML` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
 | `_NECESITA` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |
+| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `_RE_ENT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
 | `_TIENE` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |

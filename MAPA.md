@@ -407,33 +407,52 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Reglas que no cambian:** solo se agregan o actualizan claves, nunca se borra
   nada ajeno; si el archivo existe pero no se puede interpretar **no se escribe**;
   la escritura es atómica (`.tmp` + `os.replace`).
-- **Pruebas:** `__comun__/test_config.py`, 13 casos, solo stdlib.
+- **Pruebas:** `__comun__/test_config.py`, 14 casos, solo stdlib.
 - **Dos bugs que se arreglaron al juntar las copias:**
   1. `ActualizaRemplazos.py` escribía el archivo entero **sin `.tmp`**, y si el
      config existía pero estaba roto lo pisaba con `{}`. O sea: un `config.json`
      ilegible le borraba los ajustes a los otros nueve scripts.
   2. `get_usuario` tenía versiones con y sin `try/except`. Quedó la defensiva.
-- **Cómo migrar el resto:** reemplazar las cinco funciones del script por
-  envoltorios de dos líneas sobre `_cfg`, y agregar `from __comun__ import config as
-  _cfg`. Los nombres viejos se conservan, así que **ningún punto de llamada
-  cambia** — y `_modificar_config` se llama directo en los 10 scripts, con
-  mutadores propios (la tasa por mes de `Actualiza_Cuadro0`, por ejemplo).
+- **Migración:** los doce programas que manejan configuración ya delegan acá.
+  Conservan sus nombres históricos como aliases o envoltorios breves, así que
+  ningún punto de llamada cambió. `ActualizaRemplazos.py` sigue usando su JSON
+  propio; compartir el motor no mezcla los datos.
 
 | Script | Estado |
 |---|---|
-| `actualizadores/Actualiza_SC_CO.py` | migrado — 42 líneas menos |
-| los otros 9 | pendientes |
+| Revisor, 9 actualizadores y 2 comparadores | migrados |
+
+### `__comun__/traspaso.py` — **hecho**
+
+- **Qué hace:** centraliza el sobre del JSON opcional que el Revisor pasa por
+  `argv[1]`: origen, versión máxima y normalización de `rutas`.
+- **Expone:** `ORIGEN`, `VERSION_ACTUAL`, `validar(data, version_max=...)`,
+  `leer(ruta, version_max=...)` y `leer_argumento(argv, version_max=...)`.
+- **Regla que no cambia:** cualquier argumento ausente, archivo inválido, JSON
+  roto, origen ajeno o versión futura devuelve `None`; el actualizador continúa
+  funcionando solo y busca sus archivos manualmente.
+- **Pruebas:** `__comun__/test_traspaso.py`, 8 casos, solo stdlib.
+
+### `_morir()` se queda duplicado a propósito
+
+Cada ejecutable define su propio `_morir()` (ventana + `SystemExit(1)`) y hace
+`from __comun__ import ...` **adentro de un `try/except ImportError`**. No se
+puede centralizar: es justamente lo que avisa cuando lo que falta es
+`__comun__/`. Lanzados por el Revisor con `pythonw` no hay consola, así que un
+`ImportError` suelto mata el script en silencio y solo se ve que la ventana
+nunca apareció.
 
 ### Lo que sigue
 
-El generador detectó **40 constantes definidas
-en más de un archivo** (la tabla completa está al final de `INTERFACES.md`). Ordenadas
-por cuánto rinde sacarlas:
+El generador detecta **40 nombres de constante repetidos** (la tabla completa
+está al final de `INTERFACES.md`). Es una detección sintáctica, y tres de esos
+nombres **tienen que** seguir repetidos: `CONFIG_PATH` y `_RAIZ_COMUN` se
+calculan desde la ubicación de cada ejecutable, y los dos `TRASPASO_*` ya son
+aliases del contrato único, no valores duplicados.
+Entre las duplicaciones todavía reales, las que más rinden son:
 
 | Constante | En cuántos archivos | Qué es |
 |---|---|---|
-| `CONFIG_PATH` | **12 archivos** | la ruta del `config.json` |
-| `TRASPASO_ORIGEN`, `TRASPASO_VERSION_MAX` | 9 | el contrato del JSON del revisor |
 | `DIR_SCRIPT` | 7 | la carpeta del script |
 | `NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` | 2 | el lector de Excel por ZIP/XML, duplicado entre el Revisor y `Actualiza_Data_Access` |
 | `CENTRALES_EMBALSE` | 2 | el caso documentado, el único que ya obligó a defenderse con una verificación |
@@ -445,6 +464,6 @@ La próxima pieza, por tamaño de la ganancia, es el **lector de Excel por ZIP/X
 (`NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` y sus funciones): son varios cientos de
 líneas idénticas entre el Revisor y `Actualiza_Data_Access`.
 
-**Este cambio toca todos los scripts a la vez, así que va por partes.** Una pieza a
-la vez, un script a la vez, verificando que sigue corriendo antes de seguir con el
-próximo.
+El orden y los límites de las fases siguientes quedaron en
+`docs/PLAN_MODULARIZACION_TOKENS.md`. Aunque una pieza tenga varios consumidores,
+se migra y verifica uno antes de avanzar al próximo.

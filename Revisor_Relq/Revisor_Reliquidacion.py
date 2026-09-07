@@ -44,6 +44,8 @@ if str(DIR_RAIZ_CODIGO) not in sys.path:
     sys.path.insert(0, str(DIR_RAIZ_CODIGO))
 try:
     from __comun__ import salidas as _sal
+    from __comun__ import config as _cfg
+    from __comun__ import traspaso as _traspaso
 except ImportError as e:
     _morir_import(
         "No se pudo cargar __comun__/salidas.py.\n\n"
@@ -1103,7 +1105,7 @@ CLAVES_TRASPASO = {
 }
 
 ARCHIVO_TRASPASO = "_traspaso_actualizador.json"
-TRASPASO_VERSION = 1
+TRASPASO_VERSION = _traspaso.VERSION_ACTUAL
 
 # Acciones que corren DENTRO del revisor, sin lanzar otro proceso. Se distinguen
 # de ACTUALIZADORES porque no abren ventana ni tocan Excel: leen y escriben
@@ -1143,63 +1145,26 @@ def dir_config_mes(aamm, crear=False):
     return _sal.carpeta_mes(DIR_CONFIG, aamm, crear=crear)
 
 
-def escribir_json(ruta, data):
-    """Escritura atomica: primero un .tmp y despues os.replace.
-    Evita dejar el archivo truncado si algo falla a medio camino."""
-    ruta = Path(ruta)
-    ruta.parent.mkdir(parents=True, exist_ok=True)
-    tmp = ruta.with_suffix(ruta.suffix + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, ruta)
+escribir_json = _cfg.escribir_json
 
 
 # =============================================================================
 #  Utilidades
 # =============================================================================
 
-def get_usuario():
-    usuario = os.environ.get("USERNAME") or os.environ.get("USER") or "desconocido"
-    return f"{socket.gethostname()}_{usuario}"
+get_usuario = _cfg.clave_equipo
 
 
 def leer_config():
-    try:
-        if CONFIG_PATH.exists():
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f).get(get_usuario(), {})
-    except Exception:
-        pass
-    return {}
+    return _cfg.leer(CONFIG_PATH)
 
 
 def _modificar_config(mutador):
-    """Lee config.json completo, lo modifica con `mutador` y lo reescribe.
-    IMPORTANTE: config.json lo comparten otros scripts. Solo se agregan o
-    actualizan claves, nunca se borra nada, y si el archivo existe pero no se
-    puede interpretar NO se escribe (mejor perder un ajuste que el archivo)."""
-    todo = {}
-    if CONFIG_PATH.exists():
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                todo = json.load(f)
-            if not isinstance(todo, dict):
-                return False
-        except Exception:
-            return False
-    try:
-        mutador(todo)
-        escribir_json(CONFIG_PATH, todo)
-        return True
-    except Exception:
-        return False
+    return _cfg.modificar(CONFIG_PATH, mutador)
 
 
 def guardar_config(data):
-    return _modificar_config(
-        lambda todo: todo.setdefault(get_usuario(), {}).update(data))
+    return _cfg.guardar(CONFIG_PATH, data)
 
 
 def leer_valores_cfg():
@@ -3969,7 +3934,7 @@ class Revisor:
             r = self.rutas.get(nid_)
             if r is not None:
                 rutas[clave] = str(r)
-        d = {"origen": "Revisor_Reliquidacion",
+        d = {"origen": _traspaso.ORIGEN,
              "version": TRASPASO_VERSION,
              "aamm": aamm,
              "carpeta_reliq": self.var_base.get(),

@@ -145,6 +145,7 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 | Copiar un maestro a su copia | `shutil.copy2`, que conserva la fecha. Con `copy()` a secas el revisor la sigue marcando en amarillo, porque compara por fecha. |
 | El `~$` de Excel | No sirve para saber si un libro está abierto: Excel lo deja huérfano cuando se cae. Comprobar que se pueda escribir abriéndolo en `r+b`. |
 | "Arreglar" el subrayado de `from __comun__ import ...` tocando el código | Ese subrayado (`reportMissingImports`) es **solo del analizador**: Pylance no ejecuta el `sys.path.insert`, así que no ve la carpeta hermana. El programa corre perfecto. Se arregla con `python.analysis.extraPaths` en el `.vscode/settings.json` de cada carpeta — que ya está puesto. Copiar `__comun__/` adentro de cada programa, o volver a duplicar el código para que "no moleste", rompe la única regla que sostiene todo esto: lo compartido vive en **un solo** lugar. |
+| `from __comun__ import ...` sin `try/except ImportError` | Va **siempre** adentro de la guarda que llama a `_morir()`, y `_morir()` tiene que estar definido antes. Lanzado por el Revisor con `pythonw` no hay consola: un `ImportError` suelto mata el script en silencio y solo se ve que la ventana no aparece. Por eso `_morir()` no se puede mudar a `__comun__/`. |
 | Armar la carpeta de un mes o de un comparador (`00_Salidas/AAAA/MM Mes`, `_comparador*`) a mano en vez de vía `__comun__/salidas.py` | El Revisor y los dos comparadores tienen que estar **exactamente de acuerdo** en cómo se llama esa carpeta. Si un script arma la ruta por su cuenta, lee o escribe en el lugar equivocado **sin ningún error visible** — el mismo tipo de bug que `CENTRALES_EMBALSE`, a propósito evitado acá centralizando la lógica en un solo módulo. |
 
 ---
@@ -189,12 +190,14 @@ tienen bloque en `MAPA.md`.
   cumplen la misma función y viven dentro del repositorio.
 - **El módulo común se migra por partes, nunca de golpe.** Una pieza a la vez, un
   script a la vez, verificando que sigue corriendo antes de seguir con el próximo.
-- **`__comun__/config.py` ya está**, con 13 pruebas en `__comun__/test_config.py`. Los
-  scripts migrados conservan sus nombres de siempre (`leer_config`,
+- **`__comun__/config.py` ya está**, con 14 pruebas en `__comun__/test_config.py`.
+  Los doce programas ya están migrados y conservan sus nombres de siempre (`leer_config`,
   `guardar_config`, `_modificar_config`, `escribir_json`, `get_usuario`) como
-  envoltorios de dos líneas, así que **ningún punto de llamada cambia**. Migrar un
-  script es reemplazar esas cinco funciones por los envoltorios y agregar
-  `from __comun__ import config as _cfg`. Nada más.
+  aliases o envoltorios de dos líneas, así que **ningún punto de llamada cambia**.
+- **`__comun__/traspaso.py` es el contrato único del argumento opcional del
+  Revisor.** Centraliza origen, versión y validación; los nueve actualizadores
+  conservan `leer_traspaso()` como wrapper y deben seguir funcionando sin
+  argumento. Las claves particulares de `rutas` siguen siendo de cada script.
 - **Un script de `actualizadores/` está una carpeta más lejos de `__comun__/` que el
   Revisor.** `__comun__/` vive junto a `Revisor_Relq/`, no dentro de él. Python
   solo agrega al `sys.path` la carpeta del propio script, así que al ejecutarlo
