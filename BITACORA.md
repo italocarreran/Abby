@@ -49,6 +49,21 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — probado el caso real: una tarea abierta levanta trabajo posterior
+
+Queda cerrado lo que la entrada de abajo dejaba pendiente. Se subió `ef4d28e`
+a `main` **después** de que una tarea de Codex ya estuviera abierta y
+sincronizada, y a esa misma tarea —sin abrirla de nuevo— se le pidió correr
+`scripts/sincronizar.sh`. Trajo el commit en fast-forward, actualizó
+`BITACORA.md` y avisó sola de ir a leer "Pendientes abiertos".
+
+Ese era el problema con el que empezó todo esto: Codex no veía lo que Claude
+subía sin abrir un chat nuevo. Con el entorno configurado (internet activado,
+"Todos los métodos", `codex_setup.sh` como script de configuración) y la regla
+3b de `REGLAS.md`, el circuito funciona de punta a punta.
+
+Único pendiente del flujo: el script de mantenimiento del entorno.
+
 ## 2026-09-07 — Claude — `sincronizar.sh` confirmado dentro de una tarea de Codex
 
 Corrida real, en una tarea nueva de Codex, después del arreglo del remoto:
