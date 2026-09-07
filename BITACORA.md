@@ -48,6 +48,108 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — revisa las Fases 2 y 3 y corrige tres regresiones
+
+Revisión de `codex/reorganizar-codigo-para-modularidad-hljpmw` y fusión a
+`claude/eso-uozpi4`. **Ojo con cómo venía la rama:** un único commit cortado de
+`5a5ba6d`, o sea de ANTES del arreglo de la Fase 1. Rehace la Fase 1 desde cero
+y le agrega las Fases 2 y 3. No es una rama encima de la principal.
+
+**El trabajo está bien hecho y las extracciones son fieles**, verificado
+comparando función vieja contra nueva, entrada por entrada:
+
+- `texto.py`: 425 comparaciones contra las 8 variantes originales de
+  `normalizar`, 0 diferencias. Conserva a propósito las tres variantes que
+  diferían en `None` (`suave`, `suave_textual`, `suave_requerido`) en vez de
+  unificarlas, que era lo correcto.
+- `excel_xml.py`: 18 libros OOXML sintéticos (cadenas compartidas, `inlineStr`,
+  booleanos, errores, entidades dec/hex, celdas vacías, hoja por nombre y por
+  `#N`, target con `/` y con `xl/`, un libro de 9.000 filas que cruza el corte
+  de 1 MiB, no-zip). 0 diferencias contra las dos copias originales.
+- `archivos.py`: 23 nombres contra los dos `es_copia` originales, 0 diferencias.
+- `comparadores.py`: `ColaTk`, `respaldar`, `subcarpeta`, `buscar_mdb`,
+  `es_hoja_propia` y el caché son traducciones fieles.
+
+**Tres regresiones corregidas.**
+
+1. **Los imports sin guarda, otra vez** (el mismo agujero de la Fase 1, que
+   volvió porque la rama se cortó antes del arreglo). Ahora eran **39 imports
+   sueltos en 12 archivos**, más que antes, porque las Fases 2 y 3 agregaron
+   cuatro módulos compartidos. Se consolidaron: cada ejecutable tiene un único
+   `try/except ImportError` detrás de su `_morir()`.
+
+2. **`color_de` perdió dos de sus cinco casos.** El original mapeaba
+   `desactualizado` → amarillo y cualquier estado desconocido → gris. La versión
+   extraída dejaba solo `ok`/`pendiente` y mandaba **todo lo demás a rojo**.
+   `estado_etapa()` sigue devolviendo `desactualizado`, así que un mes que solo
+   había que rehacer se veía igual que uno al que le falta el archivo. En
+   `Comparador_Tabulado` es color de fondo del chip: bien visible.
+
+3. **`mes_incluido`/`fijar_incluido` cambiaron el formato en disco.** El
+   original guarda la marca dentro del registro del mes
+   (`estado[aamm]["incluir"]`); la versión extraída la movió a un diccionario
+   aparte (`estado["_incluidos"][aamm]`). Nada falla: simplemente **deja de
+   encontrar las exclusiones ya escritas** en los `estado.json` del equipo de la
+   usuaria, y todos los meses que ella había sacado a mano vuelven a entrar al
+   consolidado anual sin ningún aviso. Se volvió al formato de siempre, que
+   además no necesita migrar nada.
+
+Las 2 y 3 pasaban las pruebas de la rama porque las pruebas se escribieron
+contra el código nuevo, no contra el comportamiento viejo. Se agregaron casos
+que fijan los cinco estados de color y el formato en disco de la inclusión.
+
+**También:** `excel_xml.py` no anotaba cuál de las dos variantes de
+`col_letra_a_num` se quedó (la defensiva del Revisor, no la de Data Access).
+AGENTS.md lo pide explícitamente al juntar copias; queda en su docstring.
+
+**Verificado** (Linux, sin Windows ni Excel, con `tkinter` y las libs simuladas):
+los 10 ejecutables abortan con `rc=1` y el mensaje de `__comun__` si falta la
+carpeta, y con ella pasan el import; los envoltorios de config y traspaso de los
+10 siguen cumpliendo las tres reglas del archivo compartido; las 8 suites de
+`__comun__` pasan; `generar_interfaces.py --check` al día.
+
+**Pendiente:** la Fase 4 no se empezó, y coincido con ChatGPT en que es la
+frontera de riesgo alto. Sigue sin probarse ningún actualizador real de punta a
+punta en Windows — y ahora hay bastante más código compartido en juego.
+
+---
+
+## 2026-09-07 — ChatGPT — Fases 2 y 3; se detiene antes del riesgo alto
+
+Después de que Claude revisó y fusionó la Fase 1, la usuaria pidió continuar
+hasta llegar a las fases de riesgo alto. Se completaron la Fase 2 (lectura y
+utilidades comunes) y la Fase 3 (infraestructura de comparadores), y se dejó sin
+iniciar la Fase 4 porque divide internamente las 6.000+ líneas del Revisor y es
+la frontera de riesgo alto.
+
+Fase 2: `__comun__/excel_xml.py` reúne el lector OOXML que era idéntico en el
+Revisor y Data Access; ambos conservan aliases y el mismo fallback. Se crearon
+`texto.py` y `archivos.py` para las normalizaciones y los filtros de temporales
+y copias. Antes de migrar se inventariaron las variantes: no todas trataban
+igual `None` y `0`, por lo que el módulo conserva contratos explícitos
+(`suave`, `suave_textual`, `suave_requerido`, `clave*`) y se comprobó su paridad
+contra las funciones de `HEAD`.
+
+Fase 3: `__comun__/comparadores.py` comparte por composición `ColaTk`,
+caché de una consulta `scandir`, estado e inclusión
+mensual, firmas, respaldos, hojas ajenas y utilidades de rutas/Access. Los dos
+comparadores mantienen wrappers históricos y siguen separados en todo lo de
+dominio (Access vs. Tabulado, SQL, vistas, columnas y Excel). La prueba de la
+cola usa un hilo real y confirma que los widgets no cambian hasta bombear desde
+el hilo de UI.
+
+Se añadieron suites stdlib para los cuatro módulos nuevos, se regeneraron mapa
+e interfaces y se compiló todo el árbol. También se comparó por AST/paridad el
+comportamiento histórico. No se ejecutaron Excel, Access, SQL Server ni ventanas
+reales por no ser Windows. Claude debe revisar especialmente el OOXML sintético,
+el puente de cola y que los respaldos sigan en su ruta actual antes de fusionar.
+
+**Pendiente:** la Fase 4 está descrita en
+`docs/PLAN_MODULARIZACION_TOKENS.md`, marcada expresamente como riesgo alto y no
+se tocó.
+
+---
+
 ## 2026-09-07 — Claude — revisa la Fase 1 de ChatGPT y le tapa un agujero real
 
 Revisión de `codex/reorganizar-codigo-para-modularidad` (1 commit sobre la rama

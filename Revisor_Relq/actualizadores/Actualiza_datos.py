@@ -32,17 +32,19 @@ def _morir(titulo, mensaje):
     print(f"{titulo}\n\n{mensaje}", file=sys.stderr)
     raise SystemExit(1)
 
-
 # Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+# Va detras de _morir a proposito: lanzado por el Revisor con pythonw no hay
+# consola, asi que un ImportError suelto moriria callado.
 _RAIZ_COMUN = Path(__file__).resolve().parents[2]
 if str(_RAIZ_COMUN) not in sys.path:
     sys.path.insert(0, str(_RAIZ_COMUN))
 try:
     from __comun__ import config as _cfg
     from __comun__ import traspaso as _traspaso
+    from __comun__ import texto as _texto
 except ImportError as e:
     _morir("Falta la carpeta __comun__/",
-           "No se pudo cargar __comun__/config.py ni __comun__/traspaso.py.\n\n"
+           "No se pudieron cargar los modulos de __comun__/.\n\n"
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
@@ -82,10 +84,7 @@ def abrir_en_explorador(ruta: str, es_archivo: bool = False):
     else:
         subprocess.Popen(["xdg-open", str(carpeta)])
 
-def normalizar(texto: str) -> str:
-    nfkd = unicodedata.normalize("NFKD", texto)
-    sin_tildes = "".join(c for c in nfkd if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", sin_tildes).strip().lower()
+normalizar = _texto.suave_requerido
 
 # ── Mapeos ───────────────────────────────────────────────────────────────────
 # fila_det_origen: columna (letra) usada para detectar última fila en origen

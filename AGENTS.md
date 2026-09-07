@@ -146,6 +146,8 @@ xlwings ya escrito. Usarla al crear un script nuevo en vez de reinventarlo.
 | El `~$` de Excel | No sirve para saber si un libro está abierto: Excel lo deja huérfano cuando se cae. Comprobar que se pueda escribir abriéndolo en `r+b`. |
 | "Arreglar" el subrayado de `from __comun__ import ...` tocando el código | Ese subrayado (`reportMissingImports`) es **solo del analizador**: Pylance no ejecuta el `sys.path.insert`, así que no ve la carpeta hermana. El programa corre perfecto. Se arregla con `python.analysis.extraPaths` en el `.vscode/settings.json` de cada carpeta — que ya está puesto. Copiar `__comun__/` adentro de cada programa, o volver a duplicar el código para que "no moleste", rompe la única regla que sostiene todo esto: lo compartido vive en **un solo** lugar. |
 | `from __comun__ import ...` sin `try/except ImportError` | Va **siempre** adentro de la guarda que llama a `_morir()`, y `_morir()` tiene que estar definido antes. Lanzado por el Revisor con `pythonw` no hay consola: un `ImportError` suelto mata el script en silencio y solo se ve que la ventana no aparece. Por eso `_morir()` no se puede mudar a `__comun__/`. |
+| `from __comun__ import ...` sin `try/except ImportError` | Va **siempre** adentro de la guarda que llama a `_morir()`, y `_morir()` tiene que estar definido antes. Lanzado por el Revisor con `pythonw` no hay consola: un `ImportError` suelto mata el script en silencio y solo se ve que la ventana no aparece. Por eso `_morir()` no se puede mudar a `__comun__/`. Ya se rompió dos veces. |
+| Sacar una función a `__comun__/` y "simplificarla" de paso | La versión extraída tiene que dar **exactamente** lo mismo que la vieja para toda entrada, incluidos los casos que parecen muertos. `color_de` perdió el estado `desactualizado` y el gris por omisión; `mes_incluido` cambió la clave en la que se guarda la marca y dejó de leer los `estado.json` que ya existían. Ninguna de las dos falla: mienten en silencio. Comparar vieja contra nueva con una batería de entradas antes de dar por buena la extracción. |
 | Armar la carpeta de un mes o de un comparador (`00_Salidas/AAAA/MM Mes`, `_comparador*`) a mano en vez de vía `__comun__/salidas.py` | El Revisor y los dos comparadores tienen que estar **exactamente de acuerdo** en cómo se llama esa carpeta. Si un script arma la ruta por su cuenta, lee o escribe en el lugar equivocado **sin ningún error visible** — el mismo tipo de bug que `CENTRALES_EMBALSE`, a propósito evitado acá centralizando la lógica en un solo módulo. |
 
 ---
@@ -198,6 +200,14 @@ tienen bloque en `MAPA.md`.
   Revisor.** Centraliza origen, versión y validación; los nueve actualizadores
   conservan `leer_traspaso()` como wrapper y deben seguir funcionando sin
   argumento. Las claves particulares de `rutas` siguen siendo de cada script.
+- **La lectura OOXML vive en `__comun__/excel_xml.py`.** Revisor y Data Access
+  conservan aliases con sus nombres históricos; no volver a copiar el escáner.
+- **Normalización y copias viven en `__comun__/texto.py` y `archivos.py`.** Hay
+  variantes históricas explícitas para `None`/`0`; elegir la función por contrato,
+  no reemplazar todo por una sola “normalizar”.
+- **Los comparadores comparten solo infraestructura en
+  `__comun__/comparadores.py`.** Se usa composición (`ColaTk`, caché, estado,
+  respaldo); sus motores Access/Tabulado y reglas de Excel permanecen separados.
 - **Un script de `actualizadores/` está una carpeta más lejos de `__comun__/` que el
   Revisor.** `__comun__/` vive junto a `Revisor_Relq/`, no dentro de él. Python
   solo agrega al `sys.path` la carpeta del propio script, así que al ejecutarlo

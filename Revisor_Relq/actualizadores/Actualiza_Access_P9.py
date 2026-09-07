@@ -84,6 +84,11 @@ DIR_SCRIPT = Path(__file__).resolve().parent
 # DIR_SCRIPT / "config.json" porque este script esta en actualizadores/.
 CONFIG_PATH = DIR_SCRIPT.parent.parent / "__config__" / "config.json"
 
+# Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+_RAIZ_COMUN = Path(__file__).resolve().parents[2]
+if str(_RAIZ_COMUN) not in sys.path:
+    sys.path.insert(0, str(_RAIZ_COMUN))
+
 
 def _morir(titulo, mensaje):
     """Aborta mostrando el motivo en una ventana. Sin esto, lanzado desde el
@@ -107,6 +112,7 @@ if str(_RAIZ_COMUN) not in sys.path:
 try:
     from __comun__ import config as _cfg
     from __comun__ import traspaso as _traspaso
+    from __comun__ import texto as _texto
 except ImportError as e:
     _morir("Falta la carpeta __comun__/",
            "No se pudo cargar __comun__/config.py ni __comun__/traspaso.py.\n\n"
@@ -550,18 +556,7 @@ def cargar_central_empresa(ruta_mdb, filas, solo_lectura, log):
             pass
 
 
-def clave_central(t):
-    """Normaliza el nombre de una central para comparar: sin tildes, sin espacios
-    ni guiones bajos, en mayusculas. Asi 'El Toro-1', 'EL_TORO-1' y 'ELTORO-1'
-    son la misma.
-
-    Es MAS estricto que la comparacion de Access (que ignora mayusculas pero no
-    espacios), y eso conviene: evita mandar dos filas que el indice unico
-    consideraria iguales. La misma funcion esta en el Revisor.
-    """
-    t = unicodedata.normalize("NFKD", str(t or ""))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    return re.sub(r"[\s_]+", "", t).upper()
+clave_central = _texto.clave_mayusculas
 
 
 def columnas_tabla_de(cur, tabla):

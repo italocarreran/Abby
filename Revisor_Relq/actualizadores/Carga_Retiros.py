@@ -48,17 +48,19 @@ def _morir(titulo, mensaje):
     print(f"{titulo}\n\n{mensaje}", file=sys.stderr)
     raise SystemExit(1)
 
-
 # Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+# Va detras de _morir a proposito: lanzado por el Revisor con pythonw no hay
+# consola, asi que un ImportError suelto moriria callado.
 _RAIZ_COMUN = Path(__file__).resolve().parents[2]
 if str(_RAIZ_COMUN) not in sys.path:
     sys.path.insert(0, str(_RAIZ_COMUN))
 try:
     from __comun__ import config as _cfg
     from __comun__ import traspaso as _traspaso
+    from __comun__ import texto as _texto
 except ImportError as e:
     _morir("Falta la carpeta __comun__/",
-           "No se pudo cargar __comun__/config.py ni __comun__/traspaso.py.\n\n"
+           "No se pudieron cargar los modulos de __comun__/.\n\n"
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
@@ -120,21 +122,7 @@ COL_HORA = "Hora Mensual"
 HORA_CAMBIO_POR_OMISION = 145
 
 
-def clave_col(t):
-    """Normaliza un nombre de columna para comparar.
-
-    Sin tildes, sin espacios ni guiones bajos, en mayusculas. Y ademas trata
-    "ANIO" como "ANO", que es lo que hace falta de verdad: la Ñ no se resuelve
-    quitando tildes. Descomponer "Año" da "ANO" y "Anio" da "ANIO", y sin este
-    paso no coincidirian, que es justo el caso que falla:
-        'Clave Año_Mes'  ==  'Clave_Anio_Mes'  ==  'clave_anio_mes'
-    """
-    t = unicodedata.normalize("NFKD", str(t or ""))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    t = re.sub(r"[\s_]+", "", t).upper()
-    # La Ñ descompuesta queda como N; "ANIO" se lleva a "ANO" para que las dos
-    # formas de escribir "año" den lo mismo.
-    return t.replace("ANIO", "ANO")
+clave_col = _texto.clave_columna
 
 
 def resolver_columna(columnas, objetivo):
@@ -199,12 +187,7 @@ def leer_traspaso(argv):
 # =============================================================================
 #  UTILIDADES
 # =============================================================================
-def normalizar(t):
-    if t is None:
-        return ""
-    t = unicodedata.normalize("NFKD", str(t))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    return " ".join(t.lower().split())
+normalizar = _texto.suave
 
 
 def fmt_tiempo(seg):

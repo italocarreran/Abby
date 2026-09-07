@@ -433,6 +433,30 @@ código.** Corregir el documento cuando haya oportunidad:
   funcionando solo y busca sus archivos manualmente.
 - **Pruebas:** `__comun__/test_traspaso.py`, 8 casos, solo stdlib.
 
+### `__comun__/excel_xml.py` — **hecho**
+
+- **Qué hace:** lee columnas calculadas de `.xlsx`/`.xlsm` escaneando el ZIP y
+  XML, sin abrir Excel; ante un fallo devuelve `None` para conservar el fallback.
+- **Lo usan:** Revisor y `Actualiza_Data_Access.py`, mediante aliases históricos.
+- **Pruebas:** `__comun__/test_excel_xml.py`, con un OOXML sintético.
+
+### `__comun__/texto.py` y `__comun__/archivos.py` — **hecho**
+
+- **Qué hacen:** separan normalización suave de claves estrictas y centralizan
+  temporales/copias de Windows. Conservan explícitamente las variantes antiguas
+  para `None` y `0`, en vez de cambiar casos límite al migrar.
+- **Pruebas:** `__comun__/test_texto.py` y `__comun__/test_archivos.py`.
+
+### `__comun__/comparadores.py` — **hecho**
+
+- **Qué hace:** infraestructura compartida por composición: caché `scandir`,
+  estado/inclusión, respaldo y hojas ajenas, helpers
+  de rutas/Access y puente `ColaTk` para que workers no toquen tkinter.
+- **Regla:** no contiene SQL, columnas, vistas ni lectura de dominio; Access y
+  Tabulado siguen siendo motores independientes.
+- **Pruebas:** `__comun__/test_comparadores.py`, incluidas cola con hilo real,
+  caché, copias, estado y respaldos.
+
 ### `_morir()` se queda duplicado a propósito
 
 Cada ejecutable define su propio `_morir()` (ventana + `SystemExit(1)`) y hace
@@ -444,7 +468,7 @@ nunca apareció.
 
 ### Lo que sigue
 
-El generador detecta **40 nombres de constante repetidos** (la tabla completa
+El generador detecta **39 nombres de constante repetidos** (la tabla completa
 está al final de `INTERFACES.md`). Es una detección sintáctica, y tres de esos
 nombres **tienen que** seguir repetidos: `CONFIG_PATH` y `_RAIZ_COMUN` se
 calculan desde la ubicación de cada ejecutable, y los dos `TRASPASO_*` ya son
@@ -454,15 +478,14 @@ Entre las duplicaciones todavía reales, las que más rinden son:
 | Constante | En cuántos archivos | Qué es |
 |---|---|---|
 | `DIR_SCRIPT` | 7 | la carpeta del script |
-| `NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` | 2 | el lector de Excel por ZIP/XML, duplicado entre el Revisor y `Actualiza_Data_Access` |
 | `CENTRALES_EMBALSE` | 2 | el caso documentado, el único que ya obligó a defenderse con una verificación |
 | `SERVER`, `DRIVER`, `CHUNK`, `LARGO_TEXTO` | 2 | la conexión a SQL Server |
 
 **El orden de migración no es `CENTRALES_EMBALSE`**, aunque sea el caso más famoso:
 es el que menos riesgo tiene de quedar mal, porque V10 lo caza en los dos sentidos.
-La próxima pieza, por tamaño de la ganancia, es el **lector de Excel por ZIP/XML**
-(`NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` y sus funciones): son varios cientos de
-líneas idénticas entre el Revisor y `Actualiza_Data_Access`.
+El lector de Excel por ZIP/XML y la infraestructura duplicada de comparadores ya
+se migraron. Lo siguiente es la Fase 4: dividir internamente el Revisor; es la
+frontera de riesgo alto y no se inició en esta rama.
 
 El orden y los límites de las fases siguientes quedaron en
 `docs/PLAN_MODULARIZACION_TOKENS.md`. Aunque una pieza tenga varios consumidores,

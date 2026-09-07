@@ -176,17 +176,20 @@ def _morir(titulo, mensaje):
     print(f"{titulo}\n\n{mensaje}", file=sys.stderr)
     raise SystemExit(1)
 
-
 # Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+# Va detras de _morir a proposito: lanzado por el Revisor con pythonw no hay
+# consola, asi que un ImportError suelto moriria callado.
 _RAIZ_COMUN = Path(__file__).resolve().parents[2]
 if str(_RAIZ_COMUN) not in sys.path:
     sys.path.insert(0, str(_RAIZ_COMUN))
 try:
     from __comun__ import config as _cfg
     from __comun__ import traspaso as _traspaso
+    from __comun__ import excel_xml as _excel_xml
+    from __comun__ import texto as _texto
 except ImportError as e:
     _morir("Falta la carpeta __comun__/",
-           "No se pudo cargar __comun__/config.py ni __comun__/traspaso.py.\n\n"
+           "No se pudieron cargar los modulos de __comun__/.\n\n"
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
@@ -244,10 +247,7 @@ def abrir_en_explorador(ruta, es_archivo=False):
         subprocess.Popen(["xdg-open", str(carpeta)])
 
 
-def normalizar(texto):
-    nfkd = unicodedata.normalize("NFKD", str(texto))
-    limpio = "".join(c for c in nfkd if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", limpio).strip().lower()
+normalizar = _texto.suave_textual
 
 
 def buscar_carpeta(base, nombre):
@@ -383,179 +383,25 @@ def leer_bloque(sheet, f1, c1, f2, c2):
 #  <v>), nunca la formula. Si el archivo nunca se recalculo, los resultados
 #  pueden ser viejos. Excel guarda el resultado siempre que se guarde el archivo,
 #  asi que en la practica no molesta, pero por eso queda xlwings de respaldo.
-NS_XL = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-NS_REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+NS_XL = _excel_xml.NS_XL
+NS_REL = _excel_xml.NS_REL
 
 
-def es_zip_excel(ruta):
-    return Path(ruta).suffix.lower() in (".xlsx", ".xlsm", ".xltx", ".xltm")
+es_zip_excel = _excel_xml.es_zip_excel
 
 
-def ubicar_hoja_xml(z, hoja):
-    """Dentro del zip de un .xlsx/.xlsm, devuelve (ruta_del_xml, lista_de_hojas).
-    ruta_del_xml es None si la hoja no existe."""
-    import xml.etree.ElementTree as ET
-    nombres = set(z.namelist())
-    if "xl/workbook.xml" not in nombres:
-        return None, []
-    wb = ET.fromstring(z.read("xl/workbook.xml"))
-    lista = list(wb.iter(f"{NS_XL}sheet"))
-    hojas = [sh.get("name", "") for sh in lista]
-    rid = None
-    # "#1", "#2", ... permiten pedir la hoja por posicion cuando no se sabe el
-    # nombre o cuando cambia de un mes a otro.
-    m_pos = re.fullmatch(r"#(\d+)", str(hoja).strip())
-    if m_pos:
-        i = int(m_pos.group(1)) - 1
-        if 0 <= i < len(lista):
-            rid = lista[i].get(f"{NS_REL}id")
-    else:
-        for sh in lista:
-            if normalizar(sh.get("name", "")) == normalizar(hoja):
-                rid = sh.get(f"{NS_REL}id")
-                break
-    if rid is None or "xl/_rels/workbook.xml.rels" not in nombres:
-        return None, hojas
-    destino = None
-    for r in ET.fromstring(z.read("xl/_rels/workbook.xml.rels")):
-        if r.get("Id") == rid:
-            destino = r.get("Target")
-            break
-    if not destino:
-        return None, hojas
-    ruta_hoja = destino[1:] if destino.startswith("/") else "xl/" + destino
-    ruta_hoja = ruta_hoja.replace("xl/xl/", "xl/")
-    return (ruta_hoja if ruta_hoja in nombres else None), hojas
+ubicar_hoja_xml = _excel_xml.ubicar_hoja_xml
 
 
-def expandir_columnas(rango):
-    """'CF:CI' -> ['CF','CG','CH','CI'].  'CD' -> ['CD']."""
-    partes = str(rango).replace(" ", "").replace("$", "").upper().split(":")
-    a = col_letra_a_num(partes[0])
-    b = col_letra_a_num(partes[-1]) if len(partes) > 1 else a
-    letras = []
-    for n in range(min(a, b), max(a, b) + 1):
-        s, x = "", n
-        while x > 0:
-            x, r = divmod(x - 1, 26)
-            s = chr(ord("A") + r) + s
-        letras.append(s)
-    return letras
+expandir_columnas = _excel_xml.expandir_columnas
 
 
-def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log):
-    """Lee columnas completas de un .xlsx/.xlsm escaneando el XML por trozos.
-    Devuelve {"COL": {fila: valor}} con los valores ya calculados, o None.
-    Igual que en el resto, se lee SOLO el resultado y nunca el nodo <f>."""
-    import zipfile
-    import xml.etree.ElementTree as ET
-
-    if not es_zip_excel(ruta):
-        log(f"    ! {Path(ruta).name}: formato no soportado para lectura rápida")
-        return None
-    objetivo = [c.upper() for c in columnas]
-    if not objetivo:
-        return {}
-    alternativas = b"|".join(sorted((c.encode() for c in objetivo),
-                                    key=len, reverse=True))
-    patron = re.compile(rb'<c r="(' + alternativas + rb')(\d+)"([^>]*?)(?:/>|>(.*?)</c>)',
-                        re.S)
-    fila_inicio = int(fila_inicio)
-    datos = {c: {} for c in objetivo}
-
-    def desescapar(b):
-        # Delegado al desescapador de verdad: maneja tambien &#243; y &#x00F3;.
-        return desescapar_xml(b)
-
-    try:
-        with zipfile.ZipFile(str(ruta)) as z:
-            ruta_hoja, hojas = ubicar_hoja_xml(z, hoja)
-            if ruta_hoja is None:
-                log(f"    ! La hoja '{hoja}' no existe. Hojas: {', '.join(hojas)}")
-                return None
-            compartidas = []
-            if "xl/sharedStrings.xml" in set(z.namelist()):
-                ss = ET.fromstring(z.read("xl/sharedStrings.xml"))
-                compartidas = ["".join(si.itertext()) for si in ss.iter(f"{NS_XL}si")]
-
-            with z.open(ruta_hoja) as f:
-                cola = b""
-                while True:
-                    trozo = f.read(1 << 20)
-                    if not trozo:
-                        break
-                    buf = cola + trozo
-                    fin = 0
-                    for m in patron.finditer(buf):
-                        fin = m.end()
-                        col, nfila = m.group(1).decode(), int(m.group(2))
-                        if nfila < fila_inicio:
-                            continue
-                        attrs, cuerpo = m.group(3), m.group(4) or b""
-                        valor = None
-                        if b'inlineStr' in attrs:
-                            mv = re.search(rb"<is>(.*?)</is>", cuerpo, re.S)
-                            if mv:
-                                valor = desescapar(re.sub(rb"<[^>]+>", b"", mv.group(1)))
-                        else:
-                            mv = re.search(rb"<v>(.*?)</v>", cuerpo, re.S)
-                            if mv:
-                                bruto = mv.group(1)
-                                if b't="s"' in attrs:
-                                    try:
-                                        valor = compartidas[int(bruto)]
-                                    except Exception:
-                                        valor = None
-                                elif b't="e"' in attrs or b't="str"' in attrs:
-                                    valor = desescapar(bruto)
-                                elif b't="b"' in attrs:
-                                    valor = bool(int(bruto))
-                                else:
-                                    try:
-                                        valor = float(bruto)
-                                    except ValueError:
-                                        valor = desescapar(bruto)
-                        if valor is not None and not (isinstance(valor, str)
-                                                      and not valor.strip()):
-                            datos[col][nfila] = valor
-                    cola = buf[fin:] if fin else buf[-8192:]
-    except Exception as e:
-        log(f"    ! No se pudo leer {Path(ruta).name}: {e}")
-        return None
-    return datos
+leer_columnas_rapido = _excel_xml.leer_columnas_rapido
 
 
-_ENT_XML = {"lt": "<", "gt": ">", "quot": '"', "apos": "'", "amp": "&"}
-_RE_ENT = re.compile(r"&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|(lt|gt|quot|apos|amp));")
 
 
-def desescapar_xml(b):
-    """Convierte el texto crudo del XML de Excel a texto de verdad.
-
-    Hay que manejar las referencias NUMERICAS (&#243; = o con tilde), no solo las
-    cinco entidades con nombre: los nombres de empresa chilenos vienen llenos de
-    tildes y ñ, y algunos escritores de Excel las guardan asi. Si no se
-    desescapan, "Enel Generaci&#243;n" y "Enel Generación" no se parecen en nada
-    al comparar, y el cuadro de pago reporta un descuadre que no existe.
-
-    Se resuelve en UNA pasada a proposito. Reemplazar "&amp;" primero y despues
-    "&lt;" convertiria "&amp;lt;" (un literal "&lt;") en "<", que es otra cosa.
-    """
-    if isinstance(b, bytes):
-        b = b.decode("utf-8", "ignore")
-
-    def uno(m):
-        dec, hexa, nombre = m.group(1), m.group(2), m.group(3)
-        try:
-            if dec is not None:
-                return chr(int(dec))
-            if hexa is not None:
-                return chr(int(hexa, 16))
-        except (ValueError, OverflowError):
-            return m.group(0)
-        return _ENT_XML[nombre]
-
-    return _RE_ENT.sub(uno, b)
+desescapar_xml = _excel_xml.desescapar_xml
 
 
 def leer_matriz_rapida(ruta, cfg, log):

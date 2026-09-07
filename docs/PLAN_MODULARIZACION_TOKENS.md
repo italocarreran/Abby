@@ -9,10 +9,10 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 
 | Fase | Estado | Resultado esperado |
 |---|---|---|
-| 1. Configuración y traspaso | **Hecha.** Revisada y fusionada el 2026-09-07 (`2645788`); ver `BITACORA.md` | Una sola implementación de persistencia y del contrato opcional del Revisor |
-| 2. Lectura y utilidades comunes | Pendiente | OOXML, normalización y búsqueda segura sin copias |
-| 3. Infraestructura de comparadores | Pendiente | Compartir estado, cola UI y salida Excel sin mezclar sus motores |
-| 4. División interna del Revisor | Pendiente | Separar UI, estado, lectores, verificaciones y lanzamiento |
+| 1. Configuración y traspaso | **Hecha.** Revisada y fusionada el 2026-09-07 (`2645788`) | Una sola implementación de persistencia y del contrato opcional del Revisor |
+| 2. Lectura y utilidades comunes | **Hecha.** Revisada y fusionada el 2026-09-07; ver `BITACORA.md` | OOXML, normalización y filtros seguros sin copias |
+| 3. Infraestructura de comparadores | **Hecha.** Revisada y fusionada el 2026-09-07; dos regresiones corregidas, ver `BITACORA.md` | Estado, caché, cola UI y salida Excel sin mezclar sus motores |
+| 4. División interna del Revisor | **No iniciada: frontera de riesgo alto** | Separar UI, estado, lectores, verificaciones y lanzamiento |
 
 ## Fase 1 — configuración y traspaso
 
@@ -36,9 +36,8 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 
 ### Puntos que Claude revisó — todos confirmados
 
-Los cinco puntos de abajo se verificaron el 2026-09-07 y quedaron OK. La única
-corrección que hizo falta fue que los `from __comun__ import ...` nuevos venían
-**sin `try/except ImportError`**; está detallada en `BITACORA.md`.
+Verificados el 2026-09-07. La única corrección que hizo falta fue que los
+`from __comun__ import ...` nuevos venían **sin `try/except ImportError`**.
 
 ### Lo que se pidió revisar
 
@@ -53,41 +52,42 @@ corrección que hizo falta fue que los `from __comun__ import ...` nuevos venía
   Windows y archivos de trabajo; el cambio de esta fase es anterior a esas
   operaciones.
 
-## Fase 2 — lectura y utilidades comunes
+## Fase 2 — lectura y utilidades comunes — implementada
 
-Aplicar **una pieza por vez**, en este orden:
+Se aplicó por piezas, en este orden:
 
-1. `__comun__/excel_xml.py`: extraer primero las primitivas OOXML duplicadas
+1. `__comun__/excel_xml.py`: primitivas OOXML antes duplicadas
    entre el Revisor y `Actualiza_Data_Access.py` (`NS_XL`, `NS_REL`, entidades,
    ubicación de hojas, expansión y lectura de columnas). Mantener en cada
    consumidor su adaptación de dominio y el fallback actual a xlwings.
-2. `__comun__/texto.py`: inventariar antes todas las variantes de
+2. `__comun__/texto.py`: se inventariaron las variantes de
    `normalizar`; separar normalización estricta de centrales/empresas/columnas
    de cualquier variante suave usada para buscar archivos.
-3. `__comun__/archivos.py`: centralizar temporales de Excel, copias de Windows,
-   búsqueda por patrón y preferencia del original válido más reciente. Los
-   patrones específicos de cada planilla permanecen en su script.
+3. `__comun__/archivos.py`: centraliza temporales de Excel, copias de Windows y
+   preferencia del original válido más reciente. Los patrones específicos y
+   recorridos cacheados permanecen en cada consumidor.
 
-Cada pieza debe tener pruebas stdlib y migrar primero un consumidor. Solo tras
-comparar comportamiento se migra el segundo; no hacer las tres extracciones en
-un único commit.
+Cada pieza tiene pruebas stdlib. Se preservaron incluso diferencias históricas
+de normalización para `None` y `0`; no se homogeneizaron silenciosamente.
 
-## Fase 3 — infraestructura de comparadores
+## Fase 3 — infraestructura de comparadores — implementada
 
-Compartir por **composición**, no mediante una clase base grande:
+Se compartió por **composición**, no mediante una clase base grande:
 
-1. persistencia de estado e inclusión mensual;
-2. cola de mensajes que garantiza que solo el hilo principal toque tkinter;
-3. respaldo de Excel y preservación de hojas ajenas;
-4. utilidades comunes para meses, etapas y rutas.
+1. persistencia de estado, firmas e inclusión mensual;
+2. `ColaTk`, que garantiza que solo el hilo principal toque tkinter;
+3. respaldo de Excel y detección de hojas ajenas;
+4. caché de directorios y utilidades comunes para meses,
+   tablas, rutas y archivos Access.
 
-Debe permanecer separado todo lo que define el dominio: lectura Access en
+Permanece separado todo lo que define el dominio: lectura Access en
 `Comparador_Etapas.py`, lectura de consolidados en `Comparador_Tabulado.py`,
 SQL, columnas, vistas, tolerancias y contenido de sus Excel.
 
-## Fase 4 — división interna del Revisor
+## Fase 4 — división interna del Revisor — no iniciada
 
-Hacerla al final, cuando las utilidades compartidas ya hayan salido. Mantener
+Esta es la **frontera de riesgo alto** indicada por la usuaria. Requiere otra
+sesión y validación específica antes de tocarse. Mantener
 `Revisor_Relq/Revisor_Reliquidacion.py` como único punto de entrada y como el
 archivo literal que localizan los hermanos. Extraer gradualmente:
 

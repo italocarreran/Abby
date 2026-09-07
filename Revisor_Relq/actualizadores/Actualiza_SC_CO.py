@@ -163,12 +163,14 @@ try:
     sys.path.insert(0, str(DIR_SCRIPT.parent.parent))
     from __comun__ import config as _cfg
     from __comun__ import traspaso as _traspaso
+    from __comun__ import texto as _texto
 except ImportError as e:
     _morir("Falta la carpeta __comun__/",
            "No se pudo cargar __comun__/config.py.\n\n"
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq,\n"
            "con config.py adentro. Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
+
 
 get_usuario = _cfg.clave_equipo
 escribir_json = _cfg.escribir_json
@@ -215,20 +217,10 @@ def leer_traspaso(argv):
 # =============================================================================
 #  UTILIDADES
 # =============================================================================
-def normalizar(t):
-    if t is None:
-        return ""
-    t = unicodedata.normalize("NFKD", str(t))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    return " ".join(t.lower().split())
+normalizar = _texto.suave
 
 
-def clave_central(t):
-    """Normaliza un nombre de central para comparar: sin tildes, sin espacios ni
-    guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma."""
-    t = unicodedata.normalize("NFKD", str(t or ""))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    return re.sub(r"[\s_]+", "", t).upper()
+clave_central = _texto.clave_mayusculas
 
 
 def buscar_hoja(wb, nombre):

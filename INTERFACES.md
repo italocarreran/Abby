@@ -25,22 +25,176 @@ Convenciones de esta página:
 
 ## Índice
 
+- [`__comun__/archivos.py`](#__comun__archivospy) — 39 líneas — Reglas compartidas para descartar temporales y copias de Windows.
+- [`__comun__/comparadores.py`](#__comun__comparadorespy) — 327 líneas — Infraestructura compartida por los dos comparadores.
 - [`__comun__/config.py`](#__comun__configpy) — 118 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+- [`__comun__/excel_xml.py`](#__comun__excel_xmlpy) — 185 líneas — Lectura rápida de columnas OOXML sin abrir Excel.
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
 - [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
+- [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
-- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1855 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6849 líneas — Revisor de entregables - CASO RELIQUIDACION
-- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1100 líneas — Actualiza el Access de la planilla 9
-- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1007 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1574 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
-- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 772 líneas — Actualizar Energia
-- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 889 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
-- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1316 líneas
-- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 867 líneas — Carga Retiros_h.parquet a SQL Server
-- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 899 líneas — Prorratear: del Access a SQL Server
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2574 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1889 líneas — Comparador_Tabulado.py
+- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1853 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6678 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
+- [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1420 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
+- [`Revisor_Relq/actualizadores/Actualiza_Energia.py`](#revisor_relqactualizadoresactualiza_energiapy) — 777 líneas — Actualizar Energia
+- [`Revisor_Relq/actualizadores/Actualiza_SC_CO.py`](#revisor_relqactualizadoresactualiza_sc_copy) — 881 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1315 líneas
+- [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 850 líneas — Carga Retiros_h.parquet a SQL Server
+- [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 896 líneas — Prorratear: del Access a SQL Server
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1689 líneas — Comparador_Tabulado.py
+
+
+---
+
+## `__comun__/archivos.py`
+
+> Reglas compartidas para descartar temporales y copias de Windows.
+>
+> No contiene patrones de planillas ni recorre por sí solo el árbol del caso: cada
+> programa conserva su caché y su búsqueda de dominio. Este módulo decide qué
+> nombres nunca deben ganar por fecha y elige el más reciente entre entradas ya
+> obtenidas por el consumidor.
+
+**Importa:** `pathlib`, `re`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `PATRON_COPIA` | `re.compile('(-\\s*cop(?:ia\|y)(?:\\s*\\(\\d+\\))?\|\\(\\d+\\))\\s*$', re.IGNORECASE)` |  |
+
+### Funciones
+
+#### `def es_temporal(nombre)`
+
+Detecta temporales de Excel y entradas ocultas usadas como auxiliares.
+
+#### `def es_copia(nombre)`
+
+Detecta ``- copia``, ``- Copy``, sus numeradas y el sufijo ``(N)``.
+
+#### `def preferir_originales(entradas, nombre=lambda entrada: entrada.name)`
+
+Descarta copias si existe al menos un original; si no, conserva todas.
+
+#### `def mas_reciente(entradas, mtime=lambda entrada: entrada.stat().st_mtime)`
+
+Devuelve la entrada más reciente o ``None`` sin volver a recorrer carpetas.
+
+
+---
+
+## `__comun__/comparadores.py`
+
+> Infraestructura compartida por los dos comparadores.
+>
+> No conoce Access, consolidados, SQL ni columnas. Reúne únicamente el puente de
+> cola hacia tkinter y estado mensual puro, para que los motores de dominio sigan
+> separados y los workers nunca toquen widgets.
+
+**Importa:** `__comun__`, `datetime`, `os`, `pathlib`, `queue`, `shutil`, `subprocess`, `sys`
+
+### Clases
+
+#### `class Entrada`
+
+Archivo o carpeta con metadatos obtenidos en el mismo ``scandir``.
+
+- `def __init__(self, nombre, ruta, es_dir, mtime, size)`
+
+#### `class CacheDirectorios`
+
+Una consulta de red por carpeta y reutilización hasta ``limpiar``.
+
+- `def __init__(self)`
+- `def limpiar(self)`
+- `def listar(self, carpeta)`
+- `def huella_entrada(self, ruta)`
+
+#### `class ColaTk`
+
+Cola de mensajes cuyo ``bombear`` se ejecuta siempre en el hilo de Tk.
+
+- `def __init__(self, root, intervalo_ms=100)`
+- `def conectar(self, txt, var_estado, barra)` — Conecta widgets una vez construida la ventana e inicia el bombeo.
+- `def log(self, mensaje)`
+- `def progreso(self, **opciones)`
+- `def estado(self, texto)`
+- `def llamar(self, funcion, *args)`
+- `def bombear(self)` — Aplica mensajes pendientes y vuelve a programarse con ``after``.
+
+### Funciones
+
+#### `def hallar_revisor(raiz)`
+
+Encuentra la carpeta hermana por su entry point, no por su nombre.
+
+#### `def abrir_en_explorador(ruta, es_archivo=True)`
+
+Abre la carpeta existente más cercana sin ejecutar el archivo.
+
+#### `def subcarpeta(padre, nombre_buscado, listar)`
+
+Busca coincidencia exacta normalizada y luego coincidencia contenida.
+
+#### `def buscar_mdb(carpeta, patron, listar)`
+
+MDB/ACCDB original más reciente usando el listado cacheado del llamador.
+
+#### `def huella(ruta, huella_entrada)`
+
+#### `def tabla_por_nombre(nombres, candidatos, normalizar=texto.clave)`
+
+#### `def una_fila(cursor, defecto=None)`
+
+#### `def meses_del_anio(anio)`
+
+Devuelve los doce AAMM para un año escrito con dos o cuatro dígitos.
+
+#### `def mes_incluido(estado, aamm)`
+
+Indica si el mes entra al consolidado anual; por omisión entra.
+
+La marca vive DENTRO del registro del mes (``estado[aamm]["incluir"]``), que
+es donde la escriben los ``estado.json`` que ya existen en el equipo de la
+usuaria. Moverla a un diccionario aparte no rompe nada visible: simplemente
+deja de encontrar las exclusiones viejas y todos los meses vuelven a entrar
+al anual sin aviso.
+
+#### `def fijar_incluido(estado, aamm, valor)`
+
+#### `def color_de(estado, colores)`
+
+Traduce el estado semántico a la paleta activa.
+
+Son cinco casos, no tres: "desactualizado" es amarillo como "pendiente"
+(el mes está, hay que rehacerlo) y NO rojo, que significa que falta el
+archivo. Cualquier estado desconocido cae en gris, no en rojo.
+
+#### `def fmt_tiempo(segundos)`
+
+#### `def ahora()`
+
+#### `def cargar_estado(ruta, leer_json)`
+
+#### `def guardar_estado(ruta, estado, escribir_json)`
+
+#### `def firma_vistas(meses, path_vista)`
+
+#### `def es_hoja_propia(nombre, hojas_fijas)`
+
+Reconoce resúmenes y hojas mensuales ``AAMM``/``AAMM_N``.
+
+#### `def hojas_ajenas(destino, openpyxl, es_propia, log=print)`
+
+Lista hojas que el comparador no puede pisar; falla de forma conservadora.
+
+#### `def respaldar(destino, carpeta, log=print, conservar=5)`
+
+Copia con metadatos y conserva los últimos respaldos del mismo libro.
 
 
 ---
@@ -104,6 +258,59 @@ pisarlo le borraria los ajustes a los demas scripts.
 #### `def guardar(ruta, data: dict) -> bool`
 
 Agrega o actualiza claves en el bloque del equipo actual.
+
+
+---
+
+## `__comun__/excel_xml.py`
+
+> Lectura rápida de columnas OOXML sin abrir Excel.
+>
+> Concentra la implementación idéntica que tenían el Revisor y
+> ``Actualiza_Data_Access.py``. Solo lee resultados calculados; nunca evalúa el
+> nodo de fórmula. Ante un formato no soportado, una hoja ausente o un error de
+> lectura devuelve ``None`` para que el consumidor conserve su fallback actual a
+> xlwings/COM.
+>
+> Diferencia resuelta al juntar las dos copias: ``col_letra_a_num`` venia sin
+> filtro en ``Actualiza_Data_Access.py`` y con ``if "A" <= c <= "Z"`` en el
+> Revisor. Queda la del Revisor, que es la defensiva; solo cambia el resultado
+> si al rango le llegan digitos o simbolos, cosa que no pasa con un rango de
+> columnas real. Cada consumidor conserva ademas su propio ``col_letra_a_num``
+> publico, que no cambio.
+
+**Importa:** `__comun__`, `pathlib`, `re`, `xml`, `zipfile`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` |  |
+| `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
+| `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
+| `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
+
+### Funciones
+
+#### `def es_zip_excel(ruta)`
+
+Indica si la extensión puede contener un libro OOXML.
+
+#### `def ubicar_hoja_xml(z, hoja)`
+
+Devuelve ``(ruta_xml, hojas)``; acepta nombre normalizado o ``#N``.
+
+#### `def expandir_columnas(rango)`
+
+Convierte ``CF:CI`` en ``[CF, CG, CH, CI]``.
+
+#### `def desescapar_xml(valor)`
+
+Desescapa entidades XML, incluidas referencias numéricas dec/hex.
+
+#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
+
+Lee columnas calculadas como ``{COL: {fila: valor}}`` o devuelve None.
 
 
 ---
@@ -214,6 +421,50 @@ Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 
 ---
 
+## `__comun__/texto.py`
+
+> Normalización compartida de nombres del dominio y de rutas.
+>
+> Expone dos contratos distintos a propósito: ``suave`` conserva separadores y
+> sirve para nombres de hoja/carpeta; ``clave`` elimina espacios y guiones bajos
+> para comparar centrales, empresas, conceptos o encabezados. Los guiones medios
+> y signos se conservan porque sí distinguen unidades y conceptos.
+
+**Importa:** `re`, `unicodedata`
+
+### Funciones
+
+#### `def sin_tildes(texto)`
+
+Convierte a texto sin marcas diacríticas; ``None`` equivale a vacío.
+
+#### `def suave(texto)`
+
+Sin tildes, espacios colapsados y en minúsculas.
+
+#### `def suave_textual(texto)`
+
+Variante histórica que convierte también ``None`` en el texto ``none``.
+
+#### `def suave_requerido(texto)`
+
+Variante histórica que exige un ``str`` y falla con ``None``.
+
+#### `def clave(texto, mayusculas=False)`
+
+Sin tildes, espacios ni guiones bajos; conserva guiones medios/signos.
+
+#### `def clave_mayusculas(texto)`
+
+Variante histórica usada para centrales, empresas y conceptos.
+
+#### `def clave_columna(texto)`
+
+Clave mayúscula que además equipara ``Año`` con ``Anio``.
+
+
+---
+
 ## `__comun__/traspaso.py`
 
 > Contrato compartido del JSON que el Revisor pasa a los actualizadores.
@@ -303,8 +554,6 @@ Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
 #### `def leer_traspaso(argv)`
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def normalizar(texto)`
 
 #### `def buscar_archivo(ruta, patron)`
 
@@ -527,15 +776,13 @@ manteniendo el formato de las celdas.
 | `DIR_SALIDAS` | `DIR_RAIZ / '00_Salidas'` |  |
 | `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
 | `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Cache de directorios Una relectura completa hacia 68 recorridos de carpeta para 13 carpetas distintas: cada nodo del arbol recorria la carpeta entera de nuevo, y encima resolver_carpeta recorria la r… |
-| `RE_COPIA` | `re.compile('(-\\s*cop(?:ia\|y)(?:\\s*\\(\\d+\\))?\|\\(\\d+\\))\\s*$')` | Sufijos que deja Windows al copiar: "archivo - copia.mdb", "archivo - copia (2).mdb", "archivo - Copy.xlsm". |
+| `RE_COPIA` | `_archivos.PATRON_COPIA` | Sufijos que deja Windows al copiar: "archivo - copia.mdb", "archivo - copia (2).mdb", "archivo - Copy.xlsm". |
 | `ARCHIVO_CACHE` | `'_revisor_cache_valores.json'` |  |
 | `CACHE` | `CacheValores()` |  |
 | `ESTADO` | `Estado()` |  |
 | `CACHE_COLUMNAS` | `{}` |  |
-| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` |  |
-| `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
-| `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
-| `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
+| `NS_XL` | `_excel_xml.NS_XL` |  |
+| `NS_REL` | `_excel_xml.NS_REL` |  |
 | `C_LOG_MALO` | `'#c00000'` | Coloreado del log y del detalle Los mensajes ya vienen rotulados: ">>" es fallo, "OK" es bien, "?" es sin datos y ".." es "trabajando". |
 | `C_LOG_DUDA` | `'#b45309'` |  |
 | `C_LOG_BIEN` | `'#1d6b1d'` |  |
@@ -601,21 +848,6 @@ vuelve a abrir. Se guarda en __config__/AAAA/MM Mes entre ejecuciones.
 
 ### Funciones
 
-#### `def clave_concepto(t)`
-
-Normaliza un concepto o una empresa para comparar entre planillas.
-
-Saca tildes, espacios y guiones BAJOS, y pasa a mayusculas. Hace falta porque
-las dos planillas escriben lo mismo distinto: la 1 dice "CO ERNC" con espacio
-y la 9 dice "CO_ERNC" con guion bajo. Sin esto no se cruza ni un concepto.
-Se conservan los parentesis y el signo, que SI distinguen: CSF(+) y CSF(-) son
-conceptos diferentes.
-
-#### `def clave_central(t)`
-
-Normaliza el nombre de una central para comparar: sin tildes, sin espacios
-ni guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
-
 #### `def dir_mes(aamm, crear=False)`
 
 00_Salidas/AAAA/MM Mes, hermana de Revisor_Relq.
@@ -642,8 +874,6 @@ clave compartida '_valores' de config.json.
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
-#### `def normalizar(texto)`
-
 #### `def leer_dir(carpeta)`
 
 El listado de una carpeta, del cache si esta encendido.
@@ -655,10 +885,6 @@ Busca subcarpeta tolerando tildes, mayusculas y espacios extra.
 #### `def resolver_carpeta(base, partes)`
 
 Cada parte puede ser un nombre o una tupla de nombres alternativos.
-
-#### `def es_temporal(nombre)`
-
-#### `def es_copia(nombre_sin_extension)`
 
 #### `def buscar_archivo(carpeta, patron_regex, extensiones)`
 
@@ -724,17 +950,6 @@ Si se indica col_filtro, suma solo las filas cuyo valor de esa columna esta
 en valores_filtro (comparacion sin tildes ni mayusculas).
 Devuelve (suma, n_filas, {valor_filtro: suma}) o (None, 0, {}).
 
-#### `def es_zip_excel(ruta)`
-
-#### `def ubicar_hoja_xml(z, hoja)`
-
-Dentro del zip de un .xlsx/.xlsm, devuelve (ruta_del_xml, lista_de_hojas).
-ruta_del_xml es None si la hoja no existe.
-
-#### `def expandir_columnas(rango)`
-
-'CF:CI' -> ['CF','CG','CH','CI'].  'CD' -> ['CD'].
-
 #### `def buscar_marcas_rapido(ruta, hoja, fila_inicio, reglas, log, tope_detalle=30)`
 
 Busca errores de fórmula y textos prohibidos en columnas puntuales,
@@ -771,25 +986,6 @@ tolera tildes y mayusculas. Devuelve None si no calza ninguna.
 
 Sirve para decidir si una celda 'cuenta' al buscar el ultimo dato de una
 columna: se omiten vacios, ceros y errores de formula (#REF!, #N/D...).
-
-#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
-
-Lee columnas completas de un .xlsx/.xlsm escaneando el XML por trozos.
-Devuelve {"COL": {fila: valor}} con los valores ya calculados, o None.
-Igual que en el resto, se lee SOLO el resultado y nunca el nodo <f>.
-
-#### `def desescapar_xml(b)`
-
-Convierte el texto crudo del XML de Excel a texto de verdad.
-
-Hay que manejar las referencias NUMERICAS (&#243; = o con tilde), no solo las
-cinco entidades con nombre: los nombres de empresa chilenos vienen llenos de
-tildes y ñ, y algunos escritores de Excel las guardan asi. Si no se
-desescapan, "Enel Generaci&#243;n" y "Enel Generación" no se parecen en nada
-al comparar, y el cuadro de pago reporta un descuadre que no existe.
-
-Se resuelve en UNA pasada a proposito. Reemplazar "&amp;" primero y despues
-"&lt;" convertiria "&amp;lt;" (un literal "&lt;") en "<", que es otra cosa.
 
 #### `def leer_formulas_rapido(ruta, hoja, columnas, fila_inicio, log)`
 
@@ -967,6 +1163,7 @@ mismo, devuelve el valor guardado sin abrir el archivo.
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
 | `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | **— motor de Access, reutilizado —** | | |
 | `_AYUDA` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la\nmisma versión. Copia…` |  |
 | `_NECESITA` | `conjunto de 5 elementos: 'fuentes_externas', 'filtro_por_valores', 'borrar_todo', …` | Las cuatro hacen falta: borrar_todo para vaciar la tabla, cols_no_cero para el filtro de Central != 0, y las otras dos para pasar fuentes propias. |
@@ -1032,16 +1229,6 @@ Devuelve (ok, n_insertadas, n_sin_dueno).
 Transaccion unica: si algo falla, se revierte y la tabla queda como estaba.
 Las centrales SIN propietario se cargan igual, con la empresa en NULL: son
 datos validos. El Revisor comprueba despues si alguna de esas tiene plata.
-
-#### `def clave_central(t)`
-
-Normaliza el nombre de una central para comparar: sin tildes, sin espacios
-ni guiones bajos, en mayusculas. Asi 'El Toro-1', 'EL_TORO-1' y 'ELTORO-1'
-son la misma.
-
-Es MAS estricto que la comparacion de Access (que ignora mayusculas pero no
-espacios), y eso conviene: evita mandar dos filas que el indice unico
-consideraria iguales. La misma funcion esta en el Revisor.
 
 #### `def columnas_tabla_de(cur, tabla)`
 
@@ -1142,10 +1329,6 @@ mes siguiente arrastraria la del anterior sin que se note.
 
 #### `def leer_traspaso(argv)`
 
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
-
 #### `def buscar_hoja(wb, nombre)`
 
 Busca la hoja tolerando tildes y mayusculas.
@@ -1240,10 +1423,8 @@ Devuelve (ok, resumen).
 | `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
-| `NS_XL` | `'{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS. |
-| `NS_REL` | `'{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'` |  |
-| `_ENT_XML` | `{'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'amp': '&'}` |  |
-| `_RE_ENT` | `re.compile('&(?:#(\\d+)\|#[xX]([0-9a-fA-F]+)\|(lt\|gt\|quot\|apos\|amp));')` |  |
+| `NS_XL` | `_excel_xml.NS_XL` | Lectura rapida: el .xlsx/.xlsm como ZIP, sin abrir Excel Las planillas son pesadas y aca solo hay que LEERLAS. |
+| `NS_REL` | `_excel_xml.NS_REL` |  |
 
 ### Funciones
 
@@ -1256,8 +1437,6 @@ Devuelve (ok, resumen).
 **— UTILIDADES —**
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def normalizar(texto)`
 
 #### `def buscar_carpeta(base, nombre)`
 
@@ -1290,36 +1469,6 @@ Ultima fila con contenido en una columna, usando .formula (capta formulas).
 #### `def leer_bloque(sheet, f1, c1, f2, c2)`
 
 Devuelve siempre una lista de filas (listas).
-
-#### `def es_zip_excel(ruta)`
-
-#### `def ubicar_hoja_xml(z, hoja)`
-
-Dentro del zip de un .xlsx/.xlsm, devuelve (ruta_del_xml, lista_de_hojas).
-ruta_del_xml es None si la hoja no existe.
-
-#### `def expandir_columnas(rango)`
-
-'CF:CI' -> ['CF','CG','CH','CI'].  'CD' -> ['CD'].
-
-#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
-
-Lee columnas completas de un .xlsx/.xlsm escaneando el XML por trozos.
-Devuelve {"COL": {fila: valor}} con los valores ya calculados, o None.
-Igual que en el resto, se lee SOLO el resultado y nunca el nodo <f>.
-
-#### `def desescapar_xml(b)`
-
-Convierte el texto crudo del XML de Excel a texto de verdad.
-
-Hay que manejar las referencias NUMERICAS (&#243; = o con tilde), no solo las
-cinco entidades con nombre: los nombres de empresa chilenos vienen llenos de
-tildes y ñ, y algunos escritores de Excel las guardan asi. Si no se
-desescapan, "Enel Generaci&#243;n" y "Enel Generación" no se parecen en nada
-al comparar, y el cuadro de pago reporta un descuadre que no existe.
-
-Se resuelve en UNA pasada a proposito. Reemplazar "&amp;" primero y despues
-"&lt;" convertiria "&amp;lt;" (un literal "&lt;") en "<", que es otra cosa.
 
 #### `def leer_matriz_rapida(ruta, cfg, log)`
 
@@ -1453,6 +1602,7 @@ archivo actualizado".
 |---|---|---|
 | `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
 | `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `_AYUDA_COPIAR` | `f'Los dos archivos tienen que estar en la misma carpeta y ser de la misma\nversion. Copia…` | --- motor de Access, reutilizado ------------------------------------------ Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py, que tiene que estar en la MISMA carpeta y se… |
 | `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `_NECESITA` | `{'fuentes_externas', 'filtro_por_valores'}` |  |
@@ -1553,15 +1703,6 @@ rutas: {"tabulado","mdb","consolidado"}. Devuelve (ok, resumen:str).
 
 #### `def leer_traspaso(argv)`
 
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
-
-#### `def clave_central(t)`
-
-Normaliza un nombre de central para comparar: sin tildes, sin espacios ni
-guiones bajos, en mayusculas. Asi 'El Toro-1' y 'ELTORO-1' son la misma.
-
 #### `def buscar_hoja(wb, nombre)`
 
 #### `def col_num(letra)`
@@ -1630,8 +1771,6 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 **— Utilidades —**
 
 #### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
-
-#### `def normalizar(texto: str) -> str`
 
 #### `def buscar_sscc_desempeno(carpeta_reliq: Path) -> Path | None`
 
@@ -1742,16 +1881,6 @@ Retorna (ok, lista_rutas_modificadas)
 
 ### Funciones
 
-#### `def clave_col(t)`
-
-Normaliza un nombre de columna para comparar.
-
-Sin tildes, sin espacios ni guiones bajos, en mayusculas. Y ademas trata
-"ANIO" como "ANO", que es lo que hace falta de verdad: la Ñ no se resuelve
-quitando tildes. Descomponer "Año" da "ANO" y "Anio" da "ANIO", y sin este
-paso no coincidirian, que es justo el caso que falla:
-    'Clave Año_Mes'  ==  'Clave_Anio_Mes'  ==  'clave_anio_mes'
-
 #### `def resolver_columna(columnas, objetivo)`
 
 El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
@@ -1763,10 +1892,6 @@ El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
 
 #### `def fmt_tiempo(seg)`
 
@@ -1865,10 +1990,6 @@ Devuelve (ok, resumen).
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
-
-**— UTILIDADES —**
-
-#### `def normalizar(t)`
 
 #### `def fmt_tiempo(seg)`
 
@@ -1982,7 +2103,7 @@ Devuelve (ok, resumen).
 | `ETIQUETA_SLOT` | `{'sscc': 'SOB_SSCC', 'sob': 'SOB'}` |  |
 | `PAT_SSCC` | `re.compile('ENTRADA[\\s_]*SOB[\\s_]*SSCC', re.IGNORECASE)` | Patrones de nombre de archivo Sin anclar al inicio: en el Definitivo los archivos NO empiezan con "03b", asi que lo que identifica a cada uno es el trozo ENTRADA_SOB(_SSCC), donde sea que aparezca en… |
 | `PAT_SOB` | `re.compile('ENTRADA[\\s_]*SOB(?![\\s_]*SSCC)', re.IGNORECASE)` |  |
-| `PAT_COPIA` | `re.compile('(-\\s*copia\|-\\s*copy\|\\(\\d+\\))\\s*$', re.IGNORECASE)` |  |
+| `PAT_COPIA` | `_archivos.PATRON_COPIA` |  |
 | `PAT_REMUN` | `re.compile('^4[\\s_]*REMUNERACI[OÓ]N[\\s_]*SC[\\s_]*CO', re.IGNORECASE)` | Maestro del propietario vigente: T:\Facturacion\<AAAA>\<MM Mes>\{02 Definitivo\|01 Preliminar}\SSCC\ 4_REMUNERACION_SC_CO_AAMM_*.xlsx\|xlsm -> hoja "Configuracion Empresa", A y B |
 | `PAT_ANIO_DIR` | `re.compile('^(20\\d{2})$')` |  |
 | `PAT_MES_DIR` | `re.compile('^(\\d{1,2})\\b')` |  |
@@ -1991,7 +2112,8 @@ Devuelve (ok, resumen).
 | `COLORES` | `_tema.paleta('claro')` | La paleta clara conserva exactamente los colores historicos. |
 | `MAPA_SOB` | `dict de 7 claves: 'claveaniomes', 'claveanomes', 'clavea_omes', …` | Nombres de columna que se buscan en la tabla Sobrecostos (normalizados) |
 | `MAPA_CEN` | `{'central': 'central', 'empresa': 'empresa'}` |  |
-| `_CACHE_DIR` | `{}` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
+| `_CACHE_DIRECTORIOS` | `_comp.CacheDirectorios()` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
+| `_CACHE_DIR` | `_CACHE_DIRECTORIOS.datos` |  |
 | `TRAMOS_DEF` | `lista de 3 elementos: ('Sobrecostos', ('Sobrecosto',)), ('02 Definitivo', ('Definitivo',)), ('Auxiliares', ('Auxiliar', 'Auxiliares Definitivo')), …` | Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares. |
 | `SUB_POR_SLOT` | `dict de 2 claves: 'sscc', 'sob', …` | Subcarpetas del arbol de reliquidacion donde vive cada .mdb |
 | `COLUMNAS_VISTA` | `lista de 23 elementos: 'aamm', 'central', 'empresa', …` | Si se agrega una columna a la vista, las vistas ya escritas en disco quedan viejas. |
@@ -2021,12 +2143,6 @@ en la barra de progreso.
 Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 
 - `def __init__(self, nombre)`
-
-#### `class _Entrada`
-
-Un archivo o carpeta, con lo que hace falta ya leido.
-
-- `def __init__(self, nombre, ruta, es_dir, mtime, size)`
 
 **— Ventana —**
 
@@ -2077,58 +2193,17 @@ Un archivo o carpeta, con lo que hace falta ya leido.
 
 #### `def rutas_path(anio)`
 
-#### `def normalizar(texto)`
-
-Sin tildes, sin espacios/guiones bajos, en minusculas.
-
-#### `def normalizar_suave(texto)`
-
-Sin tildes, espacios colapsados, minusculas (para nombres de carpeta).
-
-#### `def limpiar_cache()`
-
-Se llama al empezar cada refresco, para no mostrar datos viejos.
-
-#### `def listar(carpeta)`
-
-Contenido de una carpeta en UNA sola consulta al disco (con cache).
-
-#### `def huella_entrada(ruta)`
-
-mtime+tamano de un archivo, aprovechando el listado ya leido.
-
 #### `def leer_json(path, defecto=None)`
 
 #### `def leer_config()`
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=True)`
-
 #### `def huella(ruta)`
-
-Identidad barata de un archivo en disco de red: mtime + tamanio.
-
-Se apoya en el listado ya leido de la carpeta, para no hacer un viaje
-extra por cada archivo.
-
-#### `def es_copia(nombre)`
 
 #### `def subcarpeta(padre, nombre_buscado)`
 
-Subcarpeta por nombre normalizado (tolera tildes y mayusculas).
-
 #### `def buscar_mdb(carpeta, patron)`
-
-Mas reciente que calce con el patron, descartando copias de Windows.
-
-#### `def meses_del_anio(anio)`
-
-['2401', '2402', ... '2412'] a partir de 2024 o de '24'.
-
-#### `def fmt_tiempo(seg)`
-
-#### `def ahora()`
 
 **— Resolucion de rutas de los .mdb —**
 
@@ -2192,10 +2267,6 @@ carpeta elegida a mano > archivo elegido a mano.
 
 #### `def tablas(con)`
 
-#### `def tabla_por_nombre(nombres, candidatos)`
-
-Primer candidato presente, comparando normalizado.
-
 #### `def mapear_columnas(cols, mapa)`
 
 {nombre_real: nombre_canonico} segun el mapa normalizado.
@@ -2234,12 +2305,6 @@ Hoja 'Configuracion Empresa', columnas A y B, datos desde la fila 2.
 
 Deja el propietario vigente en parquet. Idempotente por huella.
 
-#### `def mes_incluido(est, aamm)`
-
-Si el mes entra al consolidado anual. Por defecto si.
-
-#### `def fijar_incluido(est, aamm, valor)`
-
 #### `def cargar_estado(anio)`
 
 #### `def guardar_estado(anio, est)`
@@ -2275,19 +2340,9 @@ El consolidado con todos los meses disponibles, directo bajo el anio.
 
 #### `def firma_vistas(meses)`
 
-Que meses entran al consolidado y con que version de su vista.
-
-Si esta firma no cambio, el consolidado anual ya esta al dia y no hay para
-que reescribirlo.
-
 #### `def consolidar_etapa(aamm, etapa, rutas, est, log=print)`
 
 Lee los 2 .mdb de una etapa y reescribe SOLO su particion.
-
-#### `def una_fila(cur, defecto=None)`
-
-fetchone() que nunca devuelve None: un COUNT/SUM siempre trae fila,
-pero el tipo declarado es Optional y hay que desempaquetarlo con cuidado.
 
 #### `def etapas_consolidadas(aamm)`
 
@@ -2304,12 +2359,6 @@ True si la vista existe y trae todas las columnas que se esperan hoy.
 Rearma la vista del mes si falta o si quedo con el formato viejo.
 
 #### `def es_hoja_propia(nombre, meses=None)`
-
-True si la hoja la genera este programa (y por lo tanto se puede pisar).
-
-Una hoja de mes se reconoce por su nombre (AAMM o AAMM_2), no por estar en
-la lista de meses que se exporta ahora: si un mes se saca del consolidado,
-su hoja tiene que desaparecer, no quedar congelada como si fuera de otro.
 
 #### `def datos_resumen(con, pvs_por_mes, familia_tipos)`
 
@@ -2330,8 +2379,6 @@ reescriben unicamente las hojas que genera este programa.
 
 #### `def hojas_ajenas(destino, log=print)`
 
-Hojas del archivo que NO genera este programa.
-
 #### `def escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log)`
 
 Camino rapido: el archivo no existe o no tiene hojas de nadie mas.
@@ -2344,8 +2391,6 @@ Es mas lento que escribir de cero porque hay que cargar el libro entero en
 memoria, pero es la unica forma de no borrar el trabajo de otra persona.
 
 #### `def respaldar(destino, anio, log=print)`
-
-Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 
 #### `def main()`
 
@@ -2397,7 +2442,7 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 | `ETIQUETA_SLOT` | `{'sscc': 'SOB_SSCC', 'sob': 'SOB'}` |  |
 | `PAT_SSCC` | `re.compile('ENTRADA[\\s_]*SOB[\\s_]*SSCC', re.IGNORECASE)` |  |
 | `PAT_SOB` | `re.compile('ENTRADA[\\s_]*SOB(?![\\s_]*SSCC)', re.IGNORECASE)` |  |
-| `PAT_COPIA` | `re.compile('(-\\s*copia\|-\\s*copy\|\\(\\d+\\))\\s*$', re.IGNORECASE)` |  |
+| `PAT_COPIA` | `_archivos.PATRON_COPIA` |  |
 | `COLORES` | `_tema.paleta('claro')` | La paleta clara conserva exactamente los colores historicos. |
 | `LIMITE_FILAS_HOJA` | `1048000` |  |
 | **— lectura del Consolidado_Tabulado —** | | |
@@ -2405,7 +2450,8 @@ Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 | `EXT_CONSOL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
 | `COLS_CONSOL` | `dict de 9 claves: 'A', 'B', 'C', …` | Columnas de la hoja "Sobrecostos", por letra. |
 | `FILA_ENCABEZADO_CONSOL` | `2` |  |
-| `_CACHE_DIR` | `{}` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
+| `_CACHE_DIRECTORIOS` | `_comp.CacheDirectorios()` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
+| `_CACHE_DIR` | `_CACHE_DIRECTORIOS.datos` |  |
 | `HOJAS_PROPIAS_FIJAS` | `['RESUMEN']` | Hojas que genera este programa; cualquier otra es de alguien mas. |
 | `TRAMOS_DEF` | `lista de 3 elementos: ('Sobrecostos', ('Sobrecosto',)), ('02 Definitivo', ('Definitivo',)), ('Auxiliares', ('Auxiliar', 'Auxiliares Definitivo')), …` | Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares. |
 | `IDX_CONSOL` | `{_col_a_indice(l): nom for l, nom in COLS_CONSOL.items()}` |  |
@@ -2427,12 +2473,6 @@ en la barra de progreso.
 Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 
 - `def __init__(self, nombre)`
-
-#### `class _Entrada`
-
-Un archivo o carpeta, con lo que hace falta ya leido.
-
-- `def __init__(self, nombre, ruta, es_dir, mtime, size)`
 
 **— Ventana —**
 
@@ -2480,96 +2520,29 @@ Carpeta del comparador de .mdb: se consulta en modo solo lectura.
 
 #### `def rutas_mdb_path(anio)`
 
-#### `def normalizar(texto)`
-
-Sin tildes, sin espacios/guiones bajos, en minusculas.
-
-#### `def normalizar_suave(texto)`
-
-Sin tildes, espacios colapsados, minusculas (para nombres de carpeta).
-
-#### `def limpiar_cache()`
-
-Se llama al empezar cada refresco, para no mostrar datos viejos.
-
-#### `def listar(carpeta)`
-
-Contenido de una carpeta en UNA sola consulta al disco (con cache).
-
-#### `def huella_entrada(ruta)`
-
-mtime+tamano de un archivo, aprovechando el listado ya leido.
-
 #### `def leer_json(path, defecto=None)`
 
 #### `def leer_config()`
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=True)`
-
 #### `def huella(ruta)`
-
-Identidad barata de un archivo en disco de red: mtime + tamanio.
-
-Se apoya en el listado ya leido de la carpeta, para no hacer un viaje
-extra por cada archivo.
-
-#### `def es_copia(nombre)`
 
 #### `def subcarpeta(padre, nombre_buscado)`
 
-Subcarpeta por nombre normalizado (tolera tildes y mayusculas).
-
 #### `def buscar_mdb(carpeta, patron)`
-
-Mas reciente que calce con el patron, descartando copias de Windows.
-
-#### `def meses_del_anio(anio)`
-
-['2401', '2402', ... '2412'] a partir de 2024 o de '24'.
-
-#### `def fmt_tiempo(seg)`
-
-#### `def ahora()`
-
-#### `def una_fila(cur, defecto=None)`
-
-fetchone() que nunca devuelve None: un COUNT/SUM siempre trae fila,
-pero el tipo declarado es Optional y hay que desempaquetarlo con cuidado.
 
 #### `def es_hoja_propia(nombre, meses=None)`
 
-True si la hoja la genera este programa (y por lo tanto se puede pisar).
-
-Una hoja de mes se reconoce por su nombre (AAMM o AAMM_2), no por estar en
-la lista de meses que se exporta ahora: si un mes se saca del consolidado,
-su hoja tiene que desaparecer, no quedar congelada como si fuera de otro.
-
 #### `def hojas_ajenas(destino, log=print)`
 
-Hojas del archivo que NO genera este programa.
-
 #### `def respaldar(destino, anio, log=print)`
-
-Copia el archivo antes de reescribirlo. Deja las ultimas 5.
 
 #### `def cargar_estado(anio)`
 
 #### `def guardar_estado(anio, est)`
 
-#### `def mes_incluido(est, aamm)`
-
-Si el mes entra al consolidado anual. Por defecto si.
-
-#### `def fijar_incluido(est, aamm, valor)`
-
 #### `def firma_vistas(meses)`
-
-Que meses entran al consolidado y con que version de su vista.
-
-Si esta firma no cambio, el consolidado anual ya esta al dia y no hay para
-que reescribirlo.
 
 #### `def color_de(estado)`
 
@@ -2619,10 +2592,6 @@ Ubica el .mdb de SSCC de una etapa, que es el ancla de la busqueda.
 #### `def resolver_rutas(aamm, raiz_cmg, manuales, manual_mdb)`
 
 ({etapa: ruta|None}, {etapa: diagnostico}) del Consolidado_Tabulado.
-
-#### `def tabla_por_nombre(nombres, candidatos)`
-
-Primer candidato presente, comparando normalizado.
 
 #### `def leer_consolidado_tabulado(ruta, log=print)`
 
@@ -2714,8 +2683,8 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `LARGO_TEXTO` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `LIMITE_FILAS_HOJA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `NOMBRE_JSON_MES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `NS_REL` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
-| `NS_XL` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
+| `NS_REL` | `__comun__/excel_xml.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
+| `NS_XL` | `__comun__/excel_xml.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
 | `PAT_COPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `PAT_SOB` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `PAT_SSCC` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
@@ -2727,8 +2696,7 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `_CACHE_DIR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `_ENT_XML` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
+| `_CACHE_DIRECTORIOS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_NECESITA` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |
-| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
-| `_RE_ENT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
+| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `_TIENE` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |

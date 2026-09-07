@@ -197,6 +197,9 @@ try:
     from __comun__ import salidas as _sal
     from __comun__ import tema as _tema
     from __comun__ import config as _cfg
+    from __comun__ import texto as _texto
+    from __comun__ import archivos as _archivos
+    from __comun__ import comparadores as _comp
 except ImportError as e:
     _morir(
         "Falta la carpeta __comun__/",
@@ -204,6 +207,7 @@ except ImportError as e:
         "Comparadores. Baja el repositorio completo, no los .py sueltos.\n\n"
         f"Carpeta actual: {DIR_RAIZ}\n\nDetalle: {e}",
     )
+
 
 CONFIG_RAIZ = _sal.raiz_config(BASE)
 CONFIG_PATH = CONFIG_RAIZ / "config.json"
@@ -256,7 +260,7 @@ ETIQUETA_SLOT = {"sscc": "SOB_SSCC", "sob": "SOB"}
 
 PAT_SSCC = re.compile(r"ENTRADA[\s_]*SOB[\s_]*SSCC", re.IGNORECASE)
 PAT_SOB = re.compile(r"ENTRADA[\s_]*SOB(?![\s_]*SSCC)", re.IGNORECASE)
-PAT_COPIA = re.compile(r"(-\s*copia|-\s*copy|\(\d+\))\s*$", re.IGNORECASE)
+PAT_COPIA = _archivos.PATRON_COPIA
 
 # La paleta clara conserva exactamente los colores historicos. La ventana
 # reemplaza este dict solo si el tema pedido se pudo aplicar completo.
@@ -278,22 +282,10 @@ FILA_ENCABEZADO_CONSOL = 2   # la fila 2 son titulos; los datos parten en la 3
 # ==========================================================================
 # Utilidades
 # ==========================================================================
-def normalizar(texto):
-    """Sin tildes, sin espacios/guiones bajos, en minusculas."""
-    if texto is None:
-        return ""
-    nfkd = unicodedata.normalize("NFKD", str(texto))
-    s = "".join(c for c in nfkd if not unicodedata.combining(c))
-    return re.sub(r"[\s_]+", "", s).strip().lower()
+normalizar = _texto.clave
 
 
-def normalizar_suave(texto):
-    """Sin tildes, espacios colapsados, minusculas (para nombres de carpeta)."""
-    if texto is None:
-        return ""
-    nfkd = unicodedata.normalize("NFKD", str(texto))
-    s = "".join(c for c in nfkd if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", s).strip().lower()
+normalizar_suave = _texto.suave
 
 
 # --------------------------------------------------------------------------
@@ -304,57 +296,20 @@ def normalizar_suave(texto):
 # decenas de viajes por carpeta; os.scandir() trae nombre, tipo y fecha de
 # una sola vez, y ademas se guarda el resultado por si la misma carpeta se
 # consulta otra vez en el mismo refresco.
-_CACHE_DIR = {}
+_CACHE_DIRECTORIOS = _comp.CacheDirectorios()
+_CACHE_DIR = _CACHE_DIRECTORIOS.datos
 
 
-def limpiar_cache():
-    """Se llama al empezar cada refresco, para no mostrar datos viejos."""
-    _CACHE_DIR.clear()
+limpiar_cache = _CACHE_DIRECTORIOS.limpiar
 
 
-class _Entrada:
-    """Un archivo o carpeta, con lo que hace falta ya leido."""
-
-    __slots__ = ("nombre", "ruta", "es_dir", "mtime", "size")
-
-    def __init__(self, nombre, ruta, es_dir, mtime, size):
-        self.nombre = nombre
-        self.ruta = ruta
-        self.es_dir = es_dir
-        self.mtime = mtime
-        self.size = size
+_Entrada = _comp.Entrada
 
 
-def listar(carpeta):
-    """Contenido de una carpeta en UNA sola consulta al disco (con cache)."""
-    if carpeta is None:
-        return []
-    clave = str(carpeta)
-    if clave in _CACHE_DIR:
-        return _CACHE_DIR[clave]
-    out = []
-    try:
-        with os.scandir(clave) as it:
-            for e in it:
-                try:
-                    st = e.stat()
-                    out.append(_Entrada(e.name, Path(e.path), e.is_dir(),
-                                        int(st.st_mtime), st.st_size))
-                except OSError:
-                    continue
-    except (OSError, ValueError):
-        out = []
-    _CACHE_DIR[clave] = out
-    return out
+listar = _CACHE_DIRECTORIOS.listar
 
 
-def huella_entrada(ruta):
-    """mtime+tamano de un archivo, aprovechando el listado ya leido."""
-    p = Path(ruta)
-    for e in listar(p.parent):
-        if e.nombre == p.name and not e.es_dir:
-            return f"{e.mtime}_{e.size}"
-    return None
+huella_entrada = _CACHE_DIRECTORIOS.huella_entrada
 
 
 get_usuario = _cfg.clave_equipo
@@ -381,203 +336,73 @@ def guardar_config(data):
     return _cfg.guardar(CONFIG_PATH, data)
 
 
-def abrir_en_explorador(ruta, es_archivo=True):
-    if not ruta:
-        return
-    p = Path(ruta)
-    if not p.exists():
-        p = p.parent
-        if not p.exists():
-            return
-    carpeta = p.parent if (es_archivo and p.is_file()) else p
-    try:
-        if sys.platform == "win32":
-            subprocess.Popen(["explorer", str(carpeta)])
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", str(carpeta)])
-        else:
-            subprocess.Popen(["xdg-open", str(carpeta)])
-    except Exception:
-        pass
+abrir_en_explorador = _comp.abrir_en_explorador
 
 
 def huella(ruta):
-    """Identidad barata de un archivo en disco de red: mtime + tamanio.
-
-    Se apoya en el listado ya leido de la carpeta, para no hacer un viaje
-    extra por cada archivo.
-    """
-    h = huella_entrada(ruta)
-    if h is not None:
-        return h
-    try:
-        st = Path(ruta).stat()
-        return f"{int(st.st_mtime)}_{st.st_size}"
-    except Exception:
-        return None
+    return _comp.huella(ruta, huella_entrada)
 
 
-def es_copia(nombre):
-    tallo = Path(nombre).stem
-    return bool(PAT_COPIA.search(tallo))
+es_copia = _archivos.es_copia
 
 
 
 def subcarpeta(padre, nombre_buscado):
-    """Subcarpeta por nombre normalizado (tolera tildes y mayusculas)."""
-    if padre is None:
-        return None
-    objetivo = normalizar_suave(nombre_buscado)
-    entradas = [e for e in listar(padre) if e.es_dir]
-    for e in entradas:
-        if normalizar_suave(e.nombre) == objetivo:
-            return e.ruta
-    for e in entradas:                      # segunda pasada: que contenga
-        if objetivo in normalizar_suave(e.nombre):
-            return e.ruta
-    return None
+    return _comp.subcarpeta(padre, nombre_buscado, listar)
 
 
 def buscar_mdb(carpeta, patron):
-    """Mas reciente que calce con el patron, descartando copias de Windows."""
-    if carpeta is None:
-        return None
-    cands = [e for e in listar(carpeta)
-             if not e.es_dir
-             and Path(e.nombre).suffix.lower() in (".mdb", ".accdb")
-             and patron.search(e.nombre)
-             and not es_copia(e.nombre)
-             and not e.nombre.startswith("~$")]
-    if not cands:
-        return None
-    cands.sort(key=lambda e: e.mtime, reverse=True)
-    return cands[0].ruta
+    return _comp.buscar_mdb(carpeta, patron, listar)
 
 
-def meses_del_anio(anio):
-    """['2401', '2402', ... '2412'] a partir de 2024 o de '24'."""
-    a = str(anio).strip()
-    if len(a) == 4:
-        aa = a[2:]
-    elif len(a) == 2:
-        aa = a
-    else:
-        return []
-    if not aa.isdigit():
-        return []
-    return [f"{aa}{m:02d}" for m in range(1, 13)]
+meses_del_anio = _comp.meses_del_anio
 
 
-def fmt_tiempo(seg):
-    m, s = divmod(int(seg), 60)
-    h, m = divmod(m, 60)
-    return f"{h:02d}:{m:02d}:{s:02d}"
+fmt_tiempo = _comp.fmt_tiempo
 
 
-def ahora():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+ahora = _comp.ahora
 
 
 # Hojas que genera este programa; cualquier otra es de alguien mas.
 HOJAS_PROPIAS_FIJAS = ["RESUMEN"]
 
-def una_fila(cur, defecto=None):
-    """fetchone() que nunca devuelve None: un COUNT/SUM siempre trae fila,
-    pero el tipo declarado es Optional y hay que desempaquetarlo con cuidado."""
-    fila = cur.fetchone()
-    return fila if fila is not None else defecto
+una_fila = _comp.una_fila
 
 
 def es_hoja_propia(nombre, meses=None):
-    """True si la hoja la genera este programa (y por lo tanto se puede pisar).
-
-    Una hoja de mes se reconoce por su nombre (AAMM o AAMM_2), no por estar en
-    la lista de meses que se exporta ahora: si un mes se saca del consolidado,
-    su hoja tiene que desaparecer, no quedar congelada como si fuera de otro.
-    """
-    if nombre in HOJAS_PROPIAS_FIJAS or nombre == "RESUMEN":
-        return True
-    base, _, resto = nombre.partition("_")
-    if not (len(base) == 4 and base.isdigit() and 1 <= int(base[2:]) <= 12):
-        return False
-    return resto == "" or resto.isdigit()
+    return _comp.es_hoja_propia(nombre, HOJAS_PROPIAS_FIJAS)
 
 
 def hojas_ajenas(destino, log=print):
-    """Hojas del archivo que NO genera este programa."""
-    try:
-        wb = openpyxl.load_workbook(str(destino), read_only=True)
-        try:
-            return [n for n in wb.sheetnames if not es_hoja_propia(n)]
-        finally:
-            wb.close()
-    except Exception as e:
-        log(f"  ! No se pudo revisar {destino.name} ({e}); se reescribe entero.")
-        return []
+    return _comp.hojas_ajenas(destino, openpyxl, es_hoja_propia, log)
 
 
 def respaldar(destino, anio, log=print):
-    """Copia el archivo antes de reescribirlo. Deja las ultimas 5."""
-    try:
-        import shutil
-        carpeta = dir_resultados_anuales(anio) / "respaldos"
-        carpeta.mkdir(parents=True, exist_ok=True)
-        marca = datetime.now().strftime("%Y%m%d_%H%M%S")
-        copia = carpeta / f"{destino.stem}_{marca}{destino.suffix}"
-        shutil.copy2(destino, copia)
-        previas = sorted(carpeta.glob(f"{destino.stem}_*{destino.suffix}"))
-        for vieja in previas[:-5]:
-            try:
-                vieja.unlink()
-            except Exception:
-                pass
-        log(f"  Respaldo: {copia.name}")
-        return copia
-    except Exception as e:
-        log(f"  ! No se pudo respaldar {destino.name}: {e}")
-        return None
+    carpeta = dir_resultados_anuales(anio) / "respaldos"
+    return _comp.respaldar(destino, carpeta, log)
 
 
 def cargar_estado(anio):
-    est = leer_json(estado_path(anio), {})
-    return est if isinstance(est, dict) else {}
+    return _comp.cargar_estado(estado_path(anio), leer_json)
 
 
 def guardar_estado(anio, est):
-    escribir_json_atomico(estado_path(anio), est)
+    return _comp.guardar_estado(estado_path(anio), est, escribir_json_atomico)
 
 
-def mes_incluido(est, aamm):
-    """Si el mes entra al consolidado anual. Por defecto si."""
-    reg = est.get(aamm) or {}
-    return bool(reg.get("incluir", True))
+mes_incluido = _comp.mes_incluido
 
 
-def fijar_incluido(est, aamm, valor):
-    est.setdefault(aamm, {})["incluir"] = bool(valor)
+fijar_incluido = _comp.fijar_incluido
 
 
 def firma_vistas(meses):
-    """Que meses entran al consolidado y con que version de su vista.
-
-    Si esta firma no cambio, el consolidado anual ya esta al dia y no hay para
-    que reescribirlo.
-    """
-    f = {}
-    for m in meses:
-        v = path_vista(m)
-        if v.exists():
-            f[m] = int(v.stat().st_mtime)
-    return f
+    return _comp.firma_vistas(meses, path_vista)
 
 
 def color_de(estado):
-    return {
-        "falta": COLORES["rojo"],
-        "pendiente": COLORES["amarillo"],
-        "desactualizado": COLORES["amarillo"],
-        "ok": COLORES["verde"],
-    }.get(estado, COLORES["gris"])
+    return _comp.color_de(estado, COLORES)
 
 
 # Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares.
@@ -771,14 +596,7 @@ def resolver_rutas(aamm, raiz_cmg, manuales, manual_mdb):
 
 
 
-def tabla_por_nombre(nombres, candidatos):
-    """Primer candidato presente, comparando normalizado."""
-    mapa = {normalizar(n): n for n in nombres}
-    for c in candidatos:
-        real = mapa.get(normalizar(c))
-        if real:
-            return real
-    return None
+tabla_por_nombre = _comp.tabla_por_nombre
 
 
 def _col_a_indice(letra):
@@ -1281,7 +1099,8 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
 class App:
     def __init__(self, root):
         self.root = root
-        self.cola = queue.Queue()
+        self._puente_ui = _comp.ColaTk(root)
+        self.cola = self._puente_ui.cola
         self.cfg = leer_config()
         anio_inicial = self.cfg.get("tab_anio", "")
         self.est = cargar_estado(anio_inicial) if meses_del_anio(anio_inicial) else {}
@@ -1312,7 +1131,7 @@ class App:
 
         self._construir()
         self._aplicar_tema()
-        self.root.after(100, self._bombear_cola)
+        self._puente_ui.conectar(self.txt, self.var_estado, self.barra)
         self.log(f"Carpeta base: {BASE}")
         self.log("Lectura rapida de Excel: "
                  + ("python-calamine activo" if TIENE_CALAMINE
@@ -1462,38 +1281,19 @@ class App:
 
     # ---------------- log / estado ----------------
     def log(self, msg):
-        self.cola.put(("log", str(msg)))
+        self._puente_ui.log(msg)
 
     def _bombear_cola(self):
-        """Aplica en el hilo de tkinter los cambios pedidos por los workers."""
-        while True:
-            try:
-                accion, valor = self.cola.get_nowait()
-            except queue.Empty:
-                break
-            if accion == "log":
-                self.txt.insert("end", valor + "\n")
-                self.txt.see("end")
-            elif accion == "estado":
-                self.var_estado.set(valor)
-            elif accion == "barra":
-                if valor.pop("final", False):
-                    self.barra.config(value=self.barra["maximum"])
-                else:
-                    self.barra.config(**valor)
-            elif accion == "llamar":
-                funcion, args = valor
-                funcion(*args)
-        self.root.after(100, self._bombear_cola)
+        self._puente_ui.bombear()
 
     def _llamar_en_ui(self, funcion, *args):
-        self.cola.put(("llamar", (funcion, args)))
+        self._puente_ui.llamar(funcion, *args)
 
     def set_progreso(self, **kw):
-        self.cola.put(("barra", kw))
+        self._puente_ui.progreso(**kw)
 
     def set_estado(self, txt):
-        self.cola.put(("estado", txt))
+        self._puente_ui.estado(txt)
 
     def tick(self):
         if self.timer["on"]:

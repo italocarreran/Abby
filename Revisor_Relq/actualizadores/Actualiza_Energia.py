@@ -32,6 +32,11 @@ DIR_SCRIPT = Path(__file__).resolve().parent
 # DIR_SCRIPT / "config.json" porque este script esta en actualizadores/.
 CONFIG_PATH = DIR_SCRIPT.parent.parent / "__config__" / "config.json"
 
+# Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+_RAIZ_COMUN = Path(__file__).resolve().parents[2]
+if str(_RAIZ_COMUN) not in sys.path:
+    sys.path.insert(0, str(_RAIZ_COMUN))
+
 # --- motor de Access, reutilizado ------------------------------------------
 # Este script NO duplica el motor de Access: usa el de Actualiza_Data_Access.py,
 # que tiene que estar en la MISMA carpeta y ser una version que soporte fuentes
