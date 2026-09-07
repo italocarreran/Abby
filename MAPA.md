@@ -474,7 +474,7 @@ puede centralizar: es justamente lo que avisa cuando lo que falta es
 `ImportError` suelto mata el script en silencio y solo se ve que la ventana
 nunca apareció.
 
-### `Revisor_Relq/revisor/` — Fase 4, **empezada**
+### `Revisor_Relq/revisor/` — Fase 4, **implementada**
 
 Paquete interno del Revisor. `Revisor_Reliquidacion.py` sigue siendo el único
 punto de entrada y el archivo literal que localizan los hermanos; reexporta
@@ -487,16 +487,21 @@ todos los nombres históricos, así que nada de afuera cambió.
 - **`revisor/estado.py`:** `Estado` y `CacheValores` con sus dependencias de
   disco inyectadas, más `leer_estado_mes`. El punto de entrada las subclasea
   para conservar los constructores sin argumentos de siempre.
-- **`revisor/lectores.py`:** primera parte de los adaptadores de lectura Excel:
+- **`revisor/lectores.py`:** adaptadores de lectura Excel y MDB:
   columnas con fallback openpyxl/xlwings, escaneos y diagnósticos OOXML,
-  resolución de hojas y armado de tablas. No conoce tkinter ni las reglas
-  V4…V17; el punto de entrada reexporta sus nombres históricos.
+  resolución de hojas, armado de tablas, inspección Access y resolución cacheada
+  de los valores configurados.
+- **`revisor/verificaciones.py`:** motor de los tipos de comprobación usados por
+  V4…V17. No importa la ventana; recibe sus dependencias desde el punto de entrada.
+- **`revisor/lanzamiento.py`:** bloqueo de destinos Excel, armado del JSON de
+  traspaso y lanzamiento de actualizadores, sin importar el punto de entrada.
 - **Pruebas:** `revisor/test_archivos.py`, `revisor/test_estado.py` y
-  `revisor/test_lectores.py`, que se
+  `revisor/test_lectores.py` y `revisor/test_modulos_fase4.py`, que se
   corren igual que las de `__comun__`: `python Revisor_Relq/revisor/test_*.py`.
 
-Faltan los lectores MDB y de cuadro de pago, los motores V4…V17 y la generación
-del traspaso/lanzamiento. Ver `docs/PLAN_MODULARIZACION_TOKENS.md`.
+La extracción de la Fase 4 está completa. Falta probar el Revisor de punta a
+punta en Windows con un mes real, Excel y Access. Ver
+`docs/PLAN_MODULARIZACION_TOKENS.md`.
 
 ### Lo que sigue
 
@@ -516,8 +521,9 @@ Entre las duplicaciones todavía reales, las que más rinden son:
 **El orden de migración no es `CENTRALES_EMBALSE`**, aunque sea el caso más famoso:
 es el que menos riesgo tiene de quedar mal, porque V10 lo caza en los dos sentidos.
 El lector de Excel por ZIP/XML y la infraestructura duplicada de comparadores ya
-se migraron. Lo siguiente es la Fase 4: dividir internamente el Revisor; es la
-frontera de riesgo alto y no se inició en esta rama.
+se migraron. La Fase 4 dividió internamente el Revisor y queda pendiente su
+validación integral en Windows, la frontera de riesgo alto que el contenedor no
+puede reproducir.
 
 El orden y los límites de las fases siguientes quedaron en
 `docs/PLAN_MODULARIZACION_TOKENS.md`. Aunque una pieza tenga varios consumidores,

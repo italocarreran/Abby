@@ -7,6 +7,7 @@ openpyxl/xlwings y los diagnósticos OOXML del punto de entrada histórico.
 
 from pathlib import Path
 import re
+import sys
 
 from __comun__ import excel_xml as _excel_xml
 from __comun__.texto import suave_textual as normalizar
@@ -602,3 +603,200 @@ def armar_tabla(datos, col_clave, cols_valor, log, etiqueta="",
     return tabla
 
 
+
+
+# ---------------------------------------------------------------------------
+# Access y resolución de valores configurados
+# ---------------------------------------------------------------------------
+_dependencias = None
+
+def configurar(dependencias):
+    """Inyecta VALORES, CACHE y helpers del punto de entrada sin importarlo."""
+    global _dependencias
+    _dependencias = dependencias
+    globals().update({k: v for k, v in dependencias.items()
+                      if not k.startswith("__") and k not in globals()})
+
+def conexion_mdb(ruta):
+    import pyodbc
+    drivers = [d for d in pyodbc.drivers() if "Microsoft Access Driver" in d]
+    if not drivers:
+        raise RuntimeError(
+            "No hay driver de Access instalado (o es de otra arquitectura que este "
+            "Python). Instala 'Microsoft Access Database Engine' de la misma "
+            f"arquitectura ({8 * 8 if sys.maxsize > 2**32 else 32} bits)."
+        )
+    cs = f"DRIVER={{{drivers[0]}}};DBQ={ruta};"
+    return pyodbc.connect(cs, autocommit=True)
+
+
+def listar_tablas_mdb(ruta, log):
+    try:
+        cn = conexion_mdb(ruta)
+        cur = cn.cursor()
+        tablas = [r.table_name for r in cur.tables(tableType="TABLE")]
+        log(f"    Tablas de {ruta.name}: {', '.join(tablas) if tablas else '(ninguna)'}")
+        for t in tablas:
+            cols = [r.column_name for r in cur.columns(table=t)]
+            log(f"      · {t}: {', '.join(cols)}")
+        cn.close()
+    except Exception as e:
+        log(f"    No se pudo inspeccionar {ruta.name}: {e}")
+
+
+def obtener_tablas_columnas(ruta):
+    """{tabla: [columnas]} de una base Access. {} si no se pudo abrir."""
+    out = {}
+    cn = None
+    try:
+        cn = conexion_mdb(ruta)
+        cur = cn.cursor()
+        for t in [r.table_name for r in cur.tables(tableType="TABLE")]:
+            out[t] = [r.column_name for r in cur.columns(table=t)]
+    except Exception:
+        pass
+    finally:
+        try:
+            if cn is not None:
+                cn.close()
+        except Exception:
+            pass
+    return out
+
+
+def desglose_por_tipo(ruta, tabla, columna, columna_tipo, where, log):
+    """Escribe en el log la suma agrupada por tipo. Solo informativo."""
+    cn = None
+    try:
+        cn = conexion_mdb(ruta)
+        cur = cn.cursor()
+        sql = (f"SELECT [{columna_tipo}], SUM([{columna}]), COUNT(*) "
+               f"FROM [{tabla}]")
+        if where.strip():
+            sql += f" WHERE {where}"
+        sql += f" GROUP BY [{columna_tipo}] ORDER BY [{columna_tipo}]"
+        cur.execute(sql)
+        filas = cur.fetchall()
+        if filas:
+            log(f"      desglose por {columna_tipo}:")
+            for f in filas:
+                log(f"        {str(f[0]):<12} {fmt_monto(f[1]):>22}   ({f[2]} filas)")
+    except Exception as e:
+        log(f"      (no se pudo desglosar por tipo: {e})")
+    finally:
+        try:
+            if cn is not None:
+                cn.close()
+        except Exception:
+            pass
+
+
+def leer_valor_mdb(ruta, tabla, columna, where, log):
+    cn = None
+    try:
+        cn = conexion_mdb(ruta)
+        cur = cn.cursor()
+        sql = f"SELECT SUM([{columna}]) FROM [{tabla}]"
+        if where.strip():
+            sql += f" WHERE {where}"
+        cur.execute(sql)
+        fila = cur.fetchone()
+        return float(fila[0]) if fila and fila[0] is not None else None
+    except Exception as e:
+        log(f"    ! Error consultando {ruta.name}: {e}")
+        return None
+    finally:
+        try:
+            if cn is not None:
+                cn.close()
+        except Exception:
+            pass
+
+
+def obtener_valor(clave, rutas, log, usar_cache=True):
+    """Devuelve (valor, mensaje_error_o_None).
+    Si el archivo no cambio desde la ultima lectura y se pide exactamente lo
+    mismo, devuelve el valor guardado sin abrir el archivo."""
+    spec = VALORES[clave]
+    ruta = rutas.get(spec["archivo"])
+    if ruta is None:
+        return None, f"falta el archivo de origen ({spec['archivo']})"
+
+    huella = huella_spec(spec)
+    if usar_cache:
+        reg = CACHE.obtener(clave, ruta, huella)
+        if reg is not None:
+            extra = f", {reg['filas']} fila(s)" if reg.get("filas") else ""
+            log(f"    {spec['etiqueta']}")
+            log(f"      = {fmt_monto(reg['valor'])}   [ya calculado el "
+                f"{reg['leido']}{extra}; {ruta.name} sin cambios, no se abrió]")
+            return reg["valor"], None
+
+    if spec["tipo"] == "excel_col":
+        if not spec.get("hoja") or not spec.get("columna"):
+            listar_hojas(ruta, log)
+            return None, f"sin configurar hoja/columna para {clave}"
+        filtro = ""
+        if spec.get("columna_filtro"):
+            filtro = (f"  filtrando {spec['columna_filtro']} = "
+                      f"{'/'.join(spec.get('valores_filtro') or ['(nada)'])}")
+        log(f"    {spec['etiqueta']}  <-  {spec['hoja']}!{spec['columna']}"
+            f"{spec.get('fila_inicio', 2)} hacia abajo{filtro}")
+        v, n, desg = leer_columna_excel(
+            ruta, spec["hoja"], spec["columna"], int(spec.get("fila_inicio", 2)),
+            spec.get("columna_filtro", ""), spec.get("valores_filtro") or [], log)
+        if v is None:
+            return None, f"no se pudo leer {clave}"
+        log(f"      {n} fila(s) sumada(s)")
+        if spec.get("columna_filtro") and len(desg) > 1:
+            buscados = {normalizar(x) for x in (spec.get("valores_filtro") or [])}
+            log(f"      valores presentes en la columna {spec['columna_filtro']}:")
+            for k in sorted(desg):
+                marca = "<--" if k in buscados else "   "
+                log(f"        {marca} {k:<14} {fmt_monto(desg[k]):>22}")
+        CACHE.poner(clave, ruta, huella, v, n)
+        return v, None
+
+    if spec["tipo"] == "excel_etiqueta":
+        if not (spec.get("hoja") and spec.get("columna_etiqueta")
+                and spec.get("texto_fila") and spec.get("columna_valor")):
+            listar_hojas(ruta, log)
+            return None, f"sin configurar la búsqueda por rótulo para {clave}"
+        log(f"    {spec['etiqueta']}  <-  {spec['hoja']}: fila donde "
+            f"{spec['columna_etiqueta']} = '{spec['texto_fila']}', "
+            f"valor en {spec['columna_valor']}")
+        v = leer_valor_por_etiqueta(
+            ruta, spec["hoja"], spec["columna_etiqueta"], spec["texto_fila"],
+            spec["columna_valor"], int(spec.get("fila_inicio", 1)), log)
+        if v is not None:
+            log(f"      = {fmt_monto(v)}")
+            CACHE.poner(clave, ruta, huella, v)
+        return v, None if v is not None else f"no se pudo leer {clave}"
+
+    if spec["tipo"] == "excel":
+        if not spec.get("hoja") or not spec.get("celda"):
+            listar_hojas(ruta, log)
+            return None, f"sin configurar hoja/celda para {clave}"
+        log(f"    {spec['etiqueta']}  <-  {spec['hoja']}!{spec['celda']}")
+        v = leer_valor_excel(ruta, spec["hoja"], spec["celda"], log)
+        if v is not None:
+            log(f"      = {fmt_monto(v)}")
+            CACHE.poner(clave, ruta, huella, v)
+        return v, None if v is not None else f"no se pudo leer {clave}"
+
+    if spec["tipo"] == "mdb":
+        if not spec.get("tabla") or not spec.get("columna"):
+            listar_tablas_mdb(ruta, log)
+            return None, f"sin configurar tabla/columna para {clave}"
+        wh = spec.get("where", "")
+        log(f"    {spec['etiqueta']}  <-  SUM([{spec['columna']}]) de [{spec['tabla']}]"
+            + (f" WHERE {wh}" if wh.strip() else ""))
+        v = leer_valor_mdb(ruta, spec["tabla"], spec["columna"], wh, log)
+        if spec.get("columna_tipo"):
+            desglose_por_tipo(ruta, spec["tabla"], spec["columna"],
+                              spec["columna_tipo"], wh, log)
+        if v is not None:
+            CACHE.poner(clave, ruta, huella, v)
+        return v, None if v is not None else f"no se pudo leer {clave}"
+
+    return None, f"tipo de origen desconocido en {clave}"

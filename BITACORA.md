@@ -17,6 +17,11 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **Validar el Revisor modularizado de punta a punta en Windows con un mes
+      real:** arranque de la ventana, árbol completo, V4…V17, OOXML y fallback
+      Excel, lectura Access, estado/caché, lanzamiento de un actualizador e
+      igualdad de `_traspaso_actualizador.json`. La extracción de la Fase 4 está
+      completa; este control requiere Excel, Access y los archivos reales.
 - [ ] **La usuaria tiene que armar `__config__/` a mano** (no se sube al
       repo, está gitignoreada), con la misma estructura `AAAA/MM Mes` que
       `00_Salidas`, migrando ahí sus `config.json`,
@@ -44,6 +49,85 @@
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — revisa el cierre de la Fase 4: sin correcciones
+
+Revisión de `codex/ejecutar-script-de-sincronizacion` (el commit que completa la
+extracción: `verificaciones.py`, `lanzamiento.py` y la parte MDB de
+`lectores.py`; 2.048 líneas menos en el punto de entrada). **Segunda vez
+seguida sin nada que corregir.**
+
+**Es un movimiento puro, comprobado por AST, no leyendo el diff:**
+
+- `_comprobar` → `verificaciones.comprobar`: las **21 ramas** de tipo de
+  verificación son idénticas árbol contra árbol. La única diferencia en todo el
+  cuerpo es la sangría de un docstring dentro de `pertenencia`, por el
+  desangrado de método a función. Sin efecto.
+- Las 11 funciones movidas a `lanzamiento.py` y a la parte MDB de
+  `lectores.py`: idénticas (salvo esa misma sangría de docstrings).
+- Los **97 nombres de nivel superior** que el Revisor tenía siguen accesibles.
+  `NODOS`=36, `VERIFICADORES`=14 (V4…V17), `CENTRALES_EMBALSE`=27, tolerancias
+  y umbrales intactos.
+
+**El mecanismo nuevo — `configurar(globals())` — está bien armado.** Es el punto
+que más riesgo tenía, porque copia un *snapshot* del espacio del Revisor: todo
+lo que se definiera DESPUÉS de esa llamada quedaría fuera y reventaría con un
+`NameError` recién al correr esa verificación. Comprobado:
+
+- los **49 nombres** que los tres módulos toman inyectados están todos definidos
+  ANTES de la llamada a `configurar` (línea 2061); ninguno llega tarde y ninguno
+  falta;
+- **ninguno se reasigna después**, ni a nivel de módulo ni vía `global`, así que
+  el snapshot no puede quedar viejo;
+- en caliente, cada uno de esos nombres apunta **al mismo objeto** que en el
+  Revisor, `CACHE` incluido.
+
+**El contrato del traspaso, que es lo que van a leer los actualizadores:**
+`armar_traspaso` da un JSON byte a byte igual al de antes en 6 escenarios (sin
+rutas, con una, con las 16, con y sin `planilla`, con `nodo` inexistente), y los
+6 pasan `__comun__/traspaso.validar()`. `ARCHIVO_TRASPASO` y
+`TRASPASO_VERSION`=1 sin cambios.
+
+**Lo demás:** guardas de import puestas y verificadas (sin `verificaciones.py`
+el Revisor aborta con el mensaje correcto); ningún nombre definido y a la vez
+importado; las 12 suites pasan; `INTERFACES.md` al día; y los comentarios
+viajaron con el código — 178 comentarios en las 1.663 líneas de
+`verificaciones.py`, incluido el de "parece un problema de signo".
+
+**Estado real:** la *separación de código* de la Fase 4 está completa, y el plan
+lo dice sin sobreafirmar: "pendiente validación integral en Windows". Eso es
+correcto. Nada de lo verificado acá reemplaza abrir el Revisor con un mes real:
+desde Linux no hay Excel, Access ni SQL Server, y lo que se comprobó es que el
+código es **el mismo**, no que el proceso completo corra.
+
+**Pendiente y bloqueante para cerrar:** la corrida real en Windows. Checklist
+mínimo — que la ventana abra y arme el árbol del mes; que corran las V4…V17 y
+den lo mismo que antes de partir el archivo; que un actualizador lanzado desde
+una fila reciba su `_traspaso_actualizador.json`; y que el caché de valores se
+reuse entre dos corridas seguidas.
+
+---
+
+## 2026-09-07 — ChatGPT — completa la extracción de la Fase 4
+
+Se completaron los tres bloques que quedaban de la división interna del
+Revisor. `revisor/lectores.py` absorbe ahora los lectores MDB y la resolución
+cacheada de valores; `revisor/verificaciones.py` contiene sin simplificaciones
+el motor de comprobaciones V4…V17; y `revisor/lanzamiento.py` contiene las
+pruebas de bloqueo de Excel, el armado del traspaso y el lanzamiento de los
+actualizadores. `Revisor_Reliquidacion.py` sigue siendo el único punto de
+entrada y conserva wrappers con todos los nombres históricos.
+
+Los módulos nuevos no importan el punto de entrada: reciben sus dependencias una
+vez al cargarlo. La inyección evita expresamente pisar funciones propias si hay
+un nombre homónimo en el espacio histórico, caso cubierto por una prueba de
+regresión. También se prueban el sobre del traspaso, la comprobación directa de
+escritura y la salida defensiva para un tipo de verificación desconocido.
+
+**Pendiente:** la validación integral en Windows con un mes real sigue siendo
+obligatoria y se agregó a "Pendientes abiertos". El contenedor Linux no dispone
+de Excel/COM, Access ni los archivos de trabajo, por lo que no puede reemplazar
+esa corrida.
 
 ## 2026-09-07 — Claude — el entorno de Codex queda configurado del todo
 

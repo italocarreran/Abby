@@ -34,7 +34,7 @@ Convenciones de esta página:
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1853 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 5780 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 3786 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1420 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
@@ -45,7 +45,9 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 896 líneas — Prorratear: del Access a SQL Server
 - [`Revisor_Relq/revisor/archivos.py`](#revisor_relqrevisorarchivospy) — 214 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq/revisor/estado.py`](#revisor_relqrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
-- [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 604 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
+- [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
+- [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
+- [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1689 líneas — Comparador_Tabulado.py
 
@@ -983,19 +985,11 @@ lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
 
 #### `def obtener_tablas_columnas(ruta)`
 
-{tabla: [columnas]} de una base Access. {} si no se pudo abrir.
-
 #### `def desglose_por_tipo(ruta, tabla, columna, columna_tipo, where, log)`
-
-Escribe en el log la suma agrupada por tipo. Solo informativo.
 
 #### `def leer_valor_mdb(ruta, tabla, columna, where, log)`
 
 #### `def obtener_valor(clave, rutas, log, usar_cache=True)`
-
-Devuelve (valor, mensaje_error_o_None).
-Si el archivo no cambio desde la ultima lectura y se pide exactamente lo
-mismo, devuelve el valor guardado sin abrir el archivo.
 
 #### `def main()`
 
@@ -2058,6 +2052,57 @@ Lee el estado de otro mes sin modificar la instancia activa.
 
 ---
 
+## `Revisor_Relq/revisor/lanzamiento.py`
+
+> Traspaso y lanzamiento de los actualizadores desde el Revisor.
+>
+> Las dependencias de UI, rutas y configuración se inyectan desde el punto de
+> entrada para que este módulo no lo importe ni forme ciclos.
+
+**Importa:** `pathlib`, `re`
+
+### Funciones
+
+#### `def configurar(dependencias)`
+
+Inyecta el espacio histórico del Revisor sin importar su ventana.
+
+#### `def bloqueado_para_escritura(self, ruta)`
+
+True si otro proceso tiene el archivo tomado y no se va a poder
+guardar. Es la prueba DIRECTA de lo que importa: se pide permiso de
+escritura y se cierra al instante, sin escribir ni un byte.
+
+Es mejor que mirar el "~$": Excel deja ese archivo huérfano cuando se
+cae o lo matan, y entonces el "~$" existe para siempre aunque el libro
+esté cerrado. Esta prueba, en cambio, dice la verdad de ahora.
+
+#### `def lock_excel(self, ruta)`
+
+Ruta del "~$" que Excel deja al lado del libro abierto, si existe.
+
+#### `def dueno_del_lock(self, lock)`
+
+Nombre de quien tiene el libro abierto. Excel lo guarda dentro del
+"~$": un byte con el largo y despues el nombre, a veces en ANSI y a
+veces en UTF-16. El formato no esta documentado, asi que esto es al
+mejor esfuerzo: si no se entiende se devuelve None y listo.
+
+#### `def armar_traspaso(self, aamm, planilla, nid=None)`
+
+JSON que reciben los actualizadores. Solo se escriben las rutas que
+el revisor pudo resolver; el actualizador tolera que falte alguna.
+
+nid: la fila DESDE LA QUE se apreto el boton. Hace falta cuando el mismo
+script cuelga de varias filas (Prorratear esta en los tres .mdb): sin
+esto el script no puede saber a cual le dieron y tiene que adivinar.
+Se manda el id del nodo y tambien la clave de su ruta, ya resuelta.
+
+#### `def lanzar_actualizador(self, nid, indice=0)`
+
+
+---
+
 ## `Revisor_Relq/revisor/lectores.py`
 
 > Adaptadores de lectura Excel usados por los verificadores del Revisor.
@@ -2065,7 +2110,7 @@ Lee el estado de otro mes sin modificar la instancia activa.
 > Este módulo no conoce la ventana ni las reglas V4…V17. Conserva los fallbacks
 > openpyxl/xlwings y los diagnósticos OOXML del punto de entrada histórico.
 
-**Importa:** `__comun__`, `pathlib`, `re`, `revisor`
+**Importa:** `__comun__`, `pathlib`, `re`, `revisor`, `sys`
 
 ### Constantes
 
@@ -2150,6 +2195,51 @@ excluir: claves normalizadas que NO son empresas y hay que descartar. Por
          cuando sobran formulas arrastrando ceros.
 info:    dict opcional que se rellena con {"duplicadas", "excluidas",
          "vacias"} para que quien llame decida si eso es un fallo.
+
+#### `def configurar(dependencias)`
+
+Inyecta VALORES, CACHE y helpers del punto de entrada sin importarlo.
+
+#### `def conexion_mdb(ruta)`
+
+#### `def listar_tablas_mdb(ruta, log)`
+
+#### `def obtener_tablas_columnas(ruta)`
+
+{tabla: [columnas]} de una base Access. {} si no se pudo abrir.
+
+#### `def desglose_por_tipo(ruta, tabla, columna, columna_tipo, where, log)`
+
+Escribe en el log la suma agrupada por tipo. Solo informativo.
+
+#### `def leer_valor_mdb(ruta, tabla, columna, where, log)`
+
+#### `def obtener_valor(clave, rutas, log, usar_cache=True)`
+
+Devuelve (valor, mensaje_error_o_None).
+Si el archivo no cambio desde la ultima lectura y se pide exactamente lo
+mismo, devuelve el valor guardado sin abrir el archivo.
+
+
+---
+
+## `Revisor_Relq/revisor/verificaciones.py`
+
+> Motor de las comprobaciones V4…V17 del Revisor.
+>
+> No importa el punto de entrada para evitar ciclos. ``configurar`` recibe una vez
+> las constantes y adaptadores históricos que usa el motor; la ventana solo llama
+> a ``comprobar`` y conserva el orden observable de ejecución.
+
+### Funciones
+
+#### `def configurar(dependencias)`
+
+Inyecta el espacio histórico del Revisor sin importar su ventana.
+
+#### `def comprobar(self, c, valores, L)`
+
+Corre una comprobacion y devuelve un dict con su resultado.
 
 
 ---

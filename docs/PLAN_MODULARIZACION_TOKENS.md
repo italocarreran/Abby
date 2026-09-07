@@ -12,7 +12,7 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 | 1. Configuración y traspaso | **Hecha.** Revisada y fusionada el 2026-09-07 (`2645788`) | Una sola implementación de persistencia y del contrato opcional del Revisor |
 | 2. Lectura y utilidades comunes | **Hecha.** Revisada y fusionada el 2026-09-07; ver `BITACORA.md` | OOXML, normalización y filtros seguros sin copias |
 | 3. Infraestructura de comparadores | **Hecha.** Revisada y fusionada el 2026-09-07; dos regresiones corregidas, ver `BITACORA.md` | Estado, caché, cola UI y salida Excel sin mezclar sus motores |
-| 4. División interna del Revisor | **En curso: puntos 1 y 2 completos; 3 iniciado** | Separar UI, estado, lectores, verificaciones y lanzamiento |
+| 4. División interna del Revisor | **Implementada; pendiente validación integral en Windows** | Separar UI, estado, lectores, verificaciones y lanzamiento |
 
 ## Fase 1 — configuración y traspaso
 
@@ -84,7 +84,7 @@ Permanece separado todo lo que define el dominio: lectura Access en
 `Comparador_Etapas.py`, lectura de consolidados en `Comparador_Tabulado.py`,
 SQL, columnas, vistas, tolerancias y contenido de sus Excel.
 
-## Fase 4 — división interna del Revisor — iniciada parcialmente
+## Fase 4 — división interna del Revisor — implementada
 
 Esta es la **frontera de riesgo alto** indicada por la usuaria. Requiere otra
 sesión y validación específica antes de tocarse. Mantener
@@ -109,14 +109,19 @@ Implementado en esta etapa:
 - **2. Búsqueda y caché temporal del árbol:** `revisor/archivos.py`, sin
   dependencia de la ventana. El punto de entrada reexporta los nombres
   históricos, incluido `cache_directorios`.
-- **3. Adaptadores de lectura, parte Excel:** `revisor/lectores.py` contiene la
+- **3. Adaptadores de lectura Excel y MDB:** `revisor/lectores.py` contiene la
   suma de columnas con fallback, diagnósticos y escaneos OOXML, resolución de
-  hojas y armado de tablas. El punto de entrada reexporta los nombres históricos.
-- Los tres módulos tienen pruebas stdlib y controles de paridad estructural por AST
-  contra el commit base.
+  hojas, armado de tablas, inspección Access y resolución cacheada de valores.
+- **4. Motores V4…V17:** `revisor/verificaciones.py` contiene el motor de cada
+  tipo de comprobación. La clase de la ventana conserva el coordinador, la cola
+  y un wrapper con el nombre histórico.
+- **5. Traspaso y lanzamiento:** `revisor/lanzamiento.py` contiene las pruebas de
+  bloqueo de Excel, el armado del sobre y el lanzamiento de actualizadores. La
+  ventana conserva wrappers y el mismo orden observable.
+- Los módulos no importan el punto de entrada: este les inyecta las dependencias
+  históricas una vez, sin ciclos. Las funciones propias no pueden ser pisadas
+  por nombres homónimos durante esa configuración.
 
-Todavía no implementado, para no mezclar fronteras sin verificarlas: **3.
-lectores MDB y los adaptadores Excel que siguen ligados al cuadro de pago; 4.
-motores V4…V17; 5. traspaso y lanzamiento**. La Fase 4 no
-se considera completa hasta extraer y probar esos bloques y ejecutar la
-validación real solicitada en Windows.
+La separación de código de la Fase 4 está completa. Sigue pendiente la
+validación integral solicitada en Windows con un mes real, Excel y Access; no se
+puede sustituir desde el contenedor Linux.
