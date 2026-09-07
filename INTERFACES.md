@@ -34,7 +34,7 @@ Convenciones de esta página:
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1853 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6678 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6353 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1420 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
@@ -43,6 +43,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1315 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 850 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 896 líneas — Prorratear: del Access a SQL Server
+- [`Revisor_Relq/revisor/archivos.py`](#revisor_relqrevisorarchivospy) — 214 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
+- [`Revisor_Relq/revisor/estado.py`](#revisor_relqrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1689 líneas — Comparador_Tabulado.py
 
@@ -750,7 +752,6 @@ manteniendo el formato de las celdas.
 | `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
 | `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
 | `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
-| `TOL_MTIME` | `2` |  |
 | `VALORES` | `dict de 56 claves: 'TOTAL_SSCC', 'TOTAL_CO', 'TOTAL_CCA', …` |  |
 | `VERIFICADORES` | `dict de 14 claves: 'V8', 'V9', 'V10', …` |  |
 | `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
@@ -774,10 +775,6 @@ manteniendo el formato de las celdas.
 | `CONFIG_PATH` | `DIR_RAIZ / '__config__' / 'config.json'` |  |
 | `DIR_CONFIG` | `DIR_RAIZ / '__config__'` |  |
 | `DIR_SALIDAS` | `DIR_RAIZ / '00_Salidas'` |  |
-| `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
-| `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Cache de directorios Una relectura completa hacia 68 recorridos de carpeta para 13 carpetas distintas: cada nodo del arbol recorria la carpeta entera de nuevo, y encima resolver_carpeta recorria la r… |
-| `RE_COPIA` | `_archivos.PATRON_COPIA` | Sufijos que deja Windows al copiar: "archivo - copia.mdb", "archivo - copia (2).mdb", "archivo - Copy.xlsm". |
-| `ARCHIVO_CACHE` | `'_revisor_cache_valores.json'` |  |
 | `CACHE` | `CacheValores()` |  |
 | `ESTADO` | `Estado()` |  |
 | `CACHE_COLUMNAS` | `{}` |  |
@@ -799,37 +796,17 @@ manteniendo el formato de las celdas.
 
 ### Clases
 
-#### `class cache_directorios`
+#### `class Estado(_Estado)`
 
-Enciende el cache mientras dura el bloque. Devuelve (scans, hits) al salir
-en self.stats, para poder decir en la bitacora cuanto se ahorro.
-
-
-#### `class Estado`
-
-Verificaciones de un mes. Se guardan en __config__/AAAA/MM Mes.
+Compatibilidad histórica con las dependencias del punto de entrada.
 
 - `def __init__(self)`
-- `def cargar(self, aamm)`
-- `def existe(self)`
-- `def guardar(self)`
-- `def get(self, vid)`
-- `def vigente(self, vid)` — El registro guardado, si hay alguno.
-- `def firma_guardada_distinta(self, vid)` — True si hay un registro pero es de una definicion anterior.
-- `def set(self, vid, registro)`
 
-#### `class CacheValores`
+#### `class CacheValores(_CacheValores)`
 
-Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
-modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-vuelve a abrir. Se guarda en __config__/AAAA/MM Mes entre ejecuciones.
+Compatibilidad histórica con las dependencias del punto de entrada.
 
 - `def __init__(self)`
-- `def cargar(self, aamm)`
-- `def guardar(self)`
-- `def obtener(self, clave, ruta, huella)`
-- `def poner(self, clave, ruta, huella, valor, filas=None)`
-- `def descartar(self, claves=None)`
 
 #### `class Revisor`
 
@@ -873,39 +850,6 @@ clave compartida '_valores' de config.json.
 #### `def aplicar_valores_cfg()`
 
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_dir(carpeta)`
-
-El listado de una carpeta, del cache si esta encendido.
-
-#### `def buscar_carpeta(base, nombre)`
-
-Busca subcarpeta tolerando tildes, mayusculas y espacios extra.
-
-#### `def resolver_carpeta(base, partes)`
-
-Cada parte puede ser un nombre o una tupla de nombres alternativos.
-
-#### `def buscar_archivo(carpeta, patron_regex, extensiones)`
-
-Devuelve el archivo mas reciente que calza el patron (sobre nombre normalizado).
-
-#### `def listar_diarios(carpeta, patron_regex, extensiones)`
-
-{fecha_AAAAMMDD: Path} para las planillas diarias de una carpeta.
-
-#### `def mtime(p)`
-
-Fecha de modificacion. Con el cache encendido sale del recorrido de la
-carpeta, sin un stat por archivo.
-
-#### `def tamano(p)`
-
-#### `def fmt_fecha(ts)`
-
-#### `def iguales_mtime(a, b)`
-
-#### `def fmt_monto(v)`
 
 #### `def detectar_aamm(rutas, diarios)`
 
@@ -2056,6 +2000,136 @@ Devuelve (ok, resumen).
 **— VENTANA —**
 
 #### `def main()`
+
+
+---
+
+## `Revisor_Relq/revisor/archivos.py`
+
+> Búsqueda de carpetas y archivos con caché acotada a una relectura.
+>
+> Por qué existe el caché: una relectura completa hacía 68 recorridos de carpeta
+> para 13 carpetas distintas — cada nodo del árbol recorría la carpeta entera de
+> nuevo, y encima ``resolver_carpeta`` recorría la raíz una vez por nodo. En un
+> disco local no se nota; en la T: cada recorrido es un viaje de red y ahí está el
+> tiempo.
+>
+> Se usa ``os.scandir`` y no ``iterdir`` porque trae la fecha y el tamaño en el
+> mismo recorrido: con ``Path.iterdir`` + ``.stat()`` cada archivo cuesta un viaje
+> aparte.
+>
+> El caché está **apagado por omisión** y solo se enciende dentro de
+> ``with cache_directorios():``. Fuera de ahí todo lee del disco como siempre, que
+> es lo que hace falta para que ``mtime()`` no devuelva datos viejos cuando se
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `__comun__`, `datetime`, `os`, `pathlib`, `re`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `TOL_MTIME` | `2` | Segundos de tolerancia al comparar fechas de modificacion entre una copia y su maestro. |
+| `RE_COPIA` | `_archivos.PATRON_COPIA` |  |
+| `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Apagado por omisión: fuera del context manager las fechas siempre vienen del disco. |
+
+### Clases
+
+#### `class cache_directorios`
+
+Enciende el caché durante un bloque y publica ``(scans, hits)`` al salir.
+
+
+### Funciones
+
+#### `def leer_dir(carpeta)`
+
+Obtiene el listado de una carpeta, usando el caché si está encendido.
+
+#### `def buscar_carpeta(base, nombre)`
+
+Busca una subcarpeta tolerando tildes, mayúsculas y espacios extra.
+
+#### `def resolver_carpeta(base, partes)`
+
+Resuelve partes sucesivas; cada una puede ofrecer nombres alternativos.
+
+#### `def buscar_archivo(carpeta, patron_regex, extensiones)`
+
+Devuelve el archivo original más reciente que coincide con el patrón.
+
+#### `def listar_diarios(carpeta, patron_regex, extensiones)`
+
+Devuelve ``{fecha_AAAAMMDD: Path}`` para las planillas diarias.
+
+#### `def mtime(ruta)`
+
+Fecha de modificación, tomada del recorrido cuando el caché está activo.
+
+#### `def tamano(ruta)`
+
+Tamaño, tomado del recorrido cuando el caché está activo.
+
+#### `def fmt_fecha(ts)`
+
+#### `def iguales_mtime(a, b)`
+
+#### `def fmt_monto(valor)`
+
+
+---
+
+## `Revisor_Relq/revisor/estado.py`
+
+> Persistencia del estado de verificaciones y del caché de valores.
+
+**Importa:** `datetime`, `json`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
+| `ARCHIVO_CACHE` | `'_revisor_cache_valores.json'` |  |
+
+### Clases
+
+#### `class Estado`
+
+Verificaciones de un mes. Se guardan en ``__config__/AAAA/MM Mes``.
+
+Las rutas, la escritura y la firma se reciben explícitamente.
+
+- `def __init__(self, dir_mes, escribir_json, firma_verificador)`
+- `def cargar(self, aamm)`
+- `def existe(self)`
+- `def guardar(self)`
+- `def get(self, vid)`
+- `def vigente(self, vid)` — El registro guardado, si hay alguno.
+- `def firma_guardada_distinta(self, vid)` — True si hay un registro pero es de una definición anterior.
+- `def set(self, vid, registro)`
+
+#### `class CacheValores`
+
+Guarda el valor ya leído de cada origen junto con la ruta y la fecha de
+modificación del archivo. Si el archivo no cambió y se pide lo mismo, no se
+vuelve a abrir. Se guarda en ``__config__/AAAA/MM Mes`` entre ejecuciones.
+
+Las dependencias de disco las inyecta el punto de entrada.
+
+- `def __init__(self, dir_mes, escribir_json, mtime, tamano, fmt_fecha)`
+- `def cargar(self, aamm)`
+- `def guardar(self)`
+- `def obtener(self, clave, ruta, huella)`
+- `def poner(self, clave, ruta, huella, valor, filas=None)`
+- `def descartar(self, claves=None)`
+
+### Funciones
+
+#### `def leer_estado_mes(aamm, dir_mes)`
+
+Lee el estado de otro mes sin modificar la instancia activa.
 
 
 ---

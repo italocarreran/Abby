@@ -25,14 +25,14 @@ import json, subprocess, sys, re, socket, os, traceback, unicodedata, time, csv
 import shutil
 import threading, queue
 
-def _morir_import(mensaje):
+def _morir_import(mensaje, titulo="Falta la carpeta __comun__/"):
     """Como no hay ventana todavia, esto puede correr antes que exista
     cualquier otra. Sin esto, lanzado con pythonw (sin consola) moriria
-    callado si falta __comun__/."""
+    callado si falta __comun__/ o revisor/."""
     try:
         raiz = tk.Tk()
         raiz.withdraw()
-        messagebox.showerror("Falta la carpeta __comun__/", mensaje)
+        messagebox.showerror(titulo, mensaje)
         raiz.destroy()
     except Exception:
         print(mensaje)
@@ -138,7 +138,9 @@ CENTRALES_EMBALSE = [
     "ANTUCO-1", "ANTUCO-2",
     "ANGOSTURA-1", "ANGOSTURA-2", "ANGOSTURA-3",
 ]
-TOL_MTIME  = 2          # segundos de tolerancia al comparar fechas de modificacion
+# TOL_MTIME (2 s, tolerancia al comparar fechas de modificacion) vive en
+# revisor/archivos.py, que es quien lo usa, y se importa mas abajo. NO
+# redefinirlo aca: el import lo pisaria y el cambio no haria nada.
 
 VALORES = {
     # --- totales que son una COLUMNA completa bajo un encabezado -----------
@@ -1116,7 +1118,6 @@ DIR_RAIZ = DIR_SCRIPT.parent
 CONFIG_PATH = DIR_RAIZ / "__config__" / "config.json"
 DIR_CONFIG = DIR_RAIZ / "__config__"
 DIR_SALIDAS = DIR_RAIZ / "00_Salidas"
-ARCHIVO_ESTADO = "_revisor_verificaciones.json"
 
 
 def dir_mes(aamm, crear=False):
@@ -1214,224 +1215,22 @@ def abrir_en_explorador(ruta, es_archivo=False):
 normalizar = _texto.suave_textual
 
 
-# =============================================================================
-#  Cache de directorios
-# =============================================================================
-# Una relectura completa hacia 68 recorridos de carpeta para 13 carpetas
-# distintas: cada nodo del arbol recorria la carpeta entera de nuevo, y encima
-# resolver_carpeta recorria la raiz una vez por nodo. En un disco local no se
-# nota; en la T: cada recorrido es un viaje de red y ahi esta el tiempo.
-#
-# Este cache guarda el listado de cada carpeta MIENTRAS dura una relectura, asi
-# cada carpeta se recorre UNA vez. Se usa os.scandir en vez de iterdir porque
-# trae la fecha y el tamano en el mismo recorrido: con Path.iterdir + .stat()
-# cada archivo cuesta un viaje aparte.
-#
-# El cache esta apagado por omision y solo se enciende dentro de
-# "with cache_directorios():". Fuera de ahi todo lee del disco como siempre, que
-# es lo que hace falta para que mtime() no devuelva datos viejos cuando se
-# comprueba si una verificacion vencio.
-_DIR_CACHE = {"on": False, "datos": {}, "hits": 0, "scans": 0}
-
-
-def _escanear(carpeta):
-    """(subcarpetas, archivos) de una carpeta, en UN solo recorrido.
-    subcarpetas: {nombre_normalizado: Path}
-    archivos   : {nombre: (Path, mtime, tamano)}
-    """
-    subs, archs = {}, {}
-    _DIR_CACHE["scans"] += 1
-    try:
-        with os.scandir(str(carpeta)) as it:
-            for e in it:
-                try:
-                    if e.is_dir():
-                        subs[normalizar(e.name)] = Path(e.path)
-                    elif e.is_file():
-                        st = e.stat()
-                        archs[e.name] = (Path(e.path), st.st_mtime, st.st_size)
-                except OSError:
-                    continue
-    except OSError:
-        pass
-    return subs, archs
-
-
-def leer_dir(carpeta):
-    """El listado de una carpeta, del cache si esta encendido."""
-    if carpeta is None:
-        return {}, {}
-    if _DIR_CACHE["on"]:
-        clave = str(carpeta)
-        if clave in _DIR_CACHE["datos"]:
-            _DIR_CACHE["hits"] += 1
-            return _DIR_CACHE["datos"][clave]
-        datos = _escanear(carpeta)
-        _DIR_CACHE["datos"][clave] = datos
-        return datos
-    return _escanear(carpeta)
-
-
-class cache_directorios:
-    """Enciende el cache mientras dura el bloque. Devuelve (scans, hits) al salir
-    en self.stats, para poder decir en la bitacora cuanto se ahorro."""
-
-    def __enter__(self):
-        _DIR_CACHE.update(on=True, datos={}, hits=0, scans=0)
-        return self
-
-    def __exit__(self, *_):
-        self.stats = (_DIR_CACHE["scans"], _DIR_CACHE["hits"])
-        _DIR_CACHE.update(on=False, datos={}, hits=0, scans=0)
-        return False
-
-
-def buscar_carpeta(base, nombre):
-    """Busca subcarpeta tolerando tildes, mayusculas y espacios extra."""
-    if not base:
-        return None
-    objetivo = normalizar(nombre)
-    mapa, _ = leer_dir(base)
-    if objetivo in mapa:
-        return mapa[objetivo]
-    subs = list(mapa.values())
-    cands = [d for d in subs if normalizar(d.name).startswith(objetivo)]
-    if cands:
-        return sorted(cands, key=lambda d: len(d.name))[0]
-    cands = [d for d in subs if objetivo in normalizar(d.name)]
-    if cands:
-        return sorted(cands, key=lambda d: len(d.name))[0]
-    return None
-
-
-def resolver_carpeta(base, partes):
-    """Cada parte puede ser un nombre o una tupla de nombres alternativos."""
-    actual = base
-    for p in partes:
-        opciones = p if isinstance(p, (list, tuple)) else [p]
-        siguiente = None
-        for o in opciones:
-            siguiente = buscar_carpeta(actual, o)
-            if siguiente is not None:
-                break
-        if siguiente is None:
-            return None
-        actual = siguiente
-    return actual
-
-
-es_temporal = _archivos.es_temporal
-
-
-# Sufijos que deja Windows al copiar: "archivo - copia.mdb",
-# "archivo - copia (2).mdb", "archivo - Copy.xlsm".
-RE_COPIA = _archivos.PATRON_COPIA
-
-
-es_copia = _archivos.es_copia
-
-
-def buscar_archivo(carpeta, patron_regex, extensiones):
-    """Devuelve el archivo mas reciente que calza el patron (sobre nombre normalizado)."""
-    if not carpeta:
-        return None
-    patron = re.compile(patron_regex)
-    _, archivos = leer_dir(carpeta)
-    cands, fechas = [], {}
-    for nombre, (f, mt, _sz) in archivos.items():
-        if es_temporal(nombre):
-            continue
-        if f.suffix.lower() not in extensiones:
-            continue
-        if patron.search(normalizar(f.stem)):
-            cands.append(f)
-            fechas[f] = mt
-    if not cands:
-        return None
-    # Si hay varios, se descartan las copias ("- copia", "(2)"...). Solo se usan
-    # si no queda ninguna otra opcion.
-    sin_copias = [f for f in cands if not es_copia(f.stem)]
-    if sin_copias:
-        cands = sin_copias
-    # La fecha ya vino del recorrido de la carpeta: no hace falta un stat por
-    # archivo, que en la T: es un viaje de red cada uno.
-    cands.sort(key=lambda p: fechas.get(p) or 0, reverse=True)
-    return cands[0]
-
-
-def listar_diarios(carpeta, patron_regex, extensiones):
-    """{fecha_AAAAMMDD: Path} para las planillas diarias de una carpeta."""
-    out = {}
-    if not carpeta:
-        return out
-    patron = re.compile(patron_regex)
-    _, archivos = leer_dir(carpeta)
-    for nombre, (f, _mt, _sz) in archivos.items():
-        if es_temporal(nombre):
-            continue
-        if f.suffix.lower() not in extensiones:
-            continue
-        m = patron.search(normalizar(f.stem))
-        if m:
-            fecha = m.group(1)
-            if es_copia(f.stem) and fecha in out:
-                continue
-            if fecha in out and es_copia(out[fecha].stem):
-                out[fecha] = f
-            else:
-                out.setdefault(fecha, f)
-    return out
-
-
-def mtime(p):
-    """Fecha de modificacion. Con el cache encendido sale del recorrido de la
-    carpeta, sin un stat por archivo."""
-    if p is None:
-        return None
-    if _DIR_CACHE["on"]:
-        _, archivos = leer_dir(Path(p).parent)
-        dato = archivos.get(Path(p).name)
-        if dato is not None:
-            return dato[1]
-    try:
-        return p.stat().st_mtime
-    except Exception:
-        return None
-
-
-def tamano(p):
-    if p is None:
-        return None
-    if _DIR_CACHE["on"]:
-        _, archivos = leer_dir(Path(p).parent)
-        dato = archivos.get(Path(p).name)
-        if dato is not None:
-            return dato[2]
-    try:
-        return p.stat().st_size
-    except Exception:
-        return None
-
-
-def fmt_fecha(ts):
-    if ts is None:
-        return "—"
-    return datetime.fromtimestamp(ts).strftime("%d-%m-%Y %H:%M:%S")
-
-
-def iguales_mtime(a, b):
-    if a is None or b is None:
-        return False
-    return abs(a - b) <= TOL_MTIME
-
-
-def fmt_monto(v):
-    if v is None:
-        return "—"
-    try:
-        return f"{float(v):,.2f}".replace(",", "@").replace(".", ",").replace("@", ".")
-    except Exception:
-        return str(v)
+# La búsqueda y el caché de directorios viven en un módulo interno cohesivo.
+# Guardado como los de __comun__: lanzado con pythonw no hay consola, así que un
+# ImportError suelto mataría el Revisor en silencio.
+try:
+    from revisor.archivos import (
+        TOL_MTIME, RE_COPIA, buscar_archivo, buscar_carpeta, cache_directorios,
+        es_copia, es_temporal, fmt_fecha, fmt_monto, iguales_mtime, leer_dir,
+        listar_diarios, mtime, resolver_carpeta, tamano,
+    )
+except ImportError as e:
+    _morir_import(
+        "No se pudo cargar la carpeta 'revisor/', que va adentro de\n"
+        "Revisor_Relq, al lado de Revisor_Reliquidacion.py.\n"
+        "Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}",
+        titulo="Falta la carpeta revisor/")
 
 
 # =============================================================================
@@ -1491,71 +1290,25 @@ def firma_verificador(vid):
     return hashlib.sha1(crudo.encode("utf-8")).hexdigest()[:12]
 
 
-class Estado:
-    """Verificaciones de un mes. Se guardan en __config__/AAAA/MM Mes."""
+try:
+    from revisor.estado import (
+        ARCHIVO_CACHE, ARCHIVO_ESTADO, CacheValores as _CacheValores,
+        Estado as _Estado, leer_estado_mes as _leer_estado_mes,
+    )
+except ImportError as e:
+    _morir_import(
+        "No se pudo cargar la carpeta 'revisor/', que va adentro de\n"
+        "Revisor_Relq, al lado de Revisor_Reliquidacion.py.\n"
+        "Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}",
+        titulo="Falta la carpeta revisor/")
+
+
+class Estado(_Estado):
+    """Compatibilidad histórica con las dependencias del punto de entrada."""
 
     def __init__(self):
-        self.ruta = None
-        self.aamm = None
-        self.data = {}
-
-    def cargar(self, aamm):
-        self.aamm = str(aamm).strip() if aamm else None
-        self.data = {}
-        self.ruta = None
-        if not self.aamm:
-            return False
-        self.ruta = dir_config_mes(self.aamm) / ARCHIVO_ESTADO
-        if self.ruta.exists():
-            try:
-                with open(self.ruta, "r", encoding="utf-8") as f:
-                    self.data = json.load(f)
-                return True
-            except Exception:
-                self.data = {}
-        return False
-
-    def existe(self):
-        return bool(self.ruta and self.ruta.exists())
-
-    def guardar(self):
-        if not self.aamm:
-            return False
-        try:
-            dir_config_mes(self.aamm, crear=True)
-            escribir_json(dir_config_mes(self.aamm) / ARCHIVO_ESTADO, self.data)
-            return True
-        except Exception:
-            return False
-
-    def get(self, vid):
-        return self.data.get(vid)
-
-    def vigente(self, vid):
-        """El registro guardado, si hay alguno.
-
-        No se mira la firma a proposito. Un resultado verificado vale como
-        verificado, sin importar con que version de la definicion se corrio: al
-        usuario le da lo mismo esa distincion y solo le ensuciaba la fila. La
-        diferencia de definicion se avisa en la ventana de detalle, que es donde
-        importa, porque ahi si se muestran hojas y rangos concretos.
-        """
-        return self.data.get(vid) or None
-
-    def firma_guardada_distinta(self, vid):
-        """True si hay un registro pero es de una definicion anterior.
-        Solo para avisarlo en el detalle, no para invalidar nada."""
-        reg = self.data.get(vid)
-        return bool(reg) and reg.get("firma") != firma_verificador(vid)
-
-    def set(self, vid, registro):
-        registro = dict(registro)
-        registro["firma"] = firma_verificador(vid)
-        self.data[vid] = registro
-        return self.guardar()
-
-
-ARCHIVO_CACHE = "_revisor_cache_valores.json"
+        super().__init__(dir_config_mes, escribir_json, firma_verificador)
 
 
 def partir_signo(clave):
@@ -1590,82 +1343,11 @@ def huella_spec(spec):
     return str(t)
 
 
-class CacheValores:
-    """Guarda el valor ya leido de cada origen junto con la ruta y la fecha de
-    modificacion del archivo. Si el archivo no cambio y se pide lo mismo, no se
-    vuelve a abrir. Se guarda en __config__/AAAA/MM Mes entre ejecuciones."""
+class CacheValores(_CacheValores):
+    """Compatibilidad histórica con las dependencias del punto de entrada."""
 
     def __init__(self):
-        self.aamm = None
-        self.data = {}
-
-    def cargar(self, aamm):
-        self.aamm = str(aamm).strip() if aamm else None
-        self.data = {}
-        if not self.aamm:
-            return
-        ruta = dir_config_mes(self.aamm) / ARCHIVO_CACHE
-        if ruta.exists():
-            try:
-                with open(ruta, "r", encoding="utf-8") as f:
-                    self.data = json.load(f)
-            except Exception:
-                self.data = {}
-
-    def guardar(self):
-        if not self.aamm:
-            return False
-        try:
-            dir_config_mes(self.aamm, crear=True)
-            escribir_json(dir_config_mes(self.aamm) / ARCHIVO_CACHE, self.data)
-            return True
-        except Exception:
-            return False
-
-    def obtener(self, clave, ruta, huella):
-        reg = self.data.get(clave)
-        if not reg or ruta is None:
-            return None
-        if reg.get("archivo") != ruta.name or reg.get("huella") != huella:
-            return None
-        # OJO: aca la comparacion es EXACTA, sin la tolerancia de TOL_MTIME.
-        # Esa tolerancia sirve para comparar copias entre discos distintos, pero
-        # si se usara aca un archivo guardado 1 segundo despues de leerlo
-        # devolveria el valor viejo. Se compara ademas el tamaño.
-        ts_ahora, tam_ahora = mtime(ruta), tamano(ruta)
-        if ts_ahora is None or reg.get("mtime") is None:
-            return None
-        if abs(reg["mtime"] - ts_ahora) > 1e-6:
-            return None
-        if reg.get("tamano") is not None and reg["tamano"] != tam_ahora:
-            return None
-        if not isinstance(reg.get("valor"), (int, float)):
-            return None
-        return reg
-
-    def poner(self, clave, ruta, huella, valor, filas=None):
-        if ruta is None:
-            return
-        self.data[clave] = {
-            "archivo": ruta.name,
-            "ruta": str(ruta),
-            "mtime": mtime(ruta),
-            "mtime_texto": fmt_fecha(mtime(ruta)),
-            "tamano": tamano(ruta),
-            "huella": huella,
-            "valor": valor,
-            "filas": filas,
-            "leido": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        self.guardar()
-
-    def descartar(self, claves=None):
-        if claves is None:
-            self.data = {}
-        else:
-            for c in claves:
-                self.data.pop(c, None)
-        self.guardar()
+        super().__init__(dir_config_mes, escribir_json, mtime, tamano, fmt_fecha)
 
 
 CACHE = CacheValores()
@@ -1673,14 +1355,7 @@ CACHE = CacheValores()
 
 def leer_estado_mes(aamm):
     """Lee el estado de cualquier mes sin tocar el estado en uso."""
-    ruta = dir_config_mes(aamm) / ARCHIVO_ESTADO
-    if not ruta.exists():
-        return None
-    try:
-        with open(ruta, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    return _leer_estado_mes(aamm, dir_config_mes)
 
 
 ESTADO = Estado()

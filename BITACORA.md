@@ -33,9 +33,6 @@
       se dejó ahí a criterio propio al corregir la Tarea 2. Confirmar con la
       usuaria si eso también debería vivir en `__config__/AAAA/_comparador*/`
       en vez de en `00_Salidas/`.
-- [ ] El usuario no probó todavía ningún actualizador real de punta a punta
-      (solo los verificadores del Revisor, que funcionan bien). Falta correr
-      al menos uno contra archivos reales.
 - [ ] `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene 5 diferencias conocidas
       contra el código real, listadas en `MAPA.md` → "Diferencias con el
       documento de dominio". El documento de dominio todavía no se corrigió.
@@ -47,6 +44,112 @@
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — revisa la Fase 4 (parcial) sobre la rama de Codex
+
+La usuaria probó los actualizadores contra archivos reales y **funcionan**, y le
+dio luz verde a Codex para la Fase 4. Revisión de
+`codex/dividir-revisor_reliquidacion.py`. Los arreglos se hicieron **sobre esa
+misma rama**, a pedido de la usuaria, para que le siga sirviendo en su chat de
+Codex; recién después se fusionó.
+
+**Buena noticia de proceso:** esta vez la rama salió de la principal al día
+(`03e66bd`), no de un commit viejo. Eso solo ya evitó revivir lo corregido antes.
+
+**Alcance:** solo los puntos 1 y 2 de los cinco de la Fase 4 — `revisor/estado.py`
+y `revisor/archivos.py`. Codex frenó a propósito antes de los lectores
+Excel/MDB, los motores V4…V17 y el traspaso. Coincido: es el corte correcto.
+
+**Las extracciones son fieles**, verificado comparando vieja contra nueva:
+
+- `revisor/archivos.py`: sobre un árbol de prueba con copias de Windows,
+  temporales, tildes y diarios — `buscar_carpeta`, `resolver_carpeta`,
+  `buscar_archivo`, `listar_diarios`, `mtime`, `tamano`, `fmt_fecha`,
+  `fmt_monto`, `iguales_mtime`: 0 diferencias. El caché encendido da además los
+  **mismos contadores** de scans/hits que antes.
+- `revisor/estado.py`: 32 comprobaciones sobre `Estado` y `CacheValores`,
+  incluidos JSON roto, `aamm` vacío, firma cambiada y las tres invalidaciones
+  del caché (mtime, tamaño, valor no numérico): 0 diferencias.
+- El Revisor sigue exponiendo los 31 nombres que declara `MAPA.md`, con
+  `CENTRALES_EMBALSE`=27, `NODOS`=36, `VERIFICADORES`=14 y las tolerancias
+  intactas.
+
+**Cuatro correcciones, ninguna de comportamiento:**
+
+1. **`from revisor.archivos import ...` y `from revisor.estado import ...` sin
+   guarda.** Tercera vez que aparece el mismo agujero, ahora con el paquete
+   nuevo. Quedaron dentro de `try/except ImportError` con `_morir_import()`, que
+   además acepta título propio para decir que lo que falta es `revisor/` y no
+   `__comun__/`. Verificado: sin la carpeta, el Revisor aborta con `rc=1` y el
+   mensaje correcto en vez de morir callado bajo `pythonw`.
+
+2. **`TOL_MTIME` quedó definido dos veces y la buena se pisaba.** Estaba en el
+   bloque de tolerancias del Revisor (línea 141, con su comentario) y otra vez
+   en `revisor/archivos.py`, y el `import` de más abajo pisaba la primera. Mismo
+   valor, así que hoy no cambiaba nada — pero editar la línea 141 no habría
+   hecho **nada**, en silencio. Es la trampa de `CENTRALES_EMBALSE` otra vez. Se
+   dejó una sola definición, en `revisor/archivos.py`, y un comentario en el
+   bloque de tolerancias que dice dónde vive.
+
+3. **Las pruebas nuevas no se podían correr.** Ni `python revisor/test_x.py`, ni
+   `python -m revisor.test_x`, ni desde la raíz: las tres fallaban con
+   `ModuleNotFoundError`. Ahora resuelven su propio `sys.path` como las de
+   `__comun__` y corren desde cualquier carpeta. Quedó documentado en AGENTS.md.
+
+4. **Se perdieron los comentarios que explican el porqué.** Los dos módulos
+   nuevos absorbieron ~380 líneas y entre ambos tenían **un** comentario. Se
+   restauraron los que importan: el porqué del caché de directorios (68
+   recorridos, los viajes de red en la T:, por qué está apagado por omisión), el
+   docstring de `vigente()` sobre por qué NO se mira la firma, y sobre todo el
+   `OJO: aca la comparacion es EXACTA, sin la tolerancia de TOL_MTIME` de
+   `CacheValores.obtener` — que es justamente lo que evita que alguien
+   "unifique" las dos comparaciones de fecha y reviva un bug de valor viejo.
+
+**Verificado** (Linux, con `tkinter` y las libs de Windows simuladas): el Revisor
+importa y expone todo; aborta con el mensaje correcto sin `revisor/` y sin
+`__comun__/`; las 10 suites pasan; `generar_interfaces.py --check` al día.
+
+**Pendiente:** los tres bloques que faltan de la Fase 4 (lectores Excel/MDB,
+motores V4…V17, traspaso y lanzamiento). Y aunque los actualizadores ya se
+probaron de verdad, **el Revisor mismo no se corrió de punta a punta en Windows
+después de esta división** — es lo próximo antes de seguir partiéndolo.
+
+---
+
+## 2026-09-07 — ChatGPT — Fase 4 parcial: estado y búsqueda del Revisor
+
+Se trabajó desde `03e66bd`, punta de `claude/eso-uozpi4` y fuente de verdad
+posterior a la revisión de las Fases 1–3. La rama local no tenía remoto
+configurado: `git pull` no pudo determinar upstream y tampoco existe un destino
+de push en este clon.
+
+La Fase 4 se inició con dos extracciones completas y coherentes.
+`Revisor_Relq/revisor/estado.py` contiene el estado mensual y el caché persistente
+de valores; recibe explícitamente la resolución de rutas, escritura atómica,
+firma y metadatos de archivos. `revisor/archivos.py` contiene búsqueda tolerante,
+filtro de copias, metadatos y el caché de directorios acotado al context manager.
+`Revisor_Reliquidacion.py` sigue siendo el único punto de entrada y conserva todos
+los nombres históricos por imports o wrappers breves. No cambiaron `VALORES`,
+`VERIFICADORES`, `NODOS`, `ACTUALIZADORES`, `CLAVES_TRASPASO`, los IDs V4…V17 ni
+sus dependencias. El sobre del traspaso y el código que lanza procesos no se
+tocaron.
+
+Se agregaron pruebas stdlib para persistencia, JSON roto, firmas, invalidación del
+caché por huella/fecha/tamaño, búsqueda normalizada, preferencia por originales y
+encendido/apagado del caché de directorios. La comparación AST contra el commit
+base confirmó que no falta ningún nombre público y que las siete constantes
+estructurales permanecen idénticas. Los módulos importan aislados sin tkinter y
+no importan el punto de entrada, por lo que la dirección de dependencias no forma
+ciclos.
+
+**Fase 4 todavía incompleta:** quedan lectores Excel/MDB, motores V4…V17 y
+traspaso/lanzamiento. Claude debe revisar en Windows: arranque real de la ventana;
+árbol completo de un mes; V4…V17 con caso real; persistencia y recuperación de
+estado/caché; OOXML y fallback Excel; Access; lanzamiento de un actualizador;
+igualdad de `_traspaso_actualizador.json`; y conservación de configuración al
+cerrar y reabrir. La usuaria confirmó en esta solicitud que ya probó los
+actualizadores reales de las fases anteriores, por lo que se retiró ese pendiente
+abierto antiguo.
 
 ## 2026-09-07 — Claude — revisa las Fases 2 y 3 y corrige tres regresiones
 

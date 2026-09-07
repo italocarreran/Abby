@@ -84,7 +84,7 @@ Permanece separado todo lo que define el dominio: lectura Access en
 `Comparador_Etapas.py`, lectura de consolidados en `Comparador_Tabulado.py`,
 SQL, columnas, vistas, tolerancias y contenido de sus Excel.
 
-## Fase 4 — división interna del Revisor — no iniciada
+## Fase 4 — división interna del Revisor — iniciada parcialmente
 
 Esta es la **frontera de riesgo alto** indicada por la usuaria. Requiere otra
 sesión y validación específica antes de tocarse. Mantener
@@ -100,3 +100,19 @@ archivo literal que localizan los hermanos. Extraer gradualmente:
 No cambiar IDs de verificación, nombres de JSON, argumentos, ubicaciones ni el
 orden observable de la ventana. Evitar un `utils.py` general y herencia
 profunda: ambos obligarían a leer más contexto para entender una operación.
+
+Implementado en esta etapa:
+
+- **1. Estado y caché persistente:** `revisor/estado.py`, con rutas, escritura,
+  firma y lectores de metadatos inyectados. El punto de entrada mantiene sus
+  clases, instancias, constantes y funciones históricas.
+- **2. Búsqueda y caché temporal del árbol:** `revisor/archivos.py`, sin
+  dependencia de la ventana. El punto de entrada reexporta los nombres
+  históricos, incluido `cache_directorios`.
+- Ambos módulos tienen pruebas stdlib y controles de paridad estructural por AST
+  contra el commit base.
+
+Todavía no implementado, para no mezclar fronteras sin verificarlas: **3.
+lectores Excel/MDB; 4. motores V4…V17; 5. traspaso y lanzamiento**. La Fase 4 no
+se considera completa hasta extraer y probar esos bloques y ejecutar la
+validación real solicitada en Windows.
