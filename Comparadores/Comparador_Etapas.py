@@ -191,6 +191,8 @@ except ImportError as e:
         f"Carpeta actual: {DIR_RAIZ}\n\nDetalle: {e}",
     )
 
+from __comun__ import config as _cfg
+
 CONFIG_RAIZ = _sal.raiz_config(BASE)
 CONFIG_PATH = CONFIG_RAIZ / "config.json"
 SALIDAS = _sal.raiz_salidas(BASE)
@@ -366,9 +368,7 @@ def huella_entrada(ruta):
     return None
 
 
-def get_usuario():
-    usuario = os.environ.get("USERNAME") or os.environ.get("USER") or "desconocido"
-    return f"{socket.gethostname()}_{usuario}"
+get_usuario = _cfg.clave_equipo
 
 
 def leer_json(path, defecto=None):
@@ -381,30 +381,15 @@ def leer_json(path, defecto=None):
     return {} if defecto is None else defecto
 
 
-def escribir_json_atomico(path, data):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
+escribir_json_atomico = _cfg.escribir_json
 
 
 def leer_config():
-    todo = leer_json(CONFIG_PATH, {})
-    if not isinstance(todo, dict):
-        return {}
-    return todo.get(get_usuario(), {}) or {}
+    return _cfg.leer(CONFIG_PATH)
 
 
 def guardar_config(data):
-    todo = leer_json(CONFIG_PATH, {})
-    if todo is None:
-        return  # config.json ilegible: mejor perder un ajuste que el archivo
-    if not isinstance(todo, dict):
-        todo = {}
-    todo.setdefault(get_usuario(), {}).update(data)
-    escribir_json_atomico(CONFIG_PATH, todo)
+    return _cfg.guardar(CONFIG_PATH, data)
 
 
 def abrir_en_explorador(ruta, es_archivo=True):

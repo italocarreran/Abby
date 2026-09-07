@@ -53,33 +53,22 @@ import xlwings as xw
 CARPETA_AUXILIARES = Path(__file__).parent / "Auxiliares"
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "__config__" / "reemplazos_reuc.json"
 
+_RAIZ_COMUN = Path(__file__).resolve().parents[2]
+if str(_RAIZ_COMUN) not in sys.path:
+    sys.path.insert(0, str(_RAIZ_COMUN))
+from __comun__ import config as _cfg
+from __comun__ import traspaso as _traspaso
 
-def get_usuario():
-    usuario = os.environ.get("USERNAME") or os.environ.get("USER") or "desconocido"
-    return f"{socket.gethostname()}_{usuario}"
+
+get_usuario = _cfg.clave_equipo
 
 
 def leer_config():
-    if CONFIG_PATH.exists():
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f).get(get_usuario(), {})
-        except Exception:
-            return {}
-    return {}
+    return _cfg.leer(CONFIG_PATH)
 
 
 def guardar_config(data):
-    todo = {}
-    if CONFIG_PATH.exists():
-        try:
-            todo = json.load(open(CONFIG_PATH, "r", encoding="utf-8"))
-        except Exception:
-            todo = {}
-    todo.setdefault(get_usuario(), {}).update(data)
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(todo, f, ensure_ascii=False, indent=2)
+    return _cfg.guardar(CONFIG_PATH, data)
 
 
 # =========================================================
@@ -88,33 +77,15 @@ def guardar_config(data):
 # ---------------------------------------------------------------------------
 # TRASPASO DESDE EL REVISOR
 # ---------------------------------------------------------------------------
-# El Revisor escribe un JSON en Salidas/AAMM/ y pasa su ruta como argv[1].
+# El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1].
 # Sin argumento este script funciona como siempre: rutas a mano y su propio
 # reemplazos_reuc.json vive en __config__ y NO es el config compartido.
-TRASPASO_ORIGEN = "Revisor_Reliquidacion"
-TRASPASO_VERSION_MAX = 1
+TRASPASO_ORIGEN = _traspaso.ORIGEN
+TRASPASO_VERSION_MAX = _traspaso.VERSION_ACTUAL
 
 
 def leer_traspaso(argv):
-    """Devuelve el dict del traspaso, o None si no vino o no es valido.
-    Nunca lanza: si el JSON esta roto se cae al modo manual."""
-    if len(argv) < 2 or not str(argv[1]).strip():
-        return None
-    ruta = Path(str(argv[1]).strip())
-    try:
-        if not ruta.is_file():
-            return None
-        with open(ruta, "r", encoding="utf-8") as f:
-            d = json.load(f)
-        if not isinstance(d, dict) or d.get("origen") != TRASPASO_ORIGEN:
-            return None
-        if int(d.get("version", 0)) > TRASPASO_VERSION_MAX:
-            return None
-        if not isinstance(d.get("rutas"), dict):
-            d["rutas"] = {}
-        return d
-    except Exception:
-        return None
+    return _traspaso.leer_argumento(argv)
 
 
 def abrir_en_explorador(ruta, es_archivo=False):

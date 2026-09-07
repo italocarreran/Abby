@@ -80,7 +80,8 @@ def leer_todo(ruta) -> dict:
 
 def leer(ruta) -> dict:
     """El bloque del equipo actual. {} si no hay archivo o esta roto."""
-    return leer_todo(ruta).get(clave_equipo(), {})
+    data = leer_todo(ruta).get(clave_equipo(), {})
+    return data if isinstance(data, dict) else {}
 
 
 def modificar(ruta, mutador) -> bool:

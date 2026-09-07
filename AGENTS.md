@@ -189,12 +189,14 @@ tienen bloque en `MAPA.md`.
   cumplen la misma función y viven dentro del repositorio.
 - **El módulo común se migra por partes, nunca de golpe.** Una pieza a la vez, un
   script a la vez, verificando que sigue corriendo antes de seguir con el próximo.
-- **`__comun__/config.py` ya está**, con 13 pruebas en `__comun__/test_config.py`. Los
-  scripts migrados conservan sus nombres de siempre (`leer_config`,
+- **`__comun__/config.py` ya está**, con 14 pruebas en `__comun__/test_config.py`.
+  Los doce programas ya están migrados y conservan sus nombres de siempre (`leer_config`,
   `guardar_config`, `_modificar_config`, `escribir_json`, `get_usuario`) como
-  envoltorios de dos líneas, así que **ningún punto de llamada cambia**. Migrar un
-  script es reemplazar esas cinco funciones por los envoltorios y agregar
-  `from __comun__ import config as _cfg`. Nada más.
+  aliases o envoltorios de dos líneas, así que **ningún punto de llamada cambia**.
+- **`__comun__/traspaso.py` es el contrato único del argumento opcional del
+  Revisor.** Centraliza origen, versión y validación; los nueve actualizadores
+  conservan `leer_traspaso()` como wrapper y deben seguir funcionando sin
+  argumento. Las claves particulares de `rutas` siguen siendo de cada script.
 - **Un script de `actualizadores/` está una carpeta más lejos de `__comun__/` que el
   Revisor.** `__comun__/` vive junto a `Revisor_Relq/`, no dentro de él. Python
   solo agrega al `sys.path` la carpeta del propio script, así que al ejecutarlo

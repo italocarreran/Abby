@@ -169,6 +169,8 @@ except ImportError as e:
            "con config.py adentro. Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
 
+from __comun__ import traspaso as _traspaso
+
 get_usuario = _cfg.clave_equipo
 escribir_json = _cfg.escribir_json
 
@@ -203,30 +205,12 @@ def abrir_en_explorador(ruta, es_archivo=False):
 # =============================================================================
 #  TRASPASO DESDE EL REVISOR
 # =============================================================================
-TRASPASO_ORIGEN = "Revisor_Reliquidacion"
-TRASPASO_VERSION_MAX = 1
+TRASPASO_ORIGEN = _traspaso.ORIGEN
+TRASPASO_VERSION_MAX = _traspaso.VERSION_ACTUAL
 
 
 def leer_traspaso(argv):
-    """Devuelve el dict del traspaso, o None si no vino o no es valido.
-    Nunca lanza: si el JSON esta roto se cae al modo manual."""
-    if len(argv) < 2 or not str(argv[1]).strip():
-        return None
-    ruta = Path(str(argv[1]).strip())
-    try:
-        if not ruta.is_file():
-            return None
-        with open(ruta, "r", encoding="utf-8") as f:
-            d = json.load(f)
-        if not isinstance(d, dict) or d.get("origen") != TRASPASO_ORIGEN:
-            return None
-        if int(d.get("version", 0)) > TRASPASO_VERSION_MAX:
-            return None
-        if not isinstance(d.get("rutas"), dict):
-            d["rutas"] = {}
-        return d
-    except Exception:
-        return None
+    return _traspaso.leer_argumento(argv)
 
 
 # =============================================================================

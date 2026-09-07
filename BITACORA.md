@@ -36,36 +36,49 @@
 - [ ] El usuario no probó todavía ningún actualizador real de punta a punta
       (solo los verificadores del Revisor, que funcionan bien). Falta correr
       al menos uno contra archivos reales.
-- [ ] Migrar los 7 actualizadores que faltan a `__comun__/config.py` — solo
-      `Actualiza_SC_CO.py` está migrado. Uno a la vez, verificando que sigue
-      corriendo antes de seguir con el próximo (ver `MAPA.md` → "El módulo
-      común").
 - [ ] `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene 5 diferencias conocidas
       contra el código real, listadas en `MAPA.md` → "Diferencias con el
       documento de dominio". El documento de dominio todavía no se corrigió.
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] Quedaron 3 comentarios `# ... Salidas/AAMM/ ...` (sin el `00_` nuevo) en
-      `Actualiza_datos.py`, `Actualiza_Data_Access.py` y
-      `ActualizaRemplazos.py` — scripts que todavía no leen ni escriben
-      `DIR_SALIDAS` directamente, así que no son un bug funcional, pero van a
-      quedar mal si algún día alguno de esos scripts empieza a usar esa ruta.
-      Corregirlos de paso la próxima vez que se toque cualquiera de esos tres
-      archivos. `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene las mismas 2
-      menciones viejas — se suma a la fila ya abierta de diferencias con el
-      código real (arriba).
-
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
-- [ ] Los comparadores tienen su propia copia de `leer_config` /
-      `guardar_config` / `escribir_json_atomico`. Migrarlas a
-      `__comun__/config.py` como ya se hizo con `Actualiza_SC_CO.py` —
-      después y por separado.
-
 ---
+
+## 2026-09-07 — ChatGPT — Fase 1 de modularización: config y traspaso
+
+La usuaria pidió ejecutar la primera fase del plan orientado a reducir tokens y
+dejarle a Claude el plan completo para revisar y fusionar. Los doce programas
+que manejan configuración delegan ahora en `__comun__/config.py`: Revisor, nueve
+actualizadores y dos comparadores. Se conservaron los nombres históricos como
+aliases o wrappers para no cambiar puntos de llamada, y
+`ActualizaRemplazos.py` sigue apuntando a su JSON propio. La migración corrigió
+además el riesgo pendiente de ese script: ya no puede pisar un config roto con
+`{}` y ahora escribe mediante `.tmp` + `os.replace`, igual que los demás.
+
+Se agregó `__comun__/traspaso.py` como contrato único del argumento opcional.
+Centraliza origen, versión, lectura tolerante y normalización de `rutas`; los
+nueve actualizadores mantienen `leer_traspaso()` como wrapper y el Revisor usa
+las mismas constantes al producir el JSON. Sin argumento o ante un JSON
+inválido se conserva exactamente la vía manual. También se corrigieron los tres
+comentarios viejos que todavía ubicaban ese JSON bajo `Salidas/AAMM`.
+
+El plan y los límites de las fases 2 a 4 quedaron en
+`docs/PLAN_MODULARIZACION_TOKENS.md`: OOXML/texto/archivos por piezas;
+infraestructura compartida de comparadores mediante composición; y, al final,
+división interna del Revisor sin mover su entry point. Se agregaron 8 pruebas
+del traspaso y una prueba defensiva nueva a config (14 en total). Verificado con
+los tests de los cuatro módulos comunes, compilación de todos los Python,
+chequeo del generador, comparación de los doce `CONFIG_PATH` contra `HEAD` y
+auditoría AST de wrappers/consumidores. No se pudo ejecutar Excel, Access, SQL
+Server ni las ventanas reales porque este entorno no es Windows.
+
+**Pendiente para Claude:** revisar esta rama contra la lista específica del
+plan, ejecutar al menos un actualizador real en Windows cuando haya archivos de
+trabajo y fusionar si coincide. Las fases 2, 3 y 4 no se empezaron.
 
 ## 2026-09-03 — Claude — plan para sacar `comun/` y todos los `.json` de `Revisor_Relq/`
 
