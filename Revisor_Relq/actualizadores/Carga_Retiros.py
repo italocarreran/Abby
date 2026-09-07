@@ -33,6 +33,14 @@ DIR_SCRIPT = Path(__file__).resolve().parent
 # DIR_SCRIPT / "config.json" porque este script esta en actualizadores/.
 CONFIG_PATH = DIR_SCRIPT.parent.parent / "__config__" / "config.json"
 
+# Implementaciones compartidas; los envoltorios conservan la interfaz historica.
+_RAIZ_COMUN = Path(__file__).resolve().parents[2]
+if str(_RAIZ_COMUN) not in sys.path:
+    sys.path.insert(0, str(_RAIZ_COMUN))
+from __comun__ import config as _cfg
+from __comun__ import traspaso as _traspaso
+from __comun__ import texto as _texto
+
 # ---------------------------------------------------------------------------
 #  Configuracion
 # ---------------------------------------------------------------------------
@@ -90,21 +98,7 @@ COL_HORA = "Hora Mensual"
 HORA_CAMBIO_POR_OMISION = 145
 
 
-def clave_col(t):
-    """Normaliza un nombre de columna para comparar.
-
-    Sin tildes, sin espacios ni guiones bajos, en mayusculas. Y ademas trata
-    "ANIO" como "ANO", que es lo que hace falta de verdad: la Ñ no se resuelve
-    quitando tildes. Descomponer "Año" da "ANO" y "Anio" da "ANIO", y sin este
-    paso no coincidirian, que es justo el caso que falla:
-        'Clave Año_Mes'  ==  'Clave_Anio_Mes'  ==  'clave_anio_mes'
-    """
-    t = unicodedata.normalize("NFKD", str(t or ""))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    t = re.sub(r"[\s_]+", "", t).upper()
-    # La Ñ descompuesta queda como N; "ANIO" se lleva a "ANO" para que las dos
-    # formas de escribir "año" den lo mismo.
-    return t.replace("ANIO", "ANO")
+clave_col = _texto.clave_columna
 
 
 def resolver_columna(columnas, objetivo):
@@ -122,58 +116,22 @@ def resolver_columna(columnas, objetivo):
 # =============================================================================
 #  CONFIG COMPARTIDO
 # =============================================================================
-def get_usuario():
-    try:
-        u = os.environ.get("USERNAME") or os.environ.get("USER") or "desconocido"
-        return f"{socket.gethostname()}_{u}"
-    except Exception:
-        return "desconocido"
+get_usuario = _cfg.clave_equipo
 
 
 def leer_config():
-    try:
-        if CONFIG_PATH.exists():
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f).get(get_usuario(), {})
-    except Exception:
-        pass
-    return {}
+    return _cfg.leer(CONFIG_PATH)
 
 
-def escribir_json(ruta, data):
-    ruta = Path(ruta)
-    ruta.parent.mkdir(parents=True, exist_ok=True)
-    tmp = ruta.with_suffix(ruta.suffix + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, ruta)
+escribir_json = _cfg.escribir_json
 
 
 def _modificar_config(mutador):
-    """Solo agrega o actualiza claves. Si el archivo existe pero no se puede
-    interpretar NO se escribe: mejor perder un ajuste que el archivo entero."""
-    todo = {}
-    if CONFIG_PATH.exists():
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                todo = json.load(f)
-            if not isinstance(todo, dict):
-                return False
-        except Exception:
-            return False
-    try:
-        mutador(todo)
-        escribir_json(CONFIG_PATH, todo)
-        return True
-    except Exception:
-        return False
+    return _cfg.modificar(CONFIG_PATH, mutador)
 
 
 def guardar_config(data):
-    return _modificar_config(
-        lambda todo: todo.setdefault(get_usuario(), {}).update(data))
+    return _cfg.guardar(CONFIG_PATH, data)
 
 
 def abrir_en_explorador(ruta, es_archivo=False):
@@ -194,41 +152,18 @@ def abrir_en_explorador(ruta, es_archivo=False):
 # =============================================================================
 #  TRASPASO DESDE EL REVISOR
 # =============================================================================
-TRASPASO_ORIGEN = "Revisor_Reliquidacion"
-TRASPASO_VERSION_MAX = 1
+TRASPASO_ORIGEN = _traspaso.ORIGEN
+TRASPASO_VERSION_MAX = _traspaso.VERSION_ACTUAL
 
 
 def leer_traspaso(argv):
-    """Devuelve el dict del traspaso, o None si no vino o no es valido.
-    Nunca lanza: si el JSON esta roto se cae al modo manual."""
-    if len(argv) < 2 or not str(argv[1]).strip():
-        return None
-    ruta = Path(str(argv[1]).strip())
-    try:
-        if not ruta.is_file():
-            return None
-        with open(ruta, "r", encoding="utf-8") as f:
-            d = json.load(f)
-        if not isinstance(d, dict) or d.get("origen") != TRASPASO_ORIGEN:
-            return None
-        if int(d.get("version", 0)) > TRASPASO_VERSION_MAX:
-            return None
-        if not isinstance(d.get("rutas"), dict):
-            d["rutas"] = {}
-        return d
-    except Exception:
-        return None
+    return _traspaso.leer_argumento(argv)
 
 
 # =============================================================================
 #  UTILIDADES
 # =============================================================================
-def normalizar(t):
-    if t is None:
-        return ""
-    t = unicodedata.normalize("NFKD", str(t))
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    return " ".join(t.lower().split())
+normalizar = _texto.suave
 
 
 def fmt_tiempo(seg):

@@ -28,6 +28,10 @@ class TestConfig(unittest.TestCase):
         }), encoding="utf-8")
         self.assertEqual(config.leer(self.ruta), {"carpeta_base": "T:/mio"})
 
+    def test_bloque_propio_que_no_es_dict_devuelve_vacio(self):
+        self.ruta.write_text(json.dumps({self.yo: None}), encoding="utf-8")
+        self.assertEqual(config.leer(self.ruta), {})
+
     def test_archivo_roto_no_revienta(self):
         self.ruta.write_text("{ esto no es json", encoding="utf-8")
         self.assertEqual(config.leer(self.ruta), {})

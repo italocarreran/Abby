@@ -407,44 +407,76 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Reglas que no cambian:** solo se agregan o actualizan claves, nunca se borra
   nada ajeno; si el archivo existe pero no se puede interpretar **no se escribe**;
   la escritura es atómica (`.tmp` + `os.replace`).
-- **Pruebas:** `__comun__/test_config.py`, 13 casos, solo stdlib.
+- **Pruebas:** `__comun__/test_config.py`, 14 casos, solo stdlib.
 - **Dos bugs que se arreglaron al juntar las copias:**
   1. `ActualizaRemplazos.py` escribía el archivo entero **sin `.tmp`**, y si el
      config existía pero estaba roto lo pisaba con `{}`. O sea: un `config.json`
      ilegible le borraba los ajustes a los otros nueve scripts.
   2. `get_usuario` tenía versiones con y sin `try/except`. Quedó la defensiva.
-- **Cómo migrar el resto:** reemplazar las cinco funciones del script por
-  envoltorios de dos líneas sobre `_cfg`, y agregar `from __comun__ import config as
-  _cfg`. Los nombres viejos se conservan, así que **ningún punto de llamada
-  cambia** — y `_modificar_config` se llama directo en los 10 scripts, con
-  mutadores propios (la tasa por mes de `Actualiza_Cuadro0`, por ejemplo).
+- **Migración:** los doce programas que manejan configuración ya delegan acá.
+  Conservan sus nombres históricos como aliases o envoltorios breves, así que
+  ningún punto de llamada cambió. `ActualizaRemplazos.py` sigue usando su JSON
+  propio; compartir el motor no mezcla los datos.
 
 | Script | Estado |
 |---|---|
-| `actualizadores/Actualiza_SC_CO.py` | migrado — 42 líneas menos |
-| los otros 9 | pendientes |
+| Revisor, 9 actualizadores y 2 comparadores | migrados |
+
+### `__comun__/traspaso.py` — **hecho**
+
+- **Qué hace:** centraliza el sobre del JSON opcional que el Revisor pasa por
+  `argv[1]`: origen, versión máxima y normalización de `rutas`.
+- **Expone:** `ORIGEN`, `VERSION_ACTUAL`, `validar(data, version_max=...)`,
+  `leer(ruta, version_max=...)` y `leer_argumento(argv, version_max=...)`.
+- **Regla que no cambia:** cualquier argumento ausente, archivo inválido, JSON
+  roto, origen ajeno o versión futura devuelve `None`; el actualizador continúa
+  funcionando solo y busca sus archivos manualmente.
+- **Pruebas:** `__comun__/test_traspaso.py`, 8 casos, solo stdlib.
+
+### `__comun__/excel_xml.py` — **hecho**
+
+- **Qué hace:** lee columnas calculadas de `.xlsx`/`.xlsm` escaneando el ZIP y
+  XML, sin abrir Excel; ante un fallo devuelve `None` para conservar el fallback.
+- **Lo usan:** Revisor y `Actualiza_Data_Access.py`, mediante aliases históricos.
+- **Pruebas:** `__comun__/test_excel_xml.py`, con un OOXML sintético.
+
+### `__comun__/texto.py` y `__comun__/archivos.py` — **hecho**
+
+- **Qué hacen:** separan normalización suave de claves estrictas y centralizan
+  temporales/copias de Windows. Conservan explícitamente las variantes antiguas
+  para `None` y `0`, en vez de cambiar casos límite al migrar.
+- **Pruebas:** `__comun__/test_texto.py` y `__comun__/test_archivos.py`.
+
+### `__comun__/comparadores.py` — **hecho**
+
+- **Qué hace:** infraestructura compartida por composición: caché `scandir`,
+  estado/inclusión, respaldo y hojas ajenas, helpers
+  de rutas/Access y puente `ColaTk` para que workers no toquen tkinter.
+- **Regla:** no contiene SQL, columnas, vistas ni lectura de dominio; Access y
+  Tabulado siguen siendo motores independientes.
+- **Pruebas:** `__comun__/test_comparadores.py`, incluidas cola con hilo real,
+  caché, copias, estado y respaldos.
 
 ### Lo que sigue
 
-El generador detectó **40 constantes definidas
-en más de un archivo** (la tabla completa está al final de `INTERFACES.md`). Ordenadas
-por cuánto rinde sacarlas:
+El generador detecta **39 nombres de constante repetidos** (la tabla completa
+está al final de `INTERFACES.md`). Es una detección sintáctica: `CONFIG_PATH`
+debe seguir siendo local porque se calcula desde cada ejecutable, y los dos
+nombres `TRASPASO_*` ya son aliases del contrato único, no valores duplicados.
+Entre las duplicaciones todavía reales, las que más rinden son:
 
 | Constante | En cuántos archivos | Qué es |
 |---|---|---|
-| `CONFIG_PATH` | **12 archivos** | la ruta del `config.json` |
-| `TRASPASO_ORIGEN`, `TRASPASO_VERSION_MAX` | 9 | el contrato del JSON del revisor |
 | `DIR_SCRIPT` | 7 | la carpeta del script |
-| `NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` | 2 | el lector de Excel por ZIP/XML, duplicado entre el Revisor y `Actualiza_Data_Access` |
 | `CENTRALES_EMBALSE` | 2 | el caso documentado, el único que ya obligó a defenderse con una verificación |
 | `SERVER`, `DRIVER`, `CHUNK`, `LARGO_TEXTO` | 2 | la conexión a SQL Server |
 
 **El orden de migración no es `CENTRALES_EMBALSE`**, aunque sea el caso más famoso:
 es el que menos riesgo tiene de quedar mal, porque V10 lo caza en los dos sentidos.
-La próxima pieza, por tamaño de la ganancia, es el **lector de Excel por ZIP/XML**
-(`NS_XL`, `NS_REL`, `_ENT_XML`, `_RE_ENT` y sus funciones): son varios cientos de
-líneas idénticas entre el Revisor y `Actualiza_Data_Access`.
+El lector de Excel por ZIP/XML y la infraestructura duplicada de comparadores ya
+se migraron. Lo siguiente es la Fase 4: dividir internamente el Revisor; es la
+frontera de riesgo alto y no se inició en esta rama.
 
-**Este cambio toca todos los scripts a la vez, así que va por partes.** Una pieza a
-la vez, un script a la vez, verificando que sigue corriendo antes de seguir con el
-próximo.
+El orden y los límites de las fases siguientes quedaron en
+`docs/PLAN_MODULARIZACION_TOKENS.md`. Aunque una pieza tenga varios consumidores,
+se migra y verifica uno antes de avanzar al próximo.
