@@ -39,22 +39,40 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] **El usuario tiene que hacer el paso 0 de
-      `docs/FLUJO_CLAUDE_CODEX.md`**: crear la rama `main` desde
-      `claude/eso-uozpi4`, dejarla como rama por defecto en GitHub y borrar
-      las ramas `codex/*` y `claude/*` viejas (todas ya fusionadas). Hasta
-      que eso pase, `scripts/sincronizar.sh` no encuentra `main` y hay que
-      pasarle la rama a mano: `bash scripts/sincronizar.sh claude/eso-uozpi4`.
-- [ ] **El usuario tiene que configurar el entorno de Codex** (pasos 2 y 3 del
-      mismo documento): base branch `main`, setup script
-      `bash scripts/codex_setup.sh`, e **internet access encendido con
-      `github.com` y el método `POST` permitido** — sin `POST` el `git fetch`
-      del agente falla y no hay sincronización posible dentro de una tarea.
+- [ ] **Falta terminar de configurar el entorno de Codex**
+      (`docs/FLUJO_CLAUDE_CODEX.md`, pasos 2 y 3). El setup script ya quedó
+      puesto en modo Manual (`bash scripts/codex_setup.sh`). Falta confirmar
+      que la base branch sea `main` y, sobre todo, **encender el internet
+      access con `github.com` y el método `POST` permitido**: sin `POST` el
+      `git fetch` del agente falla y no hay sincronización posible dentro de
+      una tarea. Ojo con el cartel "el acceso a la red siempre está
+      habilitado en este paso" de la pantalla del setup script: vale solo
+      para el setup, no para cuando el agente trabaja.
 - [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — `main` queda como rama base y recibe los scripts
+
+El usuario creó `main` desde la rama por defecto anterior (`claude/eso-uozpi4`),
+la dejó como rama por defecto del repositorio y borró las once ramas viejas.
+Verificado contra el remoto: `HEAD -> refs/heads/main`, y de las `codex/*` no
+queda ninguna.
+
+Se fusionó `claude/codex-shared-repo-config-3kho6z` en `main` en fast-forward
+(sin commit de merge): `main` pasó de `9871577` a `8b0d15c` y ahora sí tiene
+`scripts/` y `docs/FLUJO_CLAUDE_CODEX.md`. Esto era condición para que el
+setup script del entorno de Codex funcione — Codex clona `main`, y hasta este
+commit el archivo que le pide correr no existía ahí.
+
+`bash scripts/sincronizar.sh` sin argumentos ya resuelve contra `main` como
+corresponde; queda anulada la aclaración de la entrada anterior sobre tener
+que pasarle la rama a mano. Ese pendiente sale de la lista.
+
+Sigue abierto el paso 3 del documento: el internet access del entorno de
+Codex. *(8b0d15c en `main`)*
 
 ## 2026-09-07 — Claude — flujo Claude/Codex: sincronización dentro de la tarea
 

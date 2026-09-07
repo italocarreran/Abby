@@ -38,9 +38,13 @@ son los pasos de abajo:
 
 ## 2. Paso 0 — crear `main` y dejarla como rama por defecto
 
-**Este es el paso más importante y es el que hoy falta.** Ahora mismo el
-repositorio **no tiene una rama `main`**. La rama por defecto es
-`claude/eso-uozpi4`, que es el nombre de una sesión de Claude, y hay once ramas
+> **Hecho el 2026-09-07.** `main` existe, es la rama por defecto y las once
+> ramas viejas están borradas. Se deja escrito el paso por si alguna vez hay
+> que rehacerlo o entender por qué el repositorio está armado así.
+
+**Este era el paso más importante y el que faltaba.** Hasta ese día el
+repositorio **no tenía una rama `main`**: la rama por defecto era
+`claude/eso-uozpi4`, el nombre de una sesión de Claude, y había once ramas
 `codex/*` colgando de tareas viejas.
 
 Eso significa que cada tarea de Codex arranca desde una rama cuyo nombre cambia
