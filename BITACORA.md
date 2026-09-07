@@ -39,10 +39,6 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] **Confirmar en una tarea real de Codex que `scripts/sincronizar.sh`
-      corre limpio** después del arreglo del remoto `origin`. El entorno ya
-      tiene el acceso a internet activado, "Todos los métodos", y los dos
-      scripts puestos en modo Manual. Falta la corrida de punta a punta.
 - [ ] **Poner `bash scripts/sincronizar.sh || true` como script de
       mantenimiento** del entorno de Codex (hoy tiene `codex_setup.sh`
       repetido). El de mantenimiento corre al reanudar un contenedor desde la
@@ -52,6 +48,23 @@
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — Claude — `sincronizar.sh` confirmado dentro de una tarea de Codex
+
+Corrida real, en una tarea nueva de Codex, después del arreglo del remoto:
+`bash scripts/sincronizar.sh` terminó limpio y reportó que la copia ya estaba
+al día con `main`. El circuito completo —acceso a internet activado, "Todos
+los métodos", remoto configurado por el propio script, fetch anónimo por
+HTTPS— funciona.
+
+Queda por probar el caso que de verdad importa, que es el otro: que una tarea
+**ya abierta** levante un commit subido *después* de que esa tarea arrancó.
+Esta corrida no lo demuestra, porque no había nada nuevo que traer. Se prueba
+subiendo algo a `main` desde otro lado y pidiéndole a la misma tarea de Codex
+—sin abrirla de nuevo— que corra el script.
+
+Sigue pendiente cambiar el script de mantenimiento del entorno, que hoy tiene
+`codex_setup.sh` repetido.
 
 ## 2026-09-07 — Claude — el contenedor de Codex clona sin remoto `origin`
 
