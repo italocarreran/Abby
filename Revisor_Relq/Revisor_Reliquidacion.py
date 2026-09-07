@@ -2658,10 +2658,13 @@ class Revisor:
         return _lanzamiento.dueno_del_lock(self, lock)
 
     def _armar_traspaso(self, aamm, planilla, nid=None):
-        return _lanzamiento.armar_traspaso(self, aamm, planilla, nid=None)
+        # OJO: los dos argumentos se REENVIAN. Poner aca el valor por omision
+        # (nid=None, indice=0) no falla ni avisa: el traspaso sale sin "nodo" y
+        # el boton de abajo lanza siempre el primer script de la fila.
+        return _lanzamiento.armar_traspaso(self, aamm, planilla, nid=nid)
 
     def _lanzar_actualizador(self, nid, indice=0):
-        return _lanzamiento.lanzar_actualizador(self, nid, indice=0)
+        return _lanzamiento.lanzar_actualizador(self, nid, indice=indice)
 
     def _traer_maestro(self, nid):
         """Rehace esta copia a partir de su maestro."""

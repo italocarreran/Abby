@@ -50,6 +50,65 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — la corrida en Windows encontró dos wrappers rotos
+
+La usuaria probó el Revisor ya partido y avisó: **el botón "Prorratear" abría la
+ventana de Actualiza_Data_Access.** Es una regresión real de la Fase 4, y de las
+que no avisan.
+
+**Causa.** Al extraer los motores, los métodos que quedaron delegando repetían
+el valor por omisión en vez de reenviar el argumento:
+
+```
+def _lanzar_actualizador(self, nid, indice=0):
+    return _lanzamiento.lanzar_actualizador(self, nid, indice=0)   # <- indice
+def _armar_traspaso(self, aamm, planilla, nid=None):
+    return _lanzamiento.armar_traspaso(self, aamm, planilla, nid=None)  # <- nid
+```
+
+El botón sí manda bien su índice (`command=lambda i=nodo["id"], j=k: ...`); se
+perdía una capa más abajo.
+
+**Era más ancho de lo que se vio.** No es solo Prorratear: el **segundo botón de
+las cinco filas que tienen dos** lanzaba el script de la primera.
+
+| Fila | Segundo botón | Lanzaba en realidad |
+|---|---|---|
+| `a_ocupar` | Prorratear | Actualiza_Access_P9 |
+| `a_5_p9` | Actualizar "SC y CO" | Actualiza_datos |
+| `a_mdb_sscc` | Prorratear | Actualiza_Data_Access |
+| `a_mdb_sob` | Prorratear | Actualiza_Energia |
+| `a_0_cuadros` | Actualizar cuadro 0 | ActualizaRemplazos |
+
+**El segundo, más silencioso.** `_armar_traspaso` perdiendo `nid` dejaba el JSON
+sin `nodo`, `ruta_nodo` ni `clave_nodo`. Nada falla: el actualizador arranca y
+tiene que adivinar desde qué fila lo llamaron — exactamente el caso que
+`AGENTS.md` documenta para Prorratear, que cuelga de los tres `.mdb`.
+
+**Por qué no lo cacé en la revisión anterior.** Comparé por AST las funciones
+*movidas* y salieron idénticas, y probé `armar_traspaso` llamando al módulo
+directo. Los wrappers de dos líneas que quedaron en el punto de entrada no
+entraron en ninguna de las dos comprobaciones. La lección: al extraer, el
+riesgo no está solo en el código que se mueve sino en el pegamento que queda.
+
+**Arreglo:** los dos wrappers reenvían (`indice=indice`, `nid=nid`), con un
+comentario que explica por qué. Verificado en caliente: los 10 botones de las
+cinco filas dobles lanzan ahora el script que dice su texto, y el traspaso
+vuelve a llevar `nodo`/`clave_nodo`/`ruta_nodo` cuando corresponde.
+
+**Prueba que cubre toda la clase**, no solo estos dos: `test_modulos_fase4.py`
+recorre por AST *todos* los wrappers que delegan en `revisor/*.py` y falla si
+alguno no reenvía un argumento. Comprobado que falla con cada uno de los dos
+bugs reintroducido por separado, y que pasa con los dos arreglados. (Al
+agregarla quedó primero debajo de `unittest.main()` y no corría; se detectó
+justamente por exigirle que fallara.)
+
+**Pendiente:** repetir en Windows los otros puntos del checklist — que las
+V4…V17 den lo mismo que antes, que el actualizador lanzado reciba su JSON y que
+el caché de valores se reuse entre corridas.
+
+---
+
 ## 2026-09-07 — Claude — revisa el cierre de la Fase 4: sin correcciones
 
 Revisión de `codex/ejecutar-script-de-sincronizacion` (el commit que completa la

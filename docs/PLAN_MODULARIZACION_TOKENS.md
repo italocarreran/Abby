@@ -12,7 +12,7 @@ con los nombres históricos y se prueba antes de pasar a la siguiente pieza.
 | 1. Configuración y traspaso | **Hecha.** Revisada y fusionada el 2026-09-07 (`2645788`) | Una sola implementación de persistencia y del contrato opcional del Revisor |
 | 2. Lectura y utilidades comunes | **Hecha.** Revisada y fusionada el 2026-09-07; ver `BITACORA.md` | OOXML, normalización y filtros seguros sin copias |
 | 3. Infraestructura de comparadores | **Hecha.** Revisada y fusionada el 2026-09-07; dos regresiones corregidas, ver `BITACORA.md` | Estado, caché, cola UI y salida Excel sin mezclar sus motores |
-| 4. División interna del Revisor | **Implementada; pendiente validación integral en Windows** | Separar UI, estado, lectores, verificaciones y lanzamiento |
+| 4. División interna del Revisor | **Implementada; en validación en Windows** — la primera corrida encontró dos wrappers que no reenviaban sus argumentos, ya corregidos | Separar UI, estado, lectores, verificaciones y lanzamiento |
 
 ## Fase 1 — configuración y traspaso
 
