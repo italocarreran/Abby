@@ -34,7 +34,7 @@ Convenciones de esta página:
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1853 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6353 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 5780 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1420 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
@@ -45,6 +45,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 896 líneas — Prorratear: del Access a SQL Server
 - [`Revisor_Relq/revisor/archivos.py`](#revisor_relqrevisorarchivospy) — 214 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq/revisor/estado.py`](#revisor_relqrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
+- [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 604 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1689 líneas — Comparador_Tabulado.py
 
@@ -777,9 +778,6 @@ manteniendo el formato de las celdas.
 | `DIR_SALIDAS` | `DIR_RAIZ / '00_Salidas'` |  |
 | `CACHE` | `CacheValores()` |  |
 | `ESTADO` | `Estado()` |  |
-| `CACHE_COLUMNAS` | `{}` |  |
-| `NS_XL` | `_excel_xml.NS_XL` |  |
-| `NS_REL` | `_excel_xml.NS_REL` |  |
 | `C_LOG_MALO` | `'#c00000'` | Coloreado del log y del detalle Los mensajes ya vienen rotulados: ">>" es fallo, "OK" es bien, "?" es sin datos y ".." es "trabajando". |
 | `C_LOG_DUDA` | `'#b45309'` |  |
 | `C_LOG_BIEN` | `'#1d6b1d'` |  |
@@ -880,80 +878,6 @@ columna o el filtro, la huella cambia y el cache no aplica.
 #### `def leer_estado_mes(aamm)`
 
 Lee el estado de cualquier mes sin tocar el estado en uso.
-
-#### `def col_letra(n)`
-
-4 -> "D".  Al reves de col_letra_a_num.
-
-#### `def col_letra_a_num(letra)`
-
-#### `def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_filtro, log)`
-
-Suma una columna completa desde fila_inicio hacia abajo.
-Si se indica col_filtro, suma solo las filas cuyo valor de esa columna esta
-en valores_filtro (comparacion sin tildes ni mayusculas).
-Devuelve (suma, n_filas, {valor_filtro: suma}) o (None, 0, {}).
-
-#### `def buscar_marcas_rapido(ruta, hoja, fila_inicio, reglas, log, tope_detalle=30)`
-
-Busca errores de fórmula y textos prohibidos en columnas puntuales,
-escaneando el XML de la hoja por trozos en vez de cargar el libro.
-
-reglas: [{"rangos": ["CF:CI"], "errores": True, "textos": ["REVISAR"]}, ...]
-Devuelve {"conteo": {motivo: n}, "marcas": [(celda, motivo, valor)]} o None.
-
-#### `def leer_celdas_rapido(ruta, hoja, celdas)`
-
-Lee celdas puntuales de un .xlsx/.xlsm sin cargar el libro completo.
-
-Un .xlsm es un ZIP con XML adentro. Se recorre el XML de la hoja en
-streaming y se corta en cuanto se pasa de la ultima fila pedida, asi que
-para celdas de las primeras filas (H1, EE6) casi no se lee nada, aunque el
-archivo tenga miles de filas y millones de formulas.
-
-Devuelve {celda: valor} con los valores YA CALCULADOS que Excel dejo
-guardados. Si el archivo nunca fue calculado y guardado, no habra valores.
-Devuelve None si no se pudo (formato distinto, hoja inexistente, etc.).
-
-#### `def diagnosticar_celda(ruta, hoja, celda, log)`
-
-Cuando una celda no entrega valor, explica POR QUE mirando el XML crudo:
-si esta vacia, si tiene formula sin resultado guardado, si trae texto, si es
-un error, o si es parte de una celda combinada.
-
-#### `def resolver_hoja(nombres, hoja)`
-
-Traduce lo pedido al nombre real de la hoja: acepta '#1' (por posicion) y
-tolera tildes y mayusculas. Devuelve None si no calza ninguna.
-
-#### `def es_significativo(v)`
-
-Sirve para decidir si una celda 'cuenta' al buscar el ultimo dato de una
-columna: se omiten vacios, ceros y errores de formula (#REF!, #N/D...).
-
-#### `def leer_formulas_rapido(ruta, hoja, columnas, fila_inicio, log)`
-
-Devuelve {"COL": set(filas_que_TIENEN_formula)}.
-
-A diferencia de leer_columnas_rapido, que lee el resultado, esto detecta la
-PRESENCIA del nodo <f>, o sea si la celda es una formula o un valor escrito
-a mano. Sirve para saber hasta donde se arrastro una formula.
-
-Ojo con las formulas compartidas: la primera celda trae la formula completa
-(<f t="shared" ref="L5:L120" si="0">...) y las siguientes solo <f t="shared"
-si="0"/> sin texto. Como aca solo importa que exista un <f>, las dos formas
-cuentan igual.
-
-#### `def armar_tabla(datos, col_clave, cols_valor, log, etiqueta='', excluir=('0',), info=None)`
-
-Convierte {"A":{fila:val}} en {clave_normalizada: (nombre, [valores])}.
-Se salta las filas sin clave, que es lo que aparece como vacios al final.
-
-excluir: claves normalizadas que NO son empresas y hay que descartar. Por
-         defecto el "0", porque ninguna empresa se llama asi y se cuela
-         cuando sobran formulas arrastrando ceros.
-info:    dict opcional que se rellena con {"duplicadas", "excluidas",
-         "vacias"} para que quien llame decida si eso es un fallo.
 
 #### `def configurar_tags_log(widget)`
 
@@ -2134,6 +2058,102 @@ Lee el estado de otro mes sin modificar la instancia activa.
 
 ---
 
+## `Revisor_Relq/revisor/lectores.py`
+
+> Adaptadores de lectura Excel usados por los verificadores del Revisor.
+>
+> Este módulo no conoce la ventana ni las reglas V4…V17. Conserva los fallbacks
+> openpyxl/xlwings y los diagnósticos OOXML del punto de entrada histórico.
+
+**Importa:** `__comun__`, `pathlib`, `re`, `revisor`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `CACHE_COLUMNAS` | `{}` |  |
+| `NS_XL` | `_excel_xml.NS_XL` |  |
+| `NS_REL` | `_excel_xml.NS_REL` |  |
+
+### Funciones
+
+#### `def col_letra(n)`
+
+4 -> "D".  Al reves de col_letra_a_num.
+
+#### `def col_letra_a_num(letra)`
+
+#### `def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_filtro, log)`
+
+Suma una columna completa desde fila_inicio hacia abajo.
+Si se indica col_filtro, suma solo las filas cuyo valor de esa columna esta
+en valores_filtro (comparacion sin tildes ni mayusculas).
+Devuelve (suma, n_filas, {valor_filtro: suma}) o (None, 0, {}).
+
+#### `def buscar_marcas_rapido(ruta, hoja, fila_inicio, reglas, log, tope_detalle=30)`
+
+Busca errores de fórmula y textos prohibidos en columnas puntuales,
+escaneando el XML de la hoja por trozos en vez de cargar el libro.
+
+reglas: [{"rangos": ["CF:CI"], "errores": True, "textos": ["REVISAR"]}, ...]
+Devuelve {"conteo": {motivo: n}, "marcas": [(celda, motivo, valor)]} o None.
+
+#### `def leer_celdas_rapido(ruta, hoja, celdas)`
+
+Lee celdas puntuales de un .xlsx/.xlsm sin cargar el libro completo.
+
+Un .xlsm es un ZIP con XML adentro. Se recorre el XML de la hoja en
+streaming y se corta en cuanto se pasa de la ultima fila pedida, asi que
+para celdas de las primeras filas (H1, EE6) casi no se lee nada, aunque el
+archivo tenga miles de filas y millones de formulas.
+
+Devuelve {celda: valor} con los valores YA CALCULADOS que Excel dejo
+guardados. Si el archivo nunca fue calculado y guardado, no habra valores.
+Devuelve None si no se pudo (formato distinto, hoja inexistente, etc.).
+
+#### `def diagnosticar_celda(ruta, hoja, celda, log)`
+
+Cuando una celda no entrega valor, explica POR QUE mirando el XML crudo:
+si esta vacia, si tiene formula sin resultado guardado, si trae texto, si es
+un error, o si es parte de una celda combinada.
+
+#### `def resolver_hoja(nombres, hoja)`
+
+Traduce lo pedido al nombre real de la hoja: acepta '#1' (por posicion) y
+tolera tildes y mayusculas. Devuelve None si no calza ninguna.
+
+#### `def es_significativo(v)`
+
+Sirve para decidir si una celda 'cuenta' al buscar el ultimo dato de una
+columna: se omiten vacios, ceros y errores de formula (#REF!, #N/D...).
+
+#### `def leer_formulas_rapido(ruta, hoja, columnas, fila_inicio, log)`
+
+Devuelve {"COL": set(filas_que_TIENEN_formula)}.
+
+A diferencia de leer_columnas_rapido, que lee el resultado, esto detecta la
+PRESENCIA del nodo <f>, o sea si la celda es una formula o un valor escrito
+a mano. Sirve para saber hasta donde se arrastro una formula.
+
+Ojo con las formulas compartidas: la primera celda trae la formula completa
+(<f t="shared" ref="L5:L120" si="0">...) y las siguientes solo <f t="shared"
+si="0"/> sin texto. Como aca solo importa que exista un <f>, las dos formas
+cuentan igual.
+
+#### `def armar_tabla(datos, col_clave, cols_valor, log, etiqueta='', excluir=('0',), info=None)`
+
+Convierte {"A":{fila:val}} en {clave_normalizada: (nombre, [valores])}.
+Se salta las filas sin clave, que es lo que aparece como vacios al final.
+
+excluir: claves normalizadas que NO son empresas y hay que descartar. Por
+         defecto el "0", porque ninguna empresa se llama asi y se cuela
+         cuando sobran formulas arrastrando ceros.
+info:    dict opcional que se rellena con {"duplicadas", "excluidas",
+         "vacias"} para que quien llame decida si eso es un fallo.
+
+
+---
+
 ## `Comparadores/Comparador_Etapas.py`
 
 > Comparador_Etapas.py
@@ -2757,8 +2777,8 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `LARGO_TEXTO` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `LIMITE_FILAS_HOJA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `NOMBRE_JSON_MES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `NS_REL` | `__comun__/excel_xml.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
-| `NS_XL` | `__comun__/excel_xml.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py` |
+| `NS_REL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py` |
+| `NS_XL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py` |
 | `PAT_COPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `PAT_SOB` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `PAT_SSCC` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |

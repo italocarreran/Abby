@@ -486,11 +486,16 @@ todos los nombres históricos, así que nada de afuera cambió.
 - **`revisor/estado.py`:** `Estado` y `CacheValores` con sus dependencias de
   disco inyectadas, más `leer_estado_mes`. El punto de entrada las subclasea
   para conservar los constructores sin argumentos de siempre.
-- **Pruebas:** `revisor/test_archivos.py` y `revisor/test_estado.py`, que se
+- **`revisor/lectores.py`:** primera parte de los adaptadores de lectura Excel:
+  columnas con fallback openpyxl/xlwings, escaneos y diagnósticos OOXML,
+  resolución de hojas y armado de tablas. No conoce tkinter ni las reglas
+  V4…V17; el punto de entrada reexporta sus nombres históricos.
+- **Pruebas:** `revisor/test_archivos.py`, `revisor/test_estado.py` y
+  `revisor/test_lectores.py`, que se
   corren igual que las de `__comun__`: `python Revisor_Relq/revisor/test_*.py`.
 
-Faltan los tres bloques de riesgo alto: lectores Excel/MDB, motores V4…V17 y
-generación del traspaso/lanzamiento. Ver `docs/PLAN_MODULARIZACION_TOKENS.md`.
+Faltan los lectores MDB y de cuadro de pago, los motores V4…V17 y la generación
+del traspaso/lanzamiento. Ver `docs/PLAN_MODULARIZACION_TOKENS.md`.
 
 ### Lo que sigue
 
