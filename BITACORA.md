@@ -50,6 +50,50 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — un ayudante que se mudó y su llamador que se quedó
+
+Segundo hallazgo de la corrida en Windows. En el log del Revisor:
+
+```
+1_CUADROS_PAGO  suma C17:C25  <-  RESUMEN!C17:C25
+    · openpyxl no pudo leer (name '_suma_rango_openpyxl' is not defined);
+      reintentando con Excel...
+      = 400.338.715,23
+```
+
+**No era un número mal calculado.** El total salía bien — por eso el error se
+veía como una línea más del log y no como una falla. Lo que estaba roto era el
+**camino rápido**: `_suma_rango_openpyxl` se mudó a `revisor/lectores.py` al
+completar la Fase 4, pero `leer_valor_excel` se quedó en el punto de entrada y
+lo sigue usando, y el import de `revisor.lectores` no lo trae por ser privado.
+Como el uso está dentro de un `try/except`, el `NameError` se tragaba y caía al
+reintento por COM.
+
+**Por qué importa igual:** ese camino existe para no levantar Excel en la unidad
+de red T:, donde cada archivo cuesta minutos (está en las convenciones de
+`AGENTS.md`). Con esto, **cada rango que se lee abría Excel**. Resultado
+correcto, proceso mucho más lento.
+
+**Arreglo:** el punto de entrada importa `_suma_rango_openpyxl` junto a los
+demás nombres de `lectores`, con un comentario de por qué un nombre privado
+cruza el límite del módulo.
+
+**Por qué no lo cacé.** En la revisión del cierre comprobé que los tres módulos
+resolvieran los nombres que reciben inyectados — pero no la dirección inversa:
+que el punto de entrada siguiera resolviendo los suyos después de la mudanza. Es
+el mismo error de encuadre que con los wrappers: miré el código que se movía y
+no el que quedaba. Van dos veces; queda como trampa en `AGENTS.md`.
+
+**Prueba nueva** en `test_modulos_fase4.py`: recorre por AST todos los nombres
+que usa `Revisor_Reliquidacion.py` y falla si alguno no está definido ni
+importado. Comprobado que falla al quitar el import y que pasa con él. Se
+verificó además que los tres módulos siguen sin nombres sin resolver.
+
+**Pendiente:** quedan del checklist las V4…V17 contra los valores de antes, que
+el actualizador lanzado reciba su JSON, y el reúso del caché entre corridas.
+
+---
+
 ## 2026-09-07 — Claude — la corrida en Windows encontró dos wrappers rotos
 
 La usuaria probó el Revisor ya partido y avisó: **el botón "Prorratear" abría la

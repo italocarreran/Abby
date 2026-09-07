@@ -1369,6 +1369,9 @@ ESTADO = Estado()
 try:
     from revisor import lectores as _lectores
     from revisor.lectores import (
+        # _suma_rango_openpyxl es privado del modulo pero leer_valor_excel se
+        # quedo aca y lo usa: sin importarlo el rango cae al camino de Excel.
+        _suma_rango_openpyxl,
         CACHE_COLUMNAS, NS_XL, NS_REL, armar_tabla,
         buscar_marcas_rapido, col_letra, col_letra_a_num, desescapar_xml,
         diagnosticar_celda, es_significativo, es_zip_excel, expandir_columnas,

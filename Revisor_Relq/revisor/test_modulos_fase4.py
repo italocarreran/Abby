@@ -134,6 +134,43 @@ class WrappersReenvianArgumentos(unittest.TestCase):
                 perdidos[definicion.name] = faltan
         self.assertEqual(perdidos, {}, f"wrappers que no reenvían: {perdidos}")
 
+    def test_el_punto_de_entrada_resuelve_todos_sus_nombres(self):
+        """Ningún nombre que use Revisor_Reliquidacion.py puede haberse quedado
+        del otro lado de la mudanza.
+
+        `_suma_rango_openpyxl` se fue a revisor/lectores.py pero
+        `leer_valor_excel` se quedó acá y lo usa; como el uso está dentro de un
+        try/except, no reventaba: caía al camino de Excel por COM. El número
+        salía bien y por eso no se notaba, pero cada rango abría Excel en la T:,
+        que es lo que ese camino rápido existe para evitar.
+        """
+        import builtins
+        ruta = REVISOR / "Revisor_Reliquidacion.py"
+        arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+        definidos = set()
+        for n in ast.walk(arbol):
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                definidos.add(n.name)
+            elif isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store):
+                definidos.add(n.id)
+            elif isinstance(n, ast.arg):
+                definidos.add(n.arg)
+            elif isinstance(n, (ast.Import, ast.ImportFrom)):
+                for a in n.names:
+                    definidos.add((a.asname or a.name).split(".")[0])
+            elif isinstance(n, ast.ExceptHandler) and n.name:
+                definidos.add(n.name)
+            elif isinstance(n, ast.Global):
+                definidos.update(n.names)
+        usados = {n.id for n in ast.walk(arbol)
+                  if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        # Los dunder de módulo (__file__, __name__…) los pone Python.
+        sueltos = sorted(n for n in usados - definidos
+                         if not hasattr(builtins, n)
+                         and not (n.startswith("__") and n.endswith("__")))
+        self.assertEqual(sueltos, [],
+                         f"nombres que el punto de entrada usa y no tiene: {sueltos}")
+
     def test_hay_wrappers_que_revisar(self):
         # Si la búsqueda deja de encontrarlos, la prueba de arriba pasa vacía.
         self.assertGreaterEqual(len(list(self._wrappers())), 10)
