@@ -45,6 +45,56 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — revisa los lectores Excel: sin correcciones
+
+Revisión de `codex/continua-con-fases-pendientes-de-la-aplicacion` (rama nueva
+porque el chat de Codex no vuelve a la anterior; el contenido sí sale de la
+principal al día, `014ccf1`, y conserva los arreglos previos).
+
+**Primera vez que no hubo nada que corregir.** Codex aplicó las tres lecciones
+de las revisiones anteriores, sin que hiciera falta pedírselo de nuevo:
+
+- Los `from revisor.lectores import ...` van **dentro de `try/except
+  ImportError`** con `_morir_import()` y título propio. Verificado: sin el
+  archivo, el Revisor aborta con el mensaje correcto.
+- **No quedó ningún nombre definido y a la vez importado** (la trampa que se
+  comió a `TOL_MTIME`). Lo comprobé por AST sobre todo el punto de entrada.
+- **Las pruebas corren** desde cualquier carpeta, y los comentarios que explican
+  el porqué viajaron con el código: 16 comentarios y 21 docstrings en 604
+  líneas, contra el único comentario que traían los módulos de la etapa pasada.
+
+**Verificación del comportamiento**, comparando función vieja contra nueva:
+
+- Con `openpyxl` instalado en este entorno se ejercitó el **camino real** de
+  `leer_columna_excel` sobre un libro de verdad: 13 casos (sin filtro, con
+  filtro por tipo, filtro vacío, `fila_inicio` corrido, hoja por nombre / por
+  nombre normalizado / por `#N` / inexistente, columna de texto, archivo
+  ausente) — 0 diferencias en resultado, en logs y en el contenido del caché.
+  El reúso del caché entre dos filtros distintos (SCMT y luego SCPC) da los
+  mismos totales con una sola entrada, igual que antes.
+- `col_letra`, `col_letra_a_num`, `_es_num`, `es_significativo`,
+  `resolver_hoja`, `leer_celdas_rapido`, `leer_formulas_rapido`,
+  `diagnosticar_celda`, `buscar_marcas_rapido` y `armar_tabla` sobre libros
+  OOXML sintéticos: 0 diferencias.
+- `CACHE_COLUMNAS` sigue siendo **el mismo objeto** a ambos lados del import, así
+  que los dos `.clear()` del Revisor siguen vaciando el caché real. Era el
+  riesgo principal de mover un diccionario mutable de módulo.
+- Los **117 nombres de nivel superior** que el Revisor tenía en la principal
+  siguen todos accesibles. `CENTRALES_EMBALSE`=27, `NODOS`=36,
+  `VERIFICADORES`=14, tolerancias intactas.
+
+**Ojo con el estado real de la Fase 4: no está terminada.** El propio plan la
+marca como "en curso: puntos 1 y 2 completos, 3 iniciado". Faltan los lectores
+MDB y los adaptadores ligados al cuadro de pago (resto del punto 3), los motores
+V4…V17 (punto 4) y el traspaso/lanzamiento (punto 5).
+
+**Pendiente, y ya es el más importante:** el Revisor no se ha corrido de punta a
+punta en Windows desde que empezó a partirse. Los actualizadores sí se probaron.
+Antes de tocar los motores V4…V17 conviene abrir el Revisor con un mes real y
+pasar las verificaciones una vez.
+
+---
+
 ## 2026-09-07 — ChatGPT — continúa la Fase 4 con los lectores Excel
 
 Se extrajo a `Revisor_Relq/revisor/lectores.py` el primer bloque cohesivo de
