@@ -45,6 +45,77 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-07 — Claude — revisa la Fase 4 (parcial) sobre la rama de Codex
+
+La usuaria probó los actualizadores contra archivos reales y **funcionan**, y le
+dio luz verde a Codex para la Fase 4. Revisión de
+`codex/dividir-revisor_reliquidacion.py`. Los arreglos se hicieron **sobre esa
+misma rama**, a pedido de la usuaria, para que le siga sirviendo en su chat de
+Codex; recién después se fusionó.
+
+**Buena noticia de proceso:** esta vez la rama salió de la principal al día
+(`03e66bd`), no de un commit viejo. Eso solo ya evitó revivir lo corregido antes.
+
+**Alcance:** solo los puntos 1 y 2 de los cinco de la Fase 4 — `revisor/estado.py`
+y `revisor/archivos.py`. Codex frenó a propósito antes de los lectores
+Excel/MDB, los motores V4…V17 y el traspaso. Coincido: es el corte correcto.
+
+**Las extracciones son fieles**, verificado comparando vieja contra nueva:
+
+- `revisor/archivos.py`: sobre un árbol de prueba con copias de Windows,
+  temporales, tildes y diarios — `buscar_carpeta`, `resolver_carpeta`,
+  `buscar_archivo`, `listar_diarios`, `mtime`, `tamano`, `fmt_fecha`,
+  `fmt_monto`, `iguales_mtime`: 0 diferencias. El caché encendido da además los
+  **mismos contadores** de scans/hits que antes.
+- `revisor/estado.py`: 32 comprobaciones sobre `Estado` y `CacheValores`,
+  incluidos JSON roto, `aamm` vacío, firma cambiada y las tres invalidaciones
+  del caché (mtime, tamaño, valor no numérico): 0 diferencias.
+- El Revisor sigue exponiendo los 31 nombres que declara `MAPA.md`, con
+  `CENTRALES_EMBALSE`=27, `NODOS`=36, `VERIFICADORES`=14 y las tolerancias
+  intactas.
+
+**Cuatro correcciones, ninguna de comportamiento:**
+
+1. **`from revisor.archivos import ...` y `from revisor.estado import ...` sin
+   guarda.** Tercera vez que aparece el mismo agujero, ahora con el paquete
+   nuevo. Quedaron dentro de `try/except ImportError` con `_morir_import()`, que
+   además acepta título propio para decir que lo que falta es `revisor/` y no
+   `__comun__/`. Verificado: sin la carpeta, el Revisor aborta con `rc=1` y el
+   mensaje correcto en vez de morir callado bajo `pythonw`.
+
+2. **`TOL_MTIME` quedó definido dos veces y la buena se pisaba.** Estaba en el
+   bloque de tolerancias del Revisor (línea 141, con su comentario) y otra vez
+   en `revisor/archivos.py`, y el `import` de más abajo pisaba la primera. Mismo
+   valor, así que hoy no cambiaba nada — pero editar la línea 141 no habría
+   hecho **nada**, en silencio. Es la trampa de `CENTRALES_EMBALSE` otra vez. Se
+   dejó una sola definición, en `revisor/archivos.py`, y un comentario en el
+   bloque de tolerancias que dice dónde vive.
+
+3. **Las pruebas nuevas no se podían correr.** Ni `python revisor/test_x.py`, ni
+   `python -m revisor.test_x`, ni desde la raíz: las tres fallaban con
+   `ModuleNotFoundError`. Ahora resuelven su propio `sys.path` como las de
+   `__comun__` y corren desde cualquier carpeta. Quedó documentado en AGENTS.md.
+
+4. **Se perdieron los comentarios que explican el porqué.** Los dos módulos
+   nuevos absorbieron ~380 líneas y entre ambos tenían **un** comentario. Se
+   restauraron los que importan: el porqué del caché de directorios (68
+   recorridos, los viajes de red en la T:, por qué está apagado por omisión), el
+   docstring de `vigente()` sobre por qué NO se mira la firma, y sobre todo el
+   `OJO: aca la comparacion es EXACTA, sin la tolerancia de TOL_MTIME` de
+   `CacheValores.obtener` — que es justamente lo que evita que alguien
+   "unifique" las dos comparaciones de fecha y reviva un bug de valor viejo.
+
+**Verificado** (Linux, con `tkinter` y las libs de Windows simuladas): el Revisor
+importa y expone todo; aborta con el mensaje correcto sin `revisor/` y sin
+`__comun__/`; las 10 suites pasan; `generar_interfaces.py --check` al día.
+
+**Pendiente:** los tres bloques que faltan de la Fase 4 (lectores Excel/MDB,
+motores V4…V17, traspaso y lanzamiento). Y aunque los actualizadores ya se
+probaron de verdad, **el Revisor mismo no se corrió de punta a punta en Windows
+después de esta división** — es lo próximo antes de seguir partiéndolo.
+
+---
+
 ## 2026-09-07 — ChatGPT — Fase 4 parcial: estado y búsqueda del Revisor
 
 Se trabajó desde `03e66bd`, punta de `claude/eso-uozpi4` y fuente de verdad

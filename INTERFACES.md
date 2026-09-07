@@ -34,7 +34,7 @@ Convenciones de esta página:
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1853 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6333 líneas — Revisor de entregables - CASO RELIQUIDACION
+- [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 6353 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq/actualizadores/Actualiza_Data_Access.py`](#revisor_relqactualizadoresactualiza_data_accesspy) — 1420 líneas — Actualiza la tabla [Sobrecostos] de un Access .mdb consolidando la informacion
@@ -43,8 +43,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/actualizadores/Actualiza_datos.py`](#revisor_relqactualizadoresactualiza_datospy) — 1315 líneas
 - [`Revisor_Relq/actualizadores/Carga_Retiros.py`](#revisor_relqactualizadorescarga_retirospy) — 850 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq/actualizadores/Prorratear.py`](#revisor_relqactualizadoresprorratearpy) — 896 líneas — Prorratear: del Access a SQL Server
-- [`Revisor_Relq/revisor/archivos.py`](#revisor_relqrevisorarchivospy) — 196 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
-- [`Revisor_Relq/revisor/estado.py`](#revisor_relqrevisorestadopy) — 154 líneas — Persistencia del estado de verificaciones y del caché de valores.
+- [`Revisor_Relq/revisor/archivos.py`](#revisor_relqrevisorarchivospy) — 214 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
+- [`Revisor_Relq/revisor/estado.py`](#revisor_relqrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1689 líneas — Comparador_Tabulado.py
 
@@ -736,7 +736,7 @@ manteniendo el formato de las celdas.
 > Para .mdb se necesita el "Microsoft Access Driver (*.mdb, *.accdb)" con la misma
 > arquitectura (32/64 bits) que el Python que ejecuta el script.
 
-**Importa:** `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `revisor`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -752,7 +752,6 @@ manteniendo el formato de las celdas.
 | `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
 | `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
 | `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
-| `TOL_MTIME` | `2` |  |
 | `VALORES` | `dict de 56 claves: 'TOTAL_SSCC', 'TOTAL_CO', 'TOTAL_CCA', …` |  |
 | `VERIFICADORES` | `dict de 14 claves: 'V8', 'V9', 'V10', …` |  |
 | `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
@@ -2008,6 +2007,22 @@ Devuelve (ok, resumen).
 ## `Revisor_Relq/revisor/archivos.py`
 
 > Búsqueda de carpetas y archivos con caché acotada a una relectura.
+>
+> Por qué existe el caché: una relectura completa hacía 68 recorridos de carpeta
+> para 13 carpetas distintas — cada nodo del árbol recorría la carpeta entera de
+> nuevo, y encima ``resolver_carpeta`` recorría la raíz una vez por nodo. En un
+> disco local no se nota; en la T: cada recorrido es un viaje de red y ahí está el
+> tiempo.
+>
+> Se usa ``os.scandir`` y no ``iterdir`` porque trae la fecha y el tamaño en el
+> mismo recorrido: con ``Path.iterdir`` + ``.stat()`` cada archivo cuesta un viaje
+> aparte.
+>
+> El caché está **apagado por omisión** y solo se enciende dentro de
+> ``with cache_directorios():``. Fuera de ahí todo lee del disco como siempre, que
+> es lo que hace falta para que ``mtime()`` no devuelva datos viejos cuando se
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
 
 **Importa:** `__comun__`, `datetime`, `os`, `pathlib`, `re`
 
@@ -2015,7 +2030,7 @@ Devuelve (ok, resumen).
 
 | Nombre | Valor | |
 |---|---|---|
-| `TOL_MTIME` | `2` |  |
+| `TOL_MTIME` | `2` | Segundos de tolerancia al comparar fechas de modificacion entre una copia y su maestro. |
 | `RE_COPIA` | `_archivos.PATRON_COPIA` |  |
 | `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Apagado por omisión: fuera del context manager las fechas siempre vienen del disco. |
 
@@ -2082,20 +2097,26 @@ Tamaño, tomado del recorrido cuando el caché está activo.
 
 #### `class Estado`
 
-Estado mensual; sus rutas, escritura y firma se reciben explícitamente.
+Verificaciones de un mes. Se guardan en ``__config__/AAAA/MM Mes``.
+
+Las rutas, la escritura y la firma se reciben explícitamente.
 
 - `def __init__(self, dir_mes, escribir_json, firma_verificador)`
 - `def cargar(self, aamm)`
 - `def existe(self)`
 - `def guardar(self)`
 - `def get(self, vid)`
-- `def vigente(self, vid)`
-- `def firma_guardada_distinta(self, vid)`
+- `def vigente(self, vid)` — El registro guardado, si hay alguno.
+- `def firma_guardada_distinta(self, vid)` — True si hay un registro pero es de una definición anterior.
 - `def set(self, vid, registro)`
 
 #### `class CacheValores`
 
-Caché mensual con dependencias de disco inyectadas por el punto de entrada.
+Guarda el valor ya leído de cada origen junto con la ruta y la fecha de
+modificación del archivo. Si el archivo no cambió y se pide lo mismo, no se
+vuelve a abrir. Se guarda en ``__config__/AAAA/MM Mes`` entre ejecuciones.
+
+Las dependencias de disco las inyecta el punto de entrada.
 
 - `def __init__(self, dir_mes, escribir_json, mtime, tamano, fmt_fecha)`
 - `def cargar(self, aamm)`
@@ -2745,7 +2766,6 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `SALIDAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `SERVER` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `SLOTS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `TOL_MTIME` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/revisor/archivos.py` |
 | `TRAMOS_DEF` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |

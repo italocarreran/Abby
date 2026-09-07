@@ -473,6 +473,25 @@ puede centralizar: es justamente lo que avisa cuando lo que falta es
 `ImportError` suelto mata el script en silencio y solo se ve que la ventana
 nunca apareció.
 
+### `Revisor_Relq/revisor/` — Fase 4, **empezada**
+
+Paquete interno del Revisor. `Revisor_Reliquidacion.py` sigue siendo el único
+punto de entrada y el archivo literal que localizan los hermanos; reexporta
+todos los nombres históricos, así que nada de afuera cambió.
+
+- **`revisor/archivos.py`:** búsqueda de carpetas/archivos y el caché de
+  directorios (`cache_directorios`, `leer_dir`, `buscar_archivo`,
+  `listar_diarios`, `mtime`, `tamano`, `fmt_fecha`, `fmt_monto`,
+  `iguales_mtime`). **`TOL_MTIME` vive acá y en ningún otro lado.**
+- **`revisor/estado.py`:** `Estado` y `CacheValores` con sus dependencias de
+  disco inyectadas, más `leer_estado_mes`. El punto de entrada las subclasea
+  para conservar los constructores sin argumentos de siempre.
+- **Pruebas:** `revisor/test_archivos.py` y `revisor/test_estado.py`, que se
+  corren igual que las de `__comun__`: `python Revisor_Relq/revisor/test_*.py`.
+
+Faltan los tres bloques de riesgo alto: lectores Excel/MDB, motores V4…V17 y
+generación del traspaso/lanzamiento. Ver `docs/PLAN_MODULARIZACION_TOKENS.md`.
+
 ### Lo que sigue
 
 El generador detecta **39 nombres de constante repetidos** (la tabla completa

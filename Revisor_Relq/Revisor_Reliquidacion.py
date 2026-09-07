@@ -25,14 +25,14 @@ import json, subprocess, sys, re, socket, os, traceback, unicodedata, time, csv
 import shutil
 import threading, queue
 
-def _morir_import(mensaje):
+def _morir_import(mensaje, titulo="Falta la carpeta __comun__/"):
     """Como no hay ventana todavia, esto puede correr antes que exista
     cualquier otra. Sin esto, lanzado con pythonw (sin consola) moriria
-    callado si falta __comun__/."""
+    callado si falta __comun__/ o revisor/."""
     try:
         raiz = tk.Tk()
         raiz.withdraw()
-        messagebox.showerror("Falta la carpeta __comun__/", mensaje)
+        messagebox.showerror(titulo, mensaje)
         raiz.destroy()
     except Exception:
         print(mensaje)
@@ -138,7 +138,9 @@ CENTRALES_EMBALSE = [
     "ANTUCO-1", "ANTUCO-2",
     "ANGOSTURA-1", "ANGOSTURA-2", "ANGOSTURA-3",
 ]
-TOL_MTIME  = 2          # segundos de tolerancia al comparar fechas de modificacion
+# TOL_MTIME (2 s, tolerancia al comparar fechas de modificacion) vive en
+# revisor/archivos.py, que es quien lo usa, y se importa mas abajo. NO
+# redefinirlo aca: el import lo pisaria y el cambio no haria nada.
 
 VALORES = {
     # --- totales que son una COLUMNA completa bajo un encabezado -----------
@@ -1214,11 +1216,21 @@ normalizar = _texto.suave_textual
 
 
 # La búsqueda y el caché de directorios viven en un módulo interno cohesivo.
-from revisor.archivos import (
-    TOL_MTIME, RE_COPIA, buscar_archivo, buscar_carpeta, cache_directorios,
-    es_copia, es_temporal, fmt_fecha, fmt_monto, iguales_mtime, leer_dir,
-    listar_diarios, mtime, resolver_carpeta, tamano,
-)
+# Guardado como los de __comun__: lanzado con pythonw no hay consola, así que un
+# ImportError suelto mataría el Revisor en silencio.
+try:
+    from revisor.archivos import (
+        TOL_MTIME, RE_COPIA, buscar_archivo, buscar_carpeta, cache_directorios,
+        es_copia, es_temporal, fmt_fecha, fmt_monto, iguales_mtime, leer_dir,
+        listar_diarios, mtime, resolver_carpeta, tamano,
+    )
+except ImportError as e:
+    _morir_import(
+        "No se pudo cargar la carpeta 'revisor/', que va adentro de\n"
+        "Revisor_Relq, al lado de Revisor_Reliquidacion.py.\n"
+        "Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}",
+        titulo="Falta la carpeta revisor/")
 
 
 # =============================================================================
@@ -1278,10 +1290,18 @@ def firma_verificador(vid):
     return hashlib.sha1(crudo.encode("utf-8")).hexdigest()[:12]
 
 
-from revisor.estado import (
-    ARCHIVO_CACHE, ARCHIVO_ESTADO, CacheValores as _CacheValores,
-    Estado as _Estado, leer_estado_mes as _leer_estado_mes,
-)
+try:
+    from revisor.estado import (
+        ARCHIVO_CACHE, ARCHIVO_ESTADO, CacheValores as _CacheValores,
+        Estado as _Estado, leer_estado_mes as _leer_estado_mes,
+    )
+except ImportError as e:
+    _morir_import(
+        "No se pudo cargar la carpeta 'revisor/', que va adentro de\n"
+        "Revisor_Relq, al lado de Revisor_Reliquidacion.py.\n"
+        "Baja el repositorio completo, no los .py sueltos.\n\n"
+        f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}",
+        titulo="Falta la carpeta revisor/")
 
 
 class Estado(_Estado):

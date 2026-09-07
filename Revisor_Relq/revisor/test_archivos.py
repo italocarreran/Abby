@@ -3,7 +3,16 @@
 import os
 from pathlib import Path
 import tempfile
+import sys
 import unittest
+from pathlib import Path as _Path
+
+# Para poder correrlo suelto: la raiz del repo (para __comun__) y
+# Revisor_Relq (para el paquete revisor).
+_AQUI = _Path(__file__).resolve()
+for _p in (_AQUI.parents[2], _AQUI.parents[1]):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from revisor import archivos
 

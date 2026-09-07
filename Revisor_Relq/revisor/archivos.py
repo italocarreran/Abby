@@ -1,4 +1,20 @@
-"""Búsqueda de carpetas y archivos con caché acotada a una relectura."""
+"""Búsqueda de carpetas y archivos con caché acotada a una relectura.
+
+Por qué existe el caché: una relectura completa hacía 68 recorridos de carpeta
+para 13 carpetas distintas — cada nodo del árbol recorría la carpeta entera de
+nuevo, y encima ``resolver_carpeta`` recorría la raíz una vez por nodo. En un
+disco local no se nota; en la T: cada recorrido es un viaje de red y ahí está el
+tiempo.
+
+Se usa ``os.scandir`` y no ``iterdir`` porque trae la fecha y el tamaño en el
+mismo recorrido: con ``Path.iterdir`` + ``.stat()`` cada archivo cuesta un viaje
+aparte.
+
+El caché está **apagado por omisión** y solo se enciende dentro de
+``with cache_directorios():``. Fuera de ahí todo lee del disco como siempre, que
+es lo que hace falta para que ``mtime()`` no devuelva datos viejos cuando se
+comprueba si una verificación venció.
+"""
 
 from datetime import datetime
 import os
@@ -9,6 +25,8 @@ from __comun__ import archivos as _archivos
 from __comun__ import texto as _texto
 
 
+# Segundos de tolerancia al comparar fechas de modificacion entre una copia
+# y su maestro. Unica definicion: el Revisor lo importa de aca.
 TOL_MTIME = 2
 normalizar = _texto.suave_textual
 es_temporal = _archivos.es_temporal
