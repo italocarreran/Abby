@@ -33,9 +33,6 @@
       se dejó ahí a criterio propio al corregir la Tarea 2. Confirmar con la
       usuaria si eso también debería vivir en `__config__/AAAA/_comparador*/`
       en vez de en `00_Salidas/`.
-- [ ] El usuario no probó todavía ningún actualizador real de punta a punta
-      (solo los verificadores del Revisor, que funcionan bien). Falta correr
-      al menos uno contra archivos reales.
 - [ ] `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` tiene 5 diferencias conocidas
       contra el código real, listadas en `MAPA.md` → "Diferencias con el
       documento de dominio". El documento de dominio todavía no se corrigió.
@@ -47,6 +44,41 @@
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
+
+## 2026-09-07 — ChatGPT — Fase 4 parcial: estado y búsqueda del Revisor
+
+Se trabajó desde `03e66bd`, punta de `claude/eso-uozpi4` y fuente de verdad
+posterior a la revisión de las Fases 1–3. La rama local no tenía remoto
+configurado: `git pull` no pudo determinar upstream y tampoco existe un destino
+de push en este clon.
+
+La Fase 4 se inició con dos extracciones completas y coherentes.
+`Revisor_Relq/revisor/estado.py` contiene el estado mensual y el caché persistente
+de valores; recibe explícitamente la resolución de rutas, escritura atómica,
+firma y metadatos de archivos. `revisor/archivos.py` contiene búsqueda tolerante,
+filtro de copias, metadatos y el caché de directorios acotado al context manager.
+`Revisor_Reliquidacion.py` sigue siendo el único punto de entrada y conserva todos
+los nombres históricos por imports o wrappers breves. No cambiaron `VALORES`,
+`VERIFICADORES`, `NODOS`, `ACTUALIZADORES`, `CLAVES_TRASPASO`, los IDs V4…V17 ni
+sus dependencias. El sobre del traspaso y el código que lanza procesos no se
+tocaron.
+
+Se agregaron pruebas stdlib para persistencia, JSON roto, firmas, invalidación del
+caché por huella/fecha/tamaño, búsqueda normalizada, preferencia por originales y
+encendido/apagado del caché de directorios. La comparación AST contra el commit
+base confirmó que no falta ningún nombre público y que las siete constantes
+estructurales permanecen idénticas. Los módulos importan aislados sin tkinter y
+no importan el punto de entrada, por lo que la dirección de dependencias no forma
+ciclos.
+
+**Fase 4 todavía incompleta:** quedan lectores Excel/MDB, motores V4…V17 y
+traspaso/lanzamiento. Claude debe revisar en Windows: arranque real de la ventana;
+árbol completo de un mes; V4…V17 con caso real; persistencia y recuperación de
+estado/caché; OOXML y fallback Excel; Access; lanzamiento de un actualizador;
+igualdad de `_traspaso_actualizador.json`; y conservación de configuración al
+cerrar y reabrir. La usuaria confirmó en esta solicitud que ya probó los
+actualizadores reales de las fases anteriores, por lo que se retiró ese pendiente
+abierto antiguo.
 
 ## 2026-09-07 — Claude — revisa las Fases 2 y 3 y corrige tres regresiones
 

@@ -22,6 +22,9 @@ Comparadores/                      herramientas anuales, hermanas del Revisor
 00_Salidas/                        salidas compartidas por año y mes
 Revisor_Relq/
 ├── Revisor_Reliquidacion.py     ← el único que va suelto en la raíz
+├── revisor/                       componentes internos (no son ejecutables)
+│   ├── archivos.py              búsqueda y caché temporal de directorios
+│   └── estado.py                estado mensual y caché persistente de valores
 ├── actualizadores/                los 8 que el Revisor lanza por botón
 │   ├── Actualiza_datos.py
 │   ├── Actualiza_Data_Access.py
@@ -91,6 +94,10 @@ para Excel y demás resultados entregables.
   `TOL_SOBRECOSTO_FILA` (1.0), `TOL_MTIME` (2 s); `NODOS` (36) y `VERIFICADORES` (14).
 - **Depende de:** los 9 scripts que lanza, pero solo por línea de comandos — no los
   importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**
+- **División interna:** `revisor/archivos.py` contiene la búsqueda y el caché
+  acotado de directorios; `revisor/estado.py` contiene estado mensual y caché
+  persistente, con sus dependencias inyectadas. El archivo principal conserva
+  todos los nombres históricos mediante imports o wrappers breves.
 - **Detalles que importan:** V17 es la raíz de casi todo (si el tabulado tiene el
   sobrecosto mal calculado, todos los totales cuadran igual y el error llega al
   cuadro de pago). El caché de directorios está apagado por omisión y solo se
