@@ -45,13 +45,20 @@ import xlwings as xw
 # =========================================================
 # CONFIG POR PC/USUARIO
 # =========================================================
-# La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los
-# usuarios. Ahi van los datos_reuc_* descargados y el archivo
-# "Reemplazos forzados". Como el .py suele estar en un disco compartido, el
-# config guarda las rutas SEPARADAS POR PC+USUARIO (ver get_usuario), asi que
-# cada persona conserva las suyas sin pisar las de los demas.
-CARPETA_AUXILIARES = Path(__file__).parent / "Auxiliares"
-CONFIG_PATH = Path(__file__).resolve().parents[2] / "__config__" / "reemplazos_reuc.json"
+# La carpeta de auxiliares vive en __config__/, junto al resto de los datos
+# intermedios del sistema, y es compartida por todos los usuarios. Ahi van los
+# datos_reuc_* descargados y el archivo "Reemplazos forzados". Como el .py
+# suele estar en un disco compartido, el config guarda las rutas SEPARADAS POR
+# PC+USUARIO (ver get_usuario), asi que cada persona conserva las suyas sin
+# pisar las de los demas.
+DIR_CONFIG = Path(__file__).resolve().parents[2] / "__config__"
+NOMBRE_AUXILIARES = "Auxiliares REUC"
+CARPETA_AUXILIARES = DIR_CONFIG / NOMBRE_AUXILIARES
+# Donde estaba antes: al lado del .py. Ya no se lee ni se escribe ahi; solo se
+# mira para avisar que quedaron archivos por mover (el codigo no los mueve
+# solo, igual que con el resto de __config__).
+CARPETA_AUXILIARES_LEGADO = Path(__file__).parent / "Auxiliares"
+CONFIG_PATH = DIR_CONFIG / "reemplazos_reuc.json"
 
 def _morir(titulo, mensaje):
     """Aborta mostrando el motivo en una ventana. Sin esto, lanzado desde el
@@ -583,15 +590,68 @@ URL_REUC_REEMPLAZADAS = (
 )
 
 def carpeta_auxiliares():
-    """Carpeta Auxiliares (al lado del .py). La crea si no existe."""
+    """Carpeta ``__config__/Auxiliares REUC``. La crea si no existe."""
     CARPETA_AUXILIARES.mkdir(parents=True, exist_ok=True)
     return CARPETA_AUXILIARES
+
+
+# Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la
+# carpeta vieja quedo algo de verdad y no solo basura suelta.
+PATRONES_AUXILIARES = ("datos_reuc*.xlsx", "Reemplazos forzados*.xlsx")
+
+
+def carpeta_datos_guardada(cfg):
+    """Carpeta de datos del config, corrigiendo la que apunta a la carpeta vieja.
+
+    Esto es lo unico que se migra solo: un texto en el JSON de config. Los
+    archivos los mueve la persona (ver ``avisar_legado``).
+    """
+    guardada = str(cfg.get("carpeta_datos") or "").strip()
+    if not guardada:
+        return str(CARPETA_AUXILIARES)
+    try:
+        if Path(guardada) == CARPETA_AUXILIARES_LEGADO:
+            return str(CARPETA_AUXILIARES)
+    except (OSError, ValueError):
+        pass
+    return guardada
+
+
+def pendientes_en_legado():
+    """Archivos de auxiliares que quedaron en la carpeta vieja, al lado del .py."""
+    if not CARPETA_AUXILIARES_LEGADO.is_dir():
+        return []
+    vistos = {}
+    for patron in PATRONES_AUXILIARES:
+        for f in CARPETA_AUXILIARES_LEGADO.glob(patron):
+            if not f.name.startswith("~$"):
+                vistos[f.name] = f
+    return [vistos[n] for n in sorted(vistos)]
+
+
+def avisar_legado(log=print):
+    """Avisa que hay auxiliares en la carpeta vieja, al lado del .py.
+
+    No se mueve nada solo: es la misma regla que el resto de ``__config__``,
+    donde la migracion la hace la persona. Pero callarse tampoco sirve, porque
+    desde afuera solo se ve que "no encuentra los archivos".
+    """
+    pendientes = pendientes_en_legado()
+    if not pendientes:
+        return False
+    log(f"  !!! Quedaron {len(pendientes)} archivo(s) de auxiliares en la carpeta "
+        f"vieja: {CARPETA_AUXILIARES_LEGADO}")
+    log(f"      Ahora se leen de: {CARPETA_AUXILIARES}")
+    log("      Muevelos a mano (el script no los mueve solo): "
+        + ", ".join(f.name for f in pendientes[:6])
+        + (" ..." if len(pendientes) > 6 else ""))
+    return True
 
 
 def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print):
     """
     Busca primero en carpeta_preferida (la que eligio el usuario o quedo
-    guardada en config). Si ahi no esta, cae de respaldo a Auxiliares
+    guardada en config). Si ahi no esta, cae de respaldo a Auxiliares REUC
     -- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
     dos uso, para que quede claro y no parezca que "no encuentra nada".
     """
@@ -606,12 +666,13 @@ def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print):
     if carpeta_preferida.resolve() != aux.resolve():
         try:
             encontrado = buscar_archivo(aux, patron)
-            log(f"    (no estaba en {carpeta_preferida}, se uso Auxiliares: "
+            log(f"    (no estaba en {carpeta_preferida}, se uso {NOMBRE_AUXILIARES}: "
                 f"{encontrado.name})")
             return encontrado
         except FileNotFoundError:
             pass
 
+    avisar_legado(log)
     raise FileNotFoundError(
         f"No se encontro '{patron}' ni en {carpeta_preferida} ni en {aux}"
     )
@@ -684,8 +745,8 @@ def _borrar_viejos(carpeta_aux, patron_glob, excluir=None, log=print):
     """
     Borra archivos previos que calcen con patron_glob, salvo los que
     contengan 'excluir' en el nombre (para no borrar datos_reuc_reemplazos_*
-    al limpiar datos_reuc_*). Evita que Auxiliares se llene de versiones
-    viejas con timestamp distinto.
+    al limpiar datos_reuc_*). Evita que la carpeta de auxiliares se llene
+    de versiones viejas con timestamp distinto.
     """
     borrados = []
     for f in Path(carpeta_aux).glob(patron_glob):
@@ -707,8 +768,8 @@ def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
       - datos_reuc_*.xlsx               (exportar_reuc)
       - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
 
-    Los guarda en la carpeta Auxiliares (por defecto, la que esta al lado
-    del .py y es compartida por todos los usuarios).
+    Los guarda en la carpeta de auxiliares (por defecto
+    ``__config__/Auxiliares REUC``, compartida por todos los usuarios).
 
     Flujo:
       1. Espera a que el usuario termine el login (el acceso unificado
@@ -862,8 +923,9 @@ def procesar_datos(carpeta_datos, archivo_cuadros,
     archivo_xlsb / archivo_xlsm: rutas explícitas (disco compartido). Si vienen
     en None, se buscan en la carpeta de datos como respaldo.
     """
-    # Los auxiliares (datos_reuc, reemplazos forzados) viven SIEMPRE en la
-    # carpeta Auxiliares que esta al lado del .py, compartida por todos.
+    # Los auxiliares (datos_reuc, reemplazos forzados) viven SIEMPRE en
+    # __config__/Auxiliares REUC, compartida por todos.
+    avisar_legado(log)
     carpeta_datos = Path(carpeta_datos) if carpeta_datos else carpeta_auxiliares()
 
     # ---------- Archivos base ----------
@@ -959,7 +1021,8 @@ def procesar_datos(carpeta_datos, archivo_cuadros,
         if carpeta_datos_p.resolve() == aux_reuc.resolve():
             raise
         archivo_reuc = _buscar_reuc_sin_reemplazos(aux_reuc)
-        log(f"    (no estaba en {carpeta_datos_p}, se uso Auxiliares: {archivo_reuc.name})")
+        log(f"    (no estaba en {carpeta_datos_p}, se uso {NOMBRE_AUXILIARES}: "
+            f"{archivo_reuc.name})")
     log(f"  REUC                : {archivo_reuc.name}")
 
     df_reuc = pd.read_excel(archivo_reuc, usecols="A,C", engine="openpyxl")
@@ -1345,8 +1408,7 @@ def main():
     canvas.bind_all("<MouseWheel>", _rueda)
 
     # ---------- Variables ----------
-    var_carpeta = tk.StringVar(
-        value=cfg.get("carpeta_datos", str(CARPETA_AUXILIARES)))
+    var_carpeta = tk.StringVar(value=carpeta_datos_guardada(cfg))
     var_destino = tk.StringVar(
         value=(traspaso or {}).get("rutas", {}).get("cuadro_0")
               or cfg.get("archivo_destino", "[seleccionar archivo]"))
@@ -1418,7 +1480,7 @@ def main():
     frame_btns1 = tk.Frame(f1)
     frame_btns1.pack(pady=(4, 0))
     tk.Button(frame_btns1, text="Examinar", command=sel_carpeta).pack(side="left", padx=4)
-    tk.Button(frame_btns1, text="Usar Auxiliares (default)",
+    tk.Button(frame_btns1, text=f"Usar {NOMBRE_AUXILIARES} (default)",
               command=usar_auxiliares).pack(side="left", padx=4)
 
     var_estado_reuc = tk.StringVar(value="")
@@ -1841,6 +1903,7 @@ def main():
     )
 
     # ---------- Init ----------
+    avisar_legado(log)
     actualizar_color_label(lbl_carpeta, var_carpeta.get())
     actualizar_color_label(lbl_destino, var_destino.get(), es_archivo=True)
     actualizar_color_label(lbl_raiz, var_raiz_facturacion.get())

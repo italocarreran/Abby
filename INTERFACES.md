@@ -33,7 +33,7 @@ Convenciones de esta página:
 - [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
-- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1853 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1916 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 3792 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
@@ -531,8 +531,11 @@ Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
 
 | Nombre | Valor | |
 |---|---|---|
-| `CARPETA_AUXILIARES` | `Path(__file__).parent / 'Auxiliares'` | CONFIG POR PC/USUARIO La carpeta Auxiliares vive AL LADO del .py y es compartida por todos los usuarios. |
-| `CONFIG_PATH` | `Path(__file__).resolve().parents[2] / '__config__' / 'reemplazos_reuc.json'` |  |
+| `DIR_CONFIG` | `Path(__file__).resolve().parents[2] / '__config__'` | CONFIG POR PC/USUARIO La carpeta de auxiliares vive en __config__/, junto al resto de los datos intermedios del sistema, y es compartida por todos los usuarios. |
+| `NOMBRE_AUXILIARES` | `'Auxiliares REUC'` |  |
+| `CARPETA_AUXILIARES` | `DIR_CONFIG / NOMBRE_AUXILIARES` |  |
+| `CARPETA_AUXILIARES_LEGADO` | `Path(__file__).parent / 'Auxiliares'` | Donde estaba antes: al lado del .py. |
+| `CONFIG_PATH` | `DIR_CONFIG / 'reemplazos_reuc.json'` |  |
 | `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
 | `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
@@ -549,6 +552,7 @@ Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
 | **— DESCARGA AUTOMÁTICA DESDE REUC (playwright) —** | | |
 | `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
 | `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
+| `PATRONES_AUXILIARES` | `('datos_reuc*.xlsx', 'Reemplazos forzados*.xlsx')` | Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la carpeta vieja quedo algo de verdad y no solo basura suelta. |
 
 ### Funciones
 
@@ -646,12 +650,31 @@ Devuelve (dict, info) o (None, mensaje).
 
 #### `def carpeta_auxiliares()`
 
-Carpeta Auxiliares (al lado del .py). La crea si no existe.
+Carpeta ``__config__/Auxiliares REUC``. La crea si no existe.
+
+#### `def carpeta_datos_guardada(cfg)`
+
+Carpeta de datos del config, corrigiendo la que apunta a la carpeta vieja.
+
+Esto es lo unico que se migra solo: un texto en el JSON de config. Los
+archivos los mueve la persona (ver ``avisar_legado``).
+
+#### `def pendientes_en_legado()`
+
+Archivos de auxiliares que quedaron en la carpeta vieja, al lado del .py.
+
+#### `def avisar_legado(log=print)`
+
+Avisa que hay auxiliares en la carpeta vieja, al lado del .py.
+
+No se mueve nada solo: es la misma regla que el resto de ``__config__``,
+donde la migracion la hace la persona. Pero callarse tampoco sirve, porque
+desde afuera solo se ve que "no encuentra los archivos".
 
 #### `def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print)`
 
 Busca primero en carpeta_preferida (la que eligio el usuario o quedo
-guardada en config). Si ahi no esta, cae de respaldo a Auxiliares
+guardada en config). Si ahi no esta, cae de respaldo a Auxiliares REUC
 -- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
 dos uso, para que quede claro y no parezca que "no encuentra nada".
 
@@ -662,8 +685,8 @@ la sesion queda confirmada, descarga los dos exports:
   - datos_reuc_*.xlsx               (exportar_reuc)
   - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
 
-Los guarda en la carpeta Auxiliares (por defecto, la que esta al lado
-del .py y es compartida por todos los usuarios).
+Los guarda en la carpeta de auxiliares (por defecto
+``__config__/Auxiliares REUC``, compartida por todos los usuarios).
 
 Flujo:
   1. Espera a que el usuario termine el login (el acceso unificado
@@ -2873,6 +2896,7 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
 | `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `CONFIG_RAIZ` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `DIR_CONFIG` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py` |
 | `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |

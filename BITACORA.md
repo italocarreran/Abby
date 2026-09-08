@@ -29,7 +29,11 @@
       `_traspaso_actualizador.json`, `estado.json`, `rutas.json`, `parquet/`
       y `vistas/` existentes — el código no los mueve solo. El propio
       `config.json` compartido va en `__config__/config.json` y el de
-      `ActualizaRemplazos.py` en `__config__/reemplazos_reuc.json`.
+      `ActualizaRemplazos.py` en `__config__/reemplazos_reuc.json`. Se suma el
+      contenido de `Reemplazos REUC/Auxiliares/` (los `datos_reuc_*` y el
+      `Reemplazos forzados*`), que ahora se lee de
+      `__config__/Auxiliares REUC/`; el script avisa en su log lo que quedó
+      sin mover, pero tampoco mueve nada solo.
 - [ ] Queda abierta una pregunta chica, no decidida con la usuaria: los dos
       comparadores guardan sus respaldos de los últimos 5 Excel anuales en
       `00_Salidas/AAAA/respaldos/` (los dos comparadores comparten esa misma
@@ -48,6 +52,45 @@
       comparadores. La verificación automatizada corrió con `tkinter` real
       (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
       hay forma de ver si el resultado es realmente legible/prolijo.
+---
+
+## 2026-09-08 — Claude — los auxiliares del REUC se mudan a `__config__`
+
+Segundo pedido de la usuaria en la misma sesión. `ActualizaRemplazos.py` tenía
+su carpeta de insumos **al lado del `.py`** (`Reemplazos REUC/Auxiliares/`), que
+era el último rincón donde quedaban datos intermedios fuera de `__config__`.
+Ahora es **`__config__/Auxiliares REUC/`**, con el nombre completo para que se
+entienda de quién es cuando esté al lado del resto.
+
+- `CARPETA_AUXILIARES` cuelga de `DIR_CONFIG` (la misma raíz de la que ya salía
+  `reemplazos_reuc.json`); el nombre está en `NOMBRE_AUXILIARES` y se usa
+  también en el botón "Usar Auxiliares REUC (default)" y en los avisos del log,
+  para no tener el texto suelto en cinco lugares.
+- La carpeta vieja queda como `CARPETA_AUXILIARES_LEGADO`: **no se lee ni se
+  escribe ahí nunca más**, solo se mira. `pendientes_en_legado()` lista lo que
+  quedó (`datos_reuc*.xlsx`, `Reemplazos forzados*.xlsx`, ignorando los `~$`) y
+  `avisar_legado()` lo dice en el log al abrir la ventana, al procesar y cuando
+  un archivo no aparece en ninguna de las dos. Mismo criterio que el resto de
+  `__config__` y que las carpetas planas de `__comun__/salidas.py`: se detecta
+  para avisar, nunca se reutiliza ni se migra solo.
+- Lo único que sí se corrige solo es un texto: `carpeta_datos_guardada()` cambia
+  la ruta del config si apuntaba a la carpeta vieja, para que la persona no
+  tenga que volver a elegirla a mano.
+
+**Probado:** `bash scripts/verificar.sh` en verde, con un test nuevo
+(`Revisor_Relq/Reemplazos REUC/test_auxiliares.py`, 7 casos) que cubre dónde
+queda la carpeta de verdad, que se cree sola, el aviso del legado sin mover
+nada, la corrección de la ruta del config y el respaldo de
+`buscar_archivo_con_respaldo`. El test carga el `.py` a mano con
+pandas/xlwings/tkinter simulados, así que corre igual en un contenedor sin esas
+librerías (en el PC de la usuaria usa las reales, porque solo simula lo que
+falta).
+
+**Pendiente:** la usuaria tiene que **mover a mano** el contenido de
+`Reemplazos REUC/Auxiliares/` a `__config__/Auxiliares REUC/`. Hasta que lo
+haga, el script va a decir en el log exactamente qué archivos quedaron y dónde
+los espera. Anotado también en "Pendientes abiertos".
+
 ---
 
 ## 2026-09-08 — Claude — fecha y hora del día en el comparador tabulado

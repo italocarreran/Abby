@@ -13,7 +13,8 @@ estados y datos intermedios; `__comun__/` contiene el código compartido.
 
 Lo que no se sube y aparece solo al usarlo: `00_Salidas/` y `__config__/`.
 Ambas usan la estructura `AAAA/MM Mes` cuando corresponde. La segunda guarda
-`config.json`, `reemplazos_reuc.json`, los estados, rutas, parquet y vistas.
+`config.json`, `reemplazos_reuc.json`, `Auxiliares REUC/`, los estados, rutas,
+parquet y vistas.
 
 ## Si sos un asistente y entrás — Claude, ChatGPT, el que sea
 
@@ -63,6 +64,7 @@ Revisor_Relq/                   ← CARPETA DEL REVISOR
 │   ├── Carga_Retiros.py
 │   └── Prorratear.py
 └── Reemplazos REUC/           el noveno; usa __config__/reemplazos_reuc.json
+                            y __config__/Auxiliares REUC/ para sus insumos
     └── ActualizaRemplazos.py
 ```
 
