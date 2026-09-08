@@ -15,6 +15,11 @@ sus Excel son propios, asi que se pueden correr por separado sin pisarse.
 De la hoja "Sobrecostos" se leen las columnas A:E, G, I:J y W. La fila 2 es el
 encabezado, los datos parten en la 3.
 
+Cada fila del Excel se identifica con FECHA, HORA DEL DIA y HORA MENSUAL. La
+hora mensual es la que permite parear las etapas entre si (es correlativa en el
+mes); la fecha y la hora del dia van al lado para poder ubicar la diferencia en
+el calendario sin contar horas a mano.
+
 Como encuentra los archivos
 ---------------------------
 Se apoya en donde esta el .mdb de SSCC de cada etapa, porque "Detalles diarios"
@@ -62,7 +67,7 @@ import threading
 import time
 import traceback
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import tkinter as tk
@@ -661,12 +666,16 @@ def leer_consolidado_tabulado(ruta, log=print):
             return v.date() if hasattr(v, "hour") else v
         return v
     df["fecha"] = df["fecha"].map(a_fecha)
-    df["dia"] = pd.to_datetime(df["fecha"], errors="coerce").dt.day
-    malas = int(df["dia"].isna().sum())
+    fechas = pd.to_datetime(df["fecha"], errors="coerce")
+    malas = int(fechas.isna().sum())
     if malas > 0:
         log(f"    ! {ruta.name}: {malas} fila(s) con fecha invalida, se descartan.")
-        df = df[df["dia"].notna()]
-    df["dia"] = df["dia"].astype(int)
+        df = df[fechas.notna()]
+        fechas = fechas[fechas.notna()]
+    # La fecha se guarda como date (sin hora) para que el Excel la muestre
+    # como dia calendario y no como "01-01-2025 00:00".
+    df["fecha"] = fechas.dt.date
+    df["dia"] = fechas.dt.day.astype(int)
     df["hora_dia"] = pd.to_numeric(df["hora_dia"], errors="coerce")
     df = df[df["hora_dia"].notna()]
     df["hora_dia"] = df["hora_dia"].astype(int)
@@ -676,7 +685,7 @@ def leer_consolidado_tabulado(ruta, log=print):
     df["central"] = df["central"].astype(str).str.strip()
     df["tipo"] = df["tipo"].astype(str).str.strip()
     df = df[(df["central"].str.len() > 0) & (df["central"].str.lower() != "nan")]
-    return df[["central", "tipo", "dia", "hora_dia",
+    return df[["central", "tipo", "fecha", "dia", "hora_dia",
               "sobrecosto", "gen", "cv", "cmg", "usd"]]
 
 
@@ -728,6 +737,13 @@ def acumulado_por_dia(df, archivo="archivo", mes="mes desconocido", log=print):
 # ---- almacenamiento (parquet), separado del de sobrecostos por tipo ----
 
 
+# Columnas del parquet por etapa. fecha y hora_dia viajan junto a hora_mes
+# para poder mostrar en el Excel el dia calendario y la hora dentro del dia,
+# sin tener que volver a leer el consolidado tabulado.
+COLUMNAS_DATOS = ["central", "tipo", "fecha", "hora_dia", "hora_mes",
+                  "sobrecosto", "gen", "cv", "cmg", "usd", "etapa"]
+
+
 def dir_datos(aamm, etapa):
     return dir_parquet(_anio_de(aamm)) / f"aamm={aamm}" / f"etapa={etapa}"
 
@@ -753,6 +769,22 @@ def path_excel_anual(aa):
     return dir_resultados_anuales(aa) / f"Comparacion_Variables_{_sal.normalizar_anio(aa)}.xlsx"
 
 
+def datos_completos(aamm, etapa):
+    """El parquet de esa etapa, ¿trae todas las columnas de hoy?
+
+    Los parquet escritos por una version anterior no tienen fecha ni
+    hora_dia; se tratan como desactualizados para que se vuelvan a
+    consolidar en vez de reventar al armar la vista.
+    """
+    p = dir_datos(aamm, etapa) / "datos.parquet"
+    if not p.exists():
+        return False
+    try:
+        return not (set(COLUMNAS_DATOS) - set(pq.read_schema(p).names))
+    except Exception:
+        return False
+
+
 def estado_etapa(est, aamm, etapa, rutas):
     r = rutas.get(etapa)
     if not (r and Path(r).is_file()):
@@ -761,6 +793,8 @@ def estado_etapa(est, aamm, etapa, rutas):
     if not reg.get("consolidado"):
         return "pendiente"
     if reg.get("huella") != huella(r):
+        return "desactualizado"
+    if not datos_completos(aamm, etapa):
         return "desactualizado"
     return "ok"
 
@@ -774,7 +808,7 @@ def consolidar_etapa(aamm, etapa, ruta, est, log=print):
     d = dir_datos(aamm, etapa)
     d.mkdir(parents=True, exist_ok=True)
     pq.write_table(pa.Table.from_pandas(
-        df[["central", "tipo", "hora_mes", "sobrecosto", "gen", "cv", "cmg", "usd", "etapa"]],
+        df[COLUMNAS_DATOS],
         preserve_index=False), d / "datos.parquet", compression="snappy")
     est.setdefault(aamm, {})[etapa] = {
         "consolidado": ahora(), "huella": huella(ruta),
@@ -786,7 +820,7 @@ def consolidar_etapa(aamm, etapa, ruta, est, log=print):
 
 
 COLUMNAS_VISTA = [
-    "aamm", "central", "tipo", "hora_mes",
+    "aamm", "central", "tipo", "fecha", "hora_dia", "hora_mes",
     "sc_def", "sc_rpre", "sc_rdef", "d_rpre_def", "d_rdef_rpre", "d_rdef_def",
     "gen_def", "gen_rpre", "gen_rdef", "cv_def", "cv_rpre", "cv_rdef",
     "cmg_def", "cmg_rpre", "cmg_rdef", "usd",
@@ -795,7 +829,7 @@ COLUMNAS_VISTA = [
 
 
 def etapas_consolidadas(aamm):
-    return [e for e in ETAPAS if (dir_datos(aamm, e) / "datos.parquet").exists()]
+    return [e for e in ETAPAS if datos_completos(aamm, e)]
 
 
 def vista_completa(aamm):
@@ -830,12 +864,14 @@ def construir_vista(aamm, tol=0.01, log=print):
         sql_base = f"""
         WITH s AS (
             SELECT etapa, central, tipo, hora_mes,
+                   MIN(fecha) AS fecha, MIN(hora_dia) AS hora_dia,
                    SUM(sobrecosto) AS sobrecosto, SUM(gen) AS gen,
                    AVG(cv) AS cv, AVG(cmg) AS cmg, AVG(usd) AS usd
             FROM read_parquet('{base}', hive_partitioning=1)
             GROUP BY 1,2,3,4
         )
-        SELECT central, tipo, hora_mes, {sel}
+        SELECT central, tipo, hora_mes,
+               MIN(fecha) AS fecha, MIN(hora_dia) AS hora_dia, {sel}
         FROM s GROUP BY 1,2,3
         """
 
@@ -883,7 +919,7 @@ def construir_vista(aamm, tol=0.01, log=print):
         sql = f"""
         WITH p AS ({sql_base})
         SELECT
-            '{aamm}' AS aamm, central, tipo, hora_mes,
+            '{aamm}' AS aamm, central, tipo, fecha, hora_dia, hora_mes,
             {monto("sobrecosto","def")}  AS sc_def,
             {monto("sobrecosto","rpre")} AS sc_rpre,
             {monto("sobrecosto","rdef")} AS sc_rdef,
@@ -927,12 +963,27 @@ def asegurar_vista(aamm, tol=0.01, log=print):
     return construir_vista(aamm, tol=tol, log=log) is not None
 
 
-CAB = ["Central", "Tipo", "Hora Mensual",
+CAB = ["Central", "Tipo", "Fecha", "Hora Dia", "Hora Mensual",
           "SC Def", "SC Rpre", "SC Rdef", "Rpre−Def", "Rdef−Rpre", "Rdef−Def",
           "Gen Def", "Gen Rpre", "Gen Rdef",
           "CV Def", "CV Rpre", "CV Rdef",
           "CMg Def", "CMg Rpre", "CMg Rdef", "USD",
           "Cambia Gen", "Cambia CV", "Cambia CMg", "Formula no calza", "Detalle"]
+
+
+# Posiciones dentro de la fila que se escribe (COLUMNAS_VISTA sin "aamm", que
+# es el nombre de la hoja). Se calculan del propio encabezado para que agregar
+# o mover una columna no obligue a repasar numeros sueltos por todo el modulo.
+_ORDEN = COLUMNAS_VISTA[1:]
+I_FECHA = _ORDEN.index("fecha")
+I_HORA_DIA = _ORDEN.index("hora_dia")
+I_HORA_MES = _ORDEN.index("hora_mes")
+I_NUM_INI = _ORDEN.index("sc_def")
+I_NUM_FIN = _ORDEN.index("usd")
+I_DETALLE = _ORDEN.index("detalle")
+I_DIFERENCIAS = tuple(_ORDEN.index(c) for c in ("d_rpre_def", "d_rdef_rpre", "d_rdef_def"))
+I_BANDERAS = tuple(_ORDEN.index(c) for c in
+                   ("cambia_gen", "cambia_cv", "cambia_cmg", "formula_mismatch"))
 
 
 def exportar_excel(destino, meses, solo_dif, tolerancia, log=print,
@@ -972,6 +1023,8 @@ def _escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log):
         f_num = wb.add_format({"num_format": "#,##0.00"})
         f_dif = wb.add_format({"num_format": "#,##0.00", "bg_color": "#fde9d9"})
         f_alerta = wb.add_format({"bg_color": "#f8cbad"})
+        f_fecha = wb.add_format({"num_format": "dd-mm-yyyy"})
+        f_ent = wb.add_format({"num_format": "0"})
         for aamm, pvs in vistas:
             filtro = _filtro(solo_dif, tolerancia)
             cur = con.execute(f"SELECT {', '.join(COLUMNAS_VISTA[1:])} "
@@ -981,15 +1034,16 @@ def _escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log):
                 hoja = wb.add_worksheet(nombre)
                 hoja.write_row(0, 0, CAB, f_head)
                 hoja.set_row(0, 26)
-                hoja.freeze_panes(1, 3)
+                hoja.freeze_panes(1, I_HORA_MES + 1)
                 hoja.set_column(0, 1, 26)
-                hoja.set_column(3, 18, 13, f_num)
-                hoja.set_column(22, 22, 70)
+                hoja.set_column(I_FECHA, I_FECHA, 12, f_fecha)
+                hoja.set_column(I_HORA_DIA, I_HORA_MES, 10, f_ent)
+                hoja.set_column(I_NUM_INI, I_NUM_FIN, 13, f_num)
+                hoja.set_column(I_DETALLE, I_DETALLE, 70)
                 hoja.autofilter(0, 0, 0, len(CAB) - 1)
                 return hoja
 
             h = nueva(aamm)
-            i_cg, i_cv, i_cm, i_fm = 19, 20, 21, 22
             fila, total, extra = 1, 0, 0
             while True:
                 lote = cur.fetchmany(50_000)
@@ -1002,19 +1056,23 @@ def _escribir_desde_cero(destino, vistas, solo_dif, tolerancia, log):
                         fila = 1
                         log(f"  ! {aamm} paso el limite de filas: sigue en "
                             f"{aamm}_{extra + 1}")
-                    marca = any(reg[i] for i in (i_cg, i_cv, i_cm, i_fm))
+                    marca = any(reg[i] for i in I_BANDERAS)
                     for j, v in enumerate(reg):
                         if isinstance(v, bool):
                             h.write(fila, j, "SI" if v else "",
                                    f_alerta if v else None)
                         elif v is None:
                             h.write_blank(fila, j, None)
+                        elif isinstance(v, (datetime, date)):
+                            h.write_datetime(fila, j, v, f_fecha)
                         elif isinstance(v, (int, float)):
                             h.write_number(fila, j, float(v),
-                                          f_dif if j in (6, 7, 8) and
-                                          abs(float(v)) > tolerancia else f_num)
+                                          f_ent if j in (I_HORA_DIA, I_HORA_MES) else
+                                          (f_dif if j in I_DIFERENCIAS and
+                                           abs(float(v)) > tolerancia else f_num))
                         else:
-                            h.write(fila, j, str(v), f_alerta if marca and j == 22 else None)
+                            h.write(fila, j, str(v),
+                                   f_alerta if marca and j == I_DETALLE else None)
                     fila += 1
                     total += 1
             log(f"  {aamm}: {total:,} filas en {extra + 1} hoja(s).")
@@ -1040,7 +1098,6 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
         for n in list(wb.sheetnames):
             if es_hoja_propia(n):
                 del wb[n]
-        i_cg, i_cv, i_cm, i_fm = 19, 20, 21, 22
         for aamm, pvs in vistas:
             filtro = _filtro(solo_dif, tolerancia)
             def nueva(nombre):
@@ -1049,7 +1106,7 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
                     c = hoja.cell(row=1, column=j, value=tx)
                     c.fill, c.font = azul, blanco_negrita
                     c.alignment = Alignment(wrap_text=True, vertical="center")
-                hoja.freeze_panes = "D2"
+                hoja.freeze_panes = f"{get_column_letter(I_HORA_MES + 2)}2"
                 hoja.auto_filter.ref = f"A1:{get_column_letter(len(CAB))}1"
                 return hoja
 
@@ -1069,21 +1126,27 @@ def _escribir_preservando(destino, vistas, solo_dif, tolerancia, ajenas, log):
                         fila = 2
                         log(f"  ! {aamm} paso el limite de filas: sigue en "
                             f"{aamm}_{extra + 1}")
-                    marca = any(reg[i] for i in (i_cg, i_cv, i_cm, i_fm))
+                    marca = any(reg[i] for i in I_BANDERAS)
                     for j, v in enumerate(reg, start=1):
                         if v is None:
                             continue
                         if isinstance(v, bool):
                             if v:
                                 h.cell(row=fila, column=j, value="SI").fill = naranjo
+                        elif isinstance(v, (datetime, date)):
+                            c = h.cell(row=fila, column=j, value=v)
+                            c.number_format = "DD-MM-YYYY"
                         elif isinstance(v, (int, float)):
                             c = h.cell(row=fila, column=j, value=float(v))
-                            c.number_format = "#,##0.00"
-                            if j - 1 in (6, 7, 8) and abs(float(v)) > tolerancia:
-                                c.fill = crema
+                            if j - 1 in (I_HORA_DIA, I_HORA_MES):
+                                c.number_format = "0"
+                            else:
+                                c.number_format = "#,##0.00"
+                                if j - 1 in I_DIFERENCIAS and abs(float(v)) > tolerancia:
+                                    c.fill = crema
                         else:
                             c = h.cell(row=fila, column=j, value=str(v))
-                            if marca and j - 1 == 22:
+                            if marca and j - 1 == I_DETALLE:
                                 c.fill = naranjo
                     fila += 1
                     total += 1

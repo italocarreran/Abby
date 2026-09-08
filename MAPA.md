@@ -36,11 +36,13 @@ Revisor_Relq/
 │   ├── Carga_Retiros.py
 │   └── Prorratear.py
 └── Reemplazos REUC/               usa __config__/reemplazos_reuc.json
+                                   y __config__/Auxiliares REUC/
     └── ActualizaRemplazos.py
 ```
 
 `__config__/config.json` es **compartido** entre el Revisor, los 8
-actualizadores y los comparadores. El noveno usa `__config__/reemplazos_reuc.json`.
+actualizadores y los comparadores. El noveno usa `__config__/reemplazos_reuc.json`
+y deja sus insumos descargados en `__config__/Auxiliares REUC/`.
 Los JSON mensuales replican `AAAA/MM Mes`; estado, rutas, parquet y vistas de los
 comparadores van en `__config__/AAAA/_comparador*`. `00_Salidas/` queda reservado
 para Excel y demás resultados entregables.
@@ -326,6 +328,11 @@ para Excel y demás resultados entregables.
   una cola; un detalle que supera el límite de Excel continúa en hojas `_2`,
   `_3`, etc. Antes de calcular `hora_mes` se advierte si faltan días u horas o si
   el total mensual no corresponde a un mes completo (incluido cambio de hora).
+  Cada fila del Excel lleva `Fecha` y `Hora Dia` además de `Hora Mensual`, para
+  ubicar la diferencia en el calendario sin tener que contar horas; las tres
+  columnas van juntas al principio y quedan inmovilizadas. Un parquet escrito por
+  una versión anterior (sin `fecha` ni `hora_dia`) se marca **desactualizado** y
+  se reconsolida solo.
   El tema es claro por omisión y se puede alternar en vivo con la misma clave
   `tema` del `config.json` compartido.
 
@@ -355,6 +362,13 @@ para Excel y demás resultados entregables.
 - **Expone:** —
 - **Depende de:** `pandas`, `xlwings` y `playwright` (este último opcional). Su
   **propio** `reemplazos_reuc.json`, en `__config__/`, no el compartido.
+- **Carpeta de auxiliares:** `__config__/Auxiliares REUC/`, compartida por todos
+  los usuarios: ahí caen los `datos_reuc_*` descargados y ahí se busca
+  `Reemplazos forzados*`. Antes estaba al lado del `.py`
+  (`Reemplazos REUC/Auxiliares/`); esa carpeta ya no se lee ni se escribe, solo
+  se mira para **avisar** que quedaron archivos por mover — el script no los
+  mueve solo, igual que con el resto de `__config__`. Lo único que se corrige
+  solo es la ruta guardada en el config si apuntaba a la carpeta vieja.
 - **⚠️ Orden corregido:** los reemplazos forzados se aplican **antes** del cruce con
   el registro de empresas. Aplicándolos después, las filas sin RUT ya se habían
   descartado y un forzado nunca podía arreglar el nombre que no coincidía: la alerta

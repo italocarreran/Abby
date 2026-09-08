@@ -36,7 +36,9 @@ pero comparte su raíz con otras carpetas necesarias:
   Revisor lo busca literal — tiene el noveno.
 
 **`__config__/config.json` es compartido** entre el Revisor, los 8
-actualizadores y los comparadores. `reemplazos_reuc.json` es propio del noveno.
+actualizadores y los comparadores. `reemplazos_reuc.json` es propio del noveno,
+igual que `__config__/Auxiliares REUC/`, donde ese script deja los `datos_reuc_*`
+que descarga y busca los `Reemplazos forzados*`.
 Los JSON mensuales, estado, rutas, parquet y vistas también viven bajo
 `__config__/`, con la misma estructura anual/mensual que corresponda. No se
 guarda ningún JSON ni dato intermedio en `00_Salidas/`: esa carpeta es solo para
