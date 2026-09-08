@@ -1,8 +1,8 @@
-"""Pruebas de donde vive la carpeta de auxiliares de ActualizaRemplazos.
+"""Pruebas de ActualizaRemplazos que no necesitan Excel ni navegador.
 
 Se carga el .py a mano y con pandas/xlwings/tkinter simulados: en un
 contenedor sin esas librerias (y sin Excel) el modulo no se puede importar de
-la forma normal, pero lo que se prueba aca es solo el armado de rutas.
+la forma normal, pero lo que se prueba aca es solo armado de rutas y texto.
 """
 
 import importlib.util
@@ -110,6 +110,117 @@ class AuxiliaresTest(unittest.TestCase):
                                            log=lineas.append)
         self.assertIn("Auxiliares REUC", str(caso.exception))
         self.assertTrue(any("carpeta vieja" in l for l in lineas))
+
+
+class _CampoFalso:
+    """Un <input> de mentira, con lo justo que usa el codigo de login."""
+
+    def __init__(self, valor="", visible=True):
+        self.valor = valor
+        self.visible = visible
+        self.teclas = []
+
+    # --- API de Playwright que se usa ---
+    def is_visible(self):
+        return self.visible
+
+    def input_value(self):
+        return self.valor
+
+    def fill(self, texto):
+        self.valor = texto
+
+    def press(self, tecla):
+        self.teclas.append(tecla)
+
+
+class _LocatorFalso:
+    def __init__(self, campos):
+        self.campos = campos
+
+    def count(self):
+        return len(self.campos)
+
+    @property
+    def first(self):
+        return self.campos[0]
+
+
+class _PaginaFalsa:
+    """Devuelve campos segun el selector, como haria pagina.locator()."""
+
+    def __init__(self, por_selector):
+        self.por_selector = por_selector
+
+    def locator(self, selector):
+        return _LocatorFalso(self.por_selector.get(selector, []))
+
+
+class CorreoTest(unittest.TestCase):
+    def test_correo_valido(self):
+        for bueno in ("a@b.cl", "nombre.apellido@empresa.co.uk"):
+            self.assertTrue(ar.correo_valido(bueno), bueno)
+        for malo in ("", None, "   ", "sin arroba.cl", "a@b", "a b@c.cl", "@b.cl"):
+            self.assertFalse(ar.correo_valido(malo), malo)
+
+    def test_escribe_el_correo_y_salta_a_la_clave(self):
+        campo = _CampoFalso()
+        pagina = _PaginaFalsa({'input[type="email"]': [campo]})
+        self.assertEqual(ar._rellenar_correo(pagina, "yo@empresa.cl"), "escrito")
+        self.assertEqual(campo.valor, "yo@empresa.cl")
+        self.assertEqual(campo.teclas, ["Tab"])
+
+    def test_no_pisa_lo_que_la_persona_escribio(self):
+        campo = _CampoFalso(valor="otra@empresa.cl")
+        pagina = _PaginaFalsa({'input[type="email"]': [campo]})
+        self.assertEqual(ar._rellenar_correo(pagina, "yo@empresa.cl"), "ya_tenia")
+        self.assertEqual(campo.valor, "otra@empresa.cl")
+        self.assertEqual(campo.teclas, [])
+
+    def test_sin_campo_todavia_no_escribe_nada(self):
+        pagina = _PaginaFalsa({})
+        self.assertEqual(ar._rellenar_correo(pagina, "yo@empresa.cl"), "")
+        self.assertEqual(ar._correo_en_pantalla(pagina), "")
+
+    def test_sin_correo_recordado_no_toca_la_pagina(self):
+        campo = _CampoFalso()
+        pagina = _PaginaFalsa({'input[type="email"]': [campo]})
+        self.assertEqual(ar._rellenar_correo(pagina, ""), "")
+        self.assertEqual(campo.valor, "")
+
+    def test_campo_invisible_se_ignora(self):
+        escondido = _CampoFalso(visible=False)
+        visible = _CampoFalso()
+        pagina = _PaginaFalsa({
+            'input[type="email"]': [escondido],
+            'input[name*="usuario" i]': [visible],
+        })
+        self.assertEqual(ar._rellenar_correo(pagina, "yo@empresa.cl"), "escrito")
+        self.assertEqual(escondido.valor, "")
+        self.assertEqual(visible.valor, "yo@empresa.cl")
+
+    def test_lee_el_correo_que_escribio_la_persona(self):
+        campo = _CampoFalso(valor="  yo@empresa.cl ")
+        pagina = _PaginaFalsa({'input[type="email"]': [campo]})
+        self.assertEqual(ar._correo_en_pantalla(pagina), "yo@empresa.cl")
+
+    def test_no_recuerda_algo_a_medio_escribir(self):
+        campo = _CampoFalso(valor="yo@")
+        pagina = _PaginaFalsa({'input[type="email"]': [campo]})
+        self.assertEqual(ar._correo_en_pantalla(pagina), "")
+
+    def test_un_campo_que_revienta_no_rompe_nada(self):
+        class Explosivo(_CampoFalso):
+            def is_visible(self):
+                raise RuntimeError("el selector ya no existe")
+
+        campo = _CampoFalso()
+        pagina = _PaginaFalsa({
+            'input[type="email"]': [Explosivo()],
+            'input[name*="email" i]': [campo],
+        })
+        self.assertEqual(ar._rellenar_correo(pagina, "yo@empresa.cl"), "escrito")
+        self.assertEqual(campo.valor, "yo@empresa.cl")
 
 
 if __name__ == "__main__":

@@ -694,6 +694,79 @@ def _sesion_lista(url):
     return True
 
 
+# Campos donde el acceso unificado pide el correo. Se prueban en orden y se
+# usa el primero que este visible: la pagina de login no es nuestra y puede
+# cambiar, asi que no conviene depender de un solo selector.
+SELECTORES_CORREO = (
+    'input[type="email"]',
+    'input[name*="email" i]',
+    'input[id*="email" i]',
+    'input[name*="correo" i]',
+    'input[id*="correo" i]',
+    'input[name*="usuario" i]',
+    'input[id*="usuario" i]',
+    'input[name*="user" i]',
+    'input[id*="user" i]',
+)
+
+RE_CORREO = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def correo_valido(texto):
+    """Un correo con forma de correo. No valida que exista, solo el formato."""
+    return bool(RE_CORREO.match(str(texto or "").strip()))
+
+
+def _campo_correo(pagina):
+    """Primer campo de correo visible de la pagina, o None si no hay."""
+    for selector in SELECTORES_CORREO:
+        try:
+            campos = pagina.locator(selector)
+            if campos.count() == 0:
+                continue
+            campo = campos.first
+            if campo.is_visible():
+                return campo
+        except Exception:
+            continue
+    return None
+
+
+def _rellenar_correo(pagina, correo):
+    """Escribe el correo recordado en el login.
+
+    Devuelve "escrito" si lo escribio, "ya_tenia" si el campo ya tenia algo
+    (nunca se pisa lo que la persona empezo a escribir) y "" si todavia no hay
+    campo donde escribir. Despues de escribirlo salta al campo siguiente, para
+    que solo quede poner la clave.
+    """
+    if not correo:
+        return ""
+    campo = _campo_correo(pagina)
+    if campo is None:
+        return ""
+    try:
+        if (campo.input_value() or "").strip():
+            return "ya_tenia"
+        campo.fill(correo)
+        campo.press("Tab")
+        return "escrito"
+    except Exception:
+        return ""
+
+
+def _correo_en_pantalla(pagina):
+    """El correo que se ve escrito en el login, si ya tiene forma de correo."""
+    campo = _campo_correo(pagina)
+    if campo is None:
+        return ""
+    try:
+        valor = (campo.input_value() or "").strip()
+    except Exception:
+        return ""
+    return valor if correo_valido(valor) else ""
+
+
 def _confirmar_sesion(pagina, timeout_ms=20_000):
     """
     Chequeo liviano y barato: entra a una pagina normal de REUC. Si el
@@ -761,7 +834,8 @@ def _borrar_viejos(carpeta_aux, patron_glob, excluir=None, log=print):
 
 
 def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
-                   espera_descarga_seg=180):
+                   espera_descarga_seg=180, correo=None,
+                   al_detectar_correo=None):
     """
     Abre un navegador para que el usuario inicie sesion en REUC y, apenas
     la sesion queda confirmada, descarga los dos exports:
@@ -777,10 +851,16 @@ def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
       2. Confirma la sesion con una peticion liviana.
       3. Descarga cada export UNA sola vez, esperando con paciencia.
 
+    Correo: si viene uno recordado se escribe solo en el campo del login
+    (sin pisar lo que la persona haya empezado a escribir) y el cursor queda
+    en la clave. Si en cambio lo escribe ella, se avisa por
+    ``al_detectar_correo(correo)`` para poder recordarlo la proxima vez.
+
     Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
     navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
-    La clave nunca pasa por este script: se escribe directamente en la
-    pagina real de REUC, dentro del navegador.
+    La CLAVE nunca pasa por este script ni se guarda en ninguna parte: se
+    escribe directamente en la pagina real de REUC, dentro del navegador.
+    Lo unico que se recuerda es el correo.
 
     Devuelve un dict {"reuc": Path, "reemplazos": Path}.
     """
@@ -795,6 +875,7 @@ def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
 
     carpeta_aux = Path(carpeta_destino) if carpeta_destino else CARPETA_AUXILIARES
     carpeta_aux.mkdir(parents=True, exist_ok=True)
+    correo = str(correo or "").strip()
 
     # (clave, url, prefijo, patron_a_borrar, fragmento_a_excluir_del_borrado)
     descargas = (
@@ -820,6 +901,19 @@ def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
             log("  apenas entres, la descarga parte sola. No cierres la ventana.")
 
             # ---- 1. Esperar el login (sin tocar el export) ----
+            # El correo recordado se escribe apenas aparezca el campo. Se
+            # intenta de nuevo en cada pagina, porque el acceso unificado
+            # redirige un par de veces y el campo puede aparecer recien en la
+            # ultima. Reintentar no molesta: nunca se pisa lo ya escrito.
+            def poner_correo():
+                estado = _rellenar_correo(pagina, correo)
+                if estado == "escrito":
+                    log(f"  Correo escrito solo: {correo}")
+                    log("  Falta solo la clave (esa no se guarda nunca).")
+                return bool(estado)
+
+            puesto_en = ""   # pagina donde el correo ya quedo puesto
+            visto = ""
             t_ini = time.time()
             t_ultimo_aviso = time.time()
 
@@ -839,11 +933,19 @@ def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
                 if _sesion_lista(url_actual):
                     break
 
+                if correo and url_actual != puesto_en and poner_correo():
+                    puesto_en = url_actual
+                # Si lo escribe ella (la primera vez, o si cambio), se recuerda.
+                visto = _correo_en_pantalla(pagina) or visto
+
                 if time.time() - t_ultimo_aviso > 30:
                     log(f"    (esperando el login... pagina actual: {url_actual})")
                     t_ultimo_aviso = time.time()
 
                 pagina.wait_for_timeout(1000)
+
+            if visto and visto != correo and al_detectar_correo:
+                al_detectar_correo(visto)
 
             # ---- 2. Confirmar que la sesion realmente sirve ----
             log("  Sesion detectada, confirmando...")
@@ -1409,6 +1511,7 @@ def main():
 
     # ---------- Variables ----------
     var_carpeta = tk.StringVar(value=carpeta_datos_guardada(cfg))
+    var_correo = tk.StringVar(value=str(cfg.get("correo_reuc", "") or "").strip())
     var_destino = tk.StringVar(
         value=(traspaso or {}).get("rutas", {}).get("cuadro_0")
               or cfg.get("archivo_destino", "[seleccionar archivo]"))
@@ -1483,6 +1586,36 @@ def main():
     tk.Button(frame_btns1, text=f"Usar {NOMBRE_AUXILIARES} (default)",
               command=usar_auxiliares).pack(side="left", padx=4)
 
+    # ---------- Correo del REUC (para no escribirlo cada vez) ----------
+    frame_correo = tk.Frame(f1)
+    frame_correo.pack(pady=(8, 0))
+    tk.Label(frame_correo, text="Correo REUC:",
+             font=("Segoe UI", 9)).pack(side="left")
+    ent_correo = tk.Entry(frame_correo, textvariable=var_correo, width=34,
+                          font=("Segoe UI", 9))
+    ent_correo.pack(side="left", padx=4)
+    tk.Label(frame_correo,
+             text="se escribe solo en la página del REUC · la clave nunca se guarda",
+             font=("Segoe UI", 8), fg="#666666").pack(side="left", padx=4)
+
+    def guardar_correo(_=None):
+        """Guarda el correo si ya tiene forma de correo.
+
+        A medio escribir no se guarda ni se molesta con un cartel: el campo
+        pierde el foco muchas veces mientras se usa la ventana.
+        """
+        valor = var_correo.get().strip()
+        if valor != var_correo.get():
+            var_correo.set(valor)
+        if valor and not correo_valido(valor):
+            return
+        if valor != str(cfg.get("correo_reuc", "") or ""):
+            guardar_config({"correo_reuc": valor})
+            cfg["correo_reuc"] = valor
+
+    ent_correo.bind("<FocusOut>", guardar_correo)
+    ent_correo.bind("<Return>", guardar_correo)
+
     var_estado_reuc = tk.StringVar(value="")
     frame_reuc = tk.Frame(f1)
     frame_reuc.pack(pady=(8, 0))
@@ -1504,6 +1637,11 @@ def main():
                         "Se descargaron los archivos REUC correctamente."
                     )
                     return
+                elif tipo == "correo":
+                    var_correo.set(dato)
+                    guardar_config({"correo_reuc": dato})
+                    cfg["correo_reuc"] = dato
+                    log(f"  Correo recordado para la proxima vez: {dato}")
                 elif tipo == "error":
                     log(f"ERROR: {dato}")
                     var_estado_reuc.set("")
@@ -1514,11 +1652,19 @@ def main():
             pass
         root.after(300, _revisar_cola_reuc)
 
-    def hilo_reuc(carpeta_base):
+    def hilo_reuc(correo):
+        # El correo llega como argumento: leer una variable de tkinter desde
+        # otro hilo no se hace. Lo mismo de vuelta, por la cola.
         def log_cola(msg):
             cola_reuc.put(("log", msg))
+
+        def recordar_correo(valor):
+            cola_reuc.put(("correo", valor))
+
         try:
-            resultados = descargar_reuc(carpeta_auxiliares(), log=log_cola)
+            resultados = descargar_reuc(carpeta_auxiliares(), log=log_cola,
+                                        correo=correo,
+                                        al_detectar_correo=recordar_correo)
             cola_reuc.put(("ok", resultados))
         except Exception as e:
             cola_reuc.put(("error", f"{e}\n{traceback.format_exc()}"))
@@ -1528,10 +1674,12 @@ def main():
         if not Path(carpeta).is_dir():
             messagebox.showerror("Error", "Primero selecciona la carpeta de datos.")
             return
+        guardar_correo()
         btn_reuc.config(state="disabled", bg="#aaaaaa")
         var_estado_reuc.set("Actualizando...")
         log("== Actualizar data REUC ==")
-        threading.Thread(target=hilo_reuc, args=(carpeta,), daemon=True).start()
+        threading.Thread(target=hilo_reuc, args=(var_correo.get().strip(),),
+                         daemon=True).start()
         root.after(300, _revisar_cola_reuc)
 
     btn_reuc = tk.Button(frame_reuc, text="Actualizar data REUC", bg="#2d7a2d", fg="white",
