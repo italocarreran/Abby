@@ -50,6 +50,53 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-08 — Claude — fecha y hora del día en el comparador tabulado
+
+La usuaria pidió que el Excel del **Comparador_Tabulado** no muestre solo la
+hora mensual: cada fila ahora lleva **`Fecha`** y **`Hora Dia`** al lado de
+**`Hora Mensual`** (columnas C, D y E, las tres inmovilizadas junto a Central y
+Tipo). La hora mensual sigue siendo la que aparea las etapas entre sí; las otras
+dos son para ubicar la diferencia en el calendario sin contar horas a mano.
+
+Qué se tocó, todo en `Comparadores/Comparador_Tabulado.py`:
+
+- `leer_consolidado_tabulado` ahora devuelve `fecha` (como `date`, sin hora)
+  además de `dia` y `hora_dia`. Las filas con fecha inválida se siguen
+  descartando igual, solo que el filtro se hace sobre la fecha convertida una
+  sola vez en vez de dos.
+- El parquet por etapa pasó a tener columnas fijas en `COLUMNAS_DATOS` e
+  incluye `fecha` y `hora_dia`.
+- `construir_vista` arrastra las dos columnas nuevas (`MIN(fecha)` y
+  `MIN(hora_dia)` por `central/tipo/hora_mes`, que dentro de un mes es un solo
+  valor) y `COLUMNAS_VISTA` / `CAB` las exponen.
+- **Compatibilidad:** un parquet escrito por la versión anterior no tiene esas
+  columnas y haría reventar la vista. `datos_completos()` lo detecta y
+  `estado_etapa()` lo devuelve como **desactualizado**, así que la etapa se
+  reconsolida sola con "Consolidar pendientes" — no hay que borrar nada a mano,
+  pero la primera corrida después de este cambio va a reconsolidar los 12 meses.
+- Los índices de columna que estaban escritos a mano en los dos escritores de
+  Excel (xlsxwriter y openpyxl) ahora salen de `COLUMNAS_VISTA` (`I_FECHA`,
+  `I_HORA_MES`, `I_DETALLE`, `I_DIFERENCIAS`, `I_BANDERAS`). De paso quedó
+  arreglado un desfase viejo: el pintado del `Detalle` apuntaba a la columna
+  22, que era `Formula no calza`, así que la celda del detalle nunca se
+  pintaba naranja.
+- La `Fecha` se escribe como fecha real con formato `dd-mm-yyyy` (no texto) y
+  las dos columnas de hora quedan como enteros, sin los `,00` que traía el
+  formato numérico general.
+
+**Probado:** `bash scripts/verificar.sh` en verde, y una prueba de punta a punta
+hecha aparte (fuera del repo, porque necesita pandas/pyarrow/duckdb, que este
+entorno no trae de fábrica): tres consolidados tabulados falsos de 2 días → los
+tres parquet → la vista → el Excel por los dos caminos (desde cero y
+preservando una hoja ajena). Se verificó el encabezado, que la fila 2 traiga
+`2025-01-01 / 1 / 1`, que la última fila traiga `2025-01-02 / 24 / 48`, y que un
+parquet de la versión vieja quede como desactualizado.
+
+**Pendiente:** verlo en Windows con un mes real — ancho de las columnas nuevas y
+que Excel muestre la fecha con el formato local.
+
+---
+
 ## 2026-09-07 — Claude — un ayudante que se mudó y su llamador que se quedó
 
 Segundo hallazgo de la corrida en Windows. En el log del Revisor:

@@ -326,6 +326,11 @@ para Excel y demás resultados entregables.
   una cola; un detalle que supera el límite de Excel continúa en hojas `_2`,
   `_3`, etc. Antes de calcular `hora_mes` se advierte si faltan días u horas o si
   el total mensual no corresponde a un mes completo (incluido cambio de hora).
+  Cada fila del Excel lleva `Fecha` y `Hora Dia` además de `Hora Mensual`, para
+  ubicar la diferencia en el calendario sin tener que contar horas; las tres
+  columnas van juntas al principio y quedan inmovilizadas. Un parquet escrito por
+  una versión anterior (sin `fecha` ni `hora_dia`) se marca **desactualizado** y
+  se reconsolida solo.
   El tema es claro por omisión y se puede alternar en vivo con la misma clave
   `tema` del `config.json` compartido.
 

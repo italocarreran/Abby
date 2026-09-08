@@ -49,7 +49,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1689 líneas — Comparador_Tabulado.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1752 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -2597,7 +2597,7 @@ memoria, pero es la unica forma de no borrar el trabajo de otra persona.
 > De la hoja "Sobrecostos" se leen las columnas A:E, G, I:J y W. La fila 2 es el
 > encabezado, los datos parten en la 3.
 >
-> Como encuentra los archivos
+> Cada fila del Excel se identifica con FECHA, HORA DEL DIA y HORA MENSUAL. La
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
@@ -2639,8 +2639,18 @@ memoria, pero es la unica forma de no borrar el trabajo de otra persona.
 | `HOJAS_PROPIAS_FIJAS` | `['RESUMEN']` | Hojas que genera este programa; cualquier otra es de alguien mas. |
 | `TRAMOS_DEF` | `lista de 3 elementos: ('Sobrecostos', ('Sobrecosto',)), ('02 Definitivo', ('Definitivo',)), ('Auxiliares', ('Auxiliar', 'Auxiliares Definitivo')), …` | Tramos de <CMgReales>\AAMM\Sobrecostos\02 Definitivo\Auxiliares. |
 | `IDX_CONSOL` | `{_col_a_indice(l): nom for l, nom in COLS_CONSOL.items()}` |  |
-| `COLUMNAS_VISTA` | `lista de 25 elementos: 'aamm', 'central', 'tipo', …` |  |
-| `CAB` | `lista de 24 elementos: 'Central', 'Tipo', 'Hora Mensual', …` |  |
+| `COLUMNAS_DATOS` | `lista de 11 elementos: 'central', 'tipo', 'fecha', …` | Columnas del parquet por etapa. |
+| `COLUMNAS_VISTA` | `lista de 27 elementos: 'aamm', 'central', 'tipo', …` |  |
+| `CAB` | `lista de 26 elementos: 'Central', 'Tipo', 'Fecha', …` |  |
+| `_ORDEN` | `COLUMNAS_VISTA[1:]` | Posiciones dentro de la fila que se escribe (COLUMNAS_VISTA sin "aamm", que es el nombre de la hoja). |
+| `I_FECHA` | `_ORDEN.index('fecha')` |  |
+| `I_HORA_DIA` | `_ORDEN.index('hora_dia')` |  |
+| `I_HORA_MES` | `_ORDEN.index('hora_mes')` |  |
+| `I_NUM_INI` | `_ORDEN.index('sc_def')` |  |
+| `I_NUM_FIN` | `_ORDEN.index('usd')` |  |
+| `I_DETALLE` | `_ORDEN.index('detalle')` |  |
+| `I_DIFERENCIAS` | `tuple((_ORDEN.index(c) for c in ('d_rpre_def', 'd_rdef_rpre', 'd_rdef_def')))` |  |
+| `I_BANDERAS` | `tuple((_ORDEN.index(c) for c in ('cambia_gen', 'cambia_cv', 'cambia_cmg', 'formula_mismat…` |  |
 
 ### Clases
 
@@ -2810,6 +2820,14 @@ el estado y los datos intermedios del comparador viven en __config__.
 #### `def path_excel_mes(aamm)`
 
 #### `def path_excel_anual(aa)`
+
+#### `def datos_completos(aamm, etapa)`
+
+El parquet de esa etapa, ¿trae todas las columnas de hoy?
+
+Los parquet escritos por una version anterior no tienen fecha ni
+hora_dia; se tratan como desactualizados para que se vuelvan a
+consolidar en vez de reventar al armar la vista.
 
 #### `def estado_etapa(est, aamm, etapa, rutas)`
 
