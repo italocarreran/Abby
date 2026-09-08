@@ -70,6 +70,49 @@ class CacheDirectorios:
         return None
 
 
+class CachePorArchivo:
+    """Recuerda un cálculo caro por archivo mientras el archivo no cambie.
+
+    Leer el esquema de un parquet abre el archivo y parsea su pie; la ventana
+    lo hacía decenas de veces por cada repintado. La firma (mtime + tamaño)
+    sale de un ``stat`` local, que es barato, y cambia sola cuando el archivo
+    se reescribe: por eso no hace falta invalidar nada a mano después de
+    consolidar.
+
+    A diferencia de ``CacheDirectorios``, esta caché NO se limpia en cada
+    refresco: la firma ya la mantiene honesta.
+    """
+
+    def __init__(self, calcular):
+        self.calcular = calcular
+        self.datos = {}
+
+    def limpiar(self):
+        self.datos.clear()
+
+    def firma(self, ruta):
+        try:
+            estado = Path(ruta).stat()
+        except OSError:
+            return None
+        return (estado.st_mtime_ns, estado.st_size)
+
+    def __call__(self, ruta):
+        clave = str(ruta)
+        firma = self.firma(ruta)
+        if firma is None:
+            # El archivo no está: el cálculo tiene que decidirlo él, y es
+            # barato porque no hay nada que leer.
+            self.datos.pop(clave, None)
+            return self.calcular(ruta)
+        previo = self.datos.get(clave)
+        if previo is not None and previo[0] == firma:
+            return previo[1]
+        valor = self.calcular(ruta)
+        self.datos[clave] = (firma, valor)
+        return valor
+
+
 def hallar_revisor(raiz):
     """Encuentra la carpeta hermana por su entry point, no por su nombre."""
     raiz = Path(raiz)

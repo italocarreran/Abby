@@ -48,10 +48,65 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
-- [ ] Probar visualmente en Windows los temas claro y oscuro de los dos
-      comparadores. La verificación automatizada corrió con `tkinter` real
-      (instalado en este entorno) y `ttk.Style` simulado, pero sin pantalla no
-      hay forma de ver si el resultado es realmente legible/prolijo.
+---
+
+## 2026-09-08 — Claude — los comparadores dejan de tocar el disco al pintar
+
+La usuaria: correr el actualizador del consolidado tabulado va bien, pero
+**marcar un mes en su casilla tardaba lo mismo que la corrida entera**, y
+examinar una ruta también. No era el motor: era la ventana.
+
+**Qué pasaba.** `pintar()` se llama en cada click y le preguntaba al disco cada
+vez. En el tabulado: un `is_file()` por mes y etapa contra el NAS (36 viajes),
+más el esquema de cada parquet (`pq.read_schema`, 36 aperturas), más la vista.
+En el de etapas eran más de cien, porque `estado_mes()` volvía a recorrer las
+tres etapas que `estado_etapa()` acababa de mirar. Y `refrescar(solo=mes)` —lo
+que corre al examinar una ruta— hacía `limpiar_cache()` y después repintaba los
+doce meses, así que rehacía por red el trabajo de los once que no habían
+cambiado.
+
+**Qué se hizo.**
+
+- `instantanea_mes(est, aamm, rutas)` en los dos comparadores: calcula de una
+  vez lo que la ventana necesita saber del disco (estado por etapa, si el
+  archivo está, si hay vista). Corre **siempre en el hilo de fondo**, junto a la
+  búsqueda de archivos, y queda en `self.instant`. `pintar()` ahora solo mueve
+  widgets: no toca el disco ni una vez. Marcar una casilla o expandir un mes es
+  instantáneo, y examinar una ruta cuesta el mes que se examinó, no los doce.
+- `refrescar_instantaneas(meses=None)` la rehace cuando el estado del mes cambia
+  de verdad (consolidar, rearmar vista, exportar). Se llama desde `lanzar()` y
+  desde el bucle de `consolidar()`, ambos en el hilo de fondo.
+- `estado_mes()` del comparador de etapas ahora recibe los tres estados ya
+  calculados en vez de recalcularlos: era el que duplicaba las consultas.
+- `__comun__/comparadores.py` suma `CachePorArchivo`, que recuerda un cálculo
+  caro por archivo mientras el archivo no cambie (firma = mtime + tamaño). El
+  tabulado la usa para el esquema de los parquet. No hay que invalidarla a mano:
+  reescribir el parquet al consolidar cambia la firma sola.
+
+**Se sacó el tema claro/oscuro**, a pedido de la usuaria ("feo y fome pero
+tiene que funcionar bien"). `_tema.pintar_tk()` recorría recursivamente el árbol
+de widgets con dos `cget` por widget, y se llamaba al final de cada
+`construir_filas()`, o sea en cada refresco completo. Se borró
+`__comun__/tema.py` y su prueba, y los colores volvieron al dict fijo con los
+valores históricos. La clave `tema` puede quedar en `config.json`: nadie la lee,
+y borrar claves ajenas no se hace.
+
+**Pruebas.** `Comparadores/test_ventana_sin_disco.py` (nueva) lee los dos
+comparadores con `ast` —importarlos exige pandas y pyarrow, que no están en los
+contenedores— y falla si `pintar()` vuelve a llamar a `is_file`, `exists`,
+`estado_etapa`, `datos_completos` y compañía, si deja de leer `self.instant`, si
+`refrescar()` o `lanzar()` dejan de rehacer la instantánea, o si reaparece algo
+del tema. Tres pruebas nuevas de `CachePorArchivo` en
+`__comun__/test_comparadores.py`. `scripts/verificar.sh` en `TODO OK`.
+
+**Qué queda pendiente.** Nada de esto se pudo correr contra el NAS ni con
+ventana: no hay tkinter, pandas ni pyarrow en este contenedor. La verificación
+fue estática más una simulación de `instantanea_mes()` + `pintar()` con widgets
+falsos, que da los mismos colores y textos que antes. **Falta probarlo en el PC
+con un año real:** que los colores de los meses sean los de siempre, que después
+de consolidar un mes el chip cambie solo, y confirmar que marcar la casilla y
+examinar una ruta ahora son inmediatos.
+
 ---
 
 ## 2026-09-08 — Claude — el REUC recuerda el correo (la clave no, nunca)

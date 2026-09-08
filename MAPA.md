@@ -306,9 +306,10 @@ para Excel y demás resultados entregables.
 - **Depende de:** `__comun__/salidas.py`; localiza la carpeta del Revisor
   por `Revisor_Reliquidacion.py`, no por su nombre.
 - **Detalles que importan:** el hilo de trabajo comunica log, estado, progreso y
-  repintado mediante una cola; solo el hilo principal toca tkinter. El tema es
-  claro por omision y se puede alternar en vivo; la preferencia compartida
-  `tema` queda en `config.json`.
+  repintado mediante una cola; solo el hilo principal toca tkinter. **`pintar()`
+  no toca el disco**: lee `self.instant`, la instantánea que `instantanea_mes()`
+  calcula en el hilo de fondo. Sin eso cada click repetía más de cien `is_file()`
+  contra el NAS y marcar una casilla tardaba lo mismo que la búsqueda entera.
 
 ## `Comparadores/Comparador_Tabulado.py`
 
@@ -333,8 +334,10 @@ para Excel y demás resultados entregables.
   columnas van juntas al principio y quedan inmovilizadas. Un parquet escrito por
   una versión anterior (sin `fecha` ni `hora_dia`) se marca **desactualizado** y
   se reconsolida solo.
-  El tema es claro por omisión y se puede alternar en vivo con la misma clave
-  `tema` del `config.json` compartido.
+  **`pintar()` no toca el disco**: lee `self.instant`, la instantánea que
+  `instantanea_mes()` calcula en el hilo de fondo; y el esquema de cada parquet
+  se recuerda por firma del archivo (`__comun__/comparadores.py`,
+  `CachePorArchivo`), en vez de releerse 36 veces por repintado.
 
 ## `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`
 
@@ -401,17 +404,6 @@ código.** Corregir el documento cuando haya oportunidad:
 ---
 
 ## El módulo común
-
-### `__comun__/tema.py` — **piloto en los comparadores**
-
-- **Qué hace:** ofrece las paletas clara y oscura sin dependencias externas,
-  configura los estilos `ttk` y pinta recursivamente los widgets `tk` clásicos.
-- **Expone:** `paleta(modo)`, `aplicar(root, modo="oscuro")` y
-  `pintar_tk(widget, colores)`.
-- **Reglas:** el modo desconocido o ausente es claro; la paleta clara conserva
-  los colores históricos de estado; si la aplicación falla, cada comparador
-  continúa con el aspecto anterior.
-- **Pruebas:** `__comun__/test_tema.py`, sin pantalla y solo stdlib.
 
 ### `__comun__/salidas.py` — **hecho**
 

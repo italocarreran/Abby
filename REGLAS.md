@@ -53,8 +53,8 @@
 5. **Antes de dar un cambio por terminado:** correr
    `bash scripts/verificar.sh`, que hace `generar_interfaces.py --check` y
    corre todos los tests del repositorio de una vez. Tiene que terminar en
-   `TODO OK`. (`test_tema.py` se omite solo en contenedores sin tkinter:
-   eso es del entorno, no del cambio.)
+   `TODO OK`. (Un test que necesita tkinter se omite solo en contenedores sin
+   pantalla: eso es del entorno, no del cambio.)
    Si el cambio toca algo que lee o escribe `config.json`, verificar de
    punta a punta que sigue siendo el mismo archivo compartido — no alcanza
    con que el `.py` compile.

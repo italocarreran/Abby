@@ -113,10 +113,10 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
   ajuste que el archivo entero. Solo se agregan o actualizan claves propias, nunca
   se borra nada ajeno.
 - **Log de progreso** con timer y barra, visible durante toda la corrida.
-- **Tema oscuro optativo.** El piloto vive en los dos comparadores y usa
-  `__comun__/tema.py`; la clave compartida `tema` vale `"claro"` por omisión. Los
-  widgets `tk` clásicos se pintan además de los estilos `ttk`, y un fallo del
-  tema nunca debe impedir que la herramienta arranque.
+- **Colores fijos, sin opción de tema.** Hubo un piloto de tema claro/oscuro en
+  los dos comparadores y **se sacó**: repintar recursivamente el árbol de widgets
+  costaba más de lo que aportaba. Los colores de estado son los históricos y
+  viven en el `COLORES` de cada comparador. No reintroducirlo sin medir.
 - **Los `.xlsm` se modifican preservando las macros** (xlwings / COM). Los destinos
   tienen que estar cerrados antes de correr; al terminar el archivo queda guardado y
   abierto en Excel a propósito.
@@ -232,6 +232,14 @@ tienen bloque en `MAPA.md`.
 - **Normalización y copias viven en `__comun__/texto.py` y `archivos.py`.** Hay
   variantes históricas explícitas para `None`/`0`; elegir la función por contrato,
   no reemplazar todo por una sola “normalizar”.
+- **En los comparadores, `pintar()` no toca el disco.** Todo lo que la ventana
+  necesita saber del disco lo calcula `instantanea_mes()` en el hilo de fondo y
+  queda en `self.instant`; `pintar()` solo mueve widgets. Antes cada click
+  —marcar un mes, expandirlo— repetía decenas de `is_file()` contra el NAS y las
+  lecturas del esquema de cada parquet: marcar una casilla tardaba lo mismo que
+  la búsqueda completa. Si se agrega algo que consulta el disco, va en la
+  instantánea, y quien cambie el estado de un mes llama a
+  `refrescar_instantaneas()` **desde el hilo de fondo** antes de repintar.
 - **Los comparadores comparten solo infraestructura en
   `__comun__/comparadores.py`.** Se usa composición (`ColaTk`, caché, estado,
   respaldo); sus motores Access/Tabulado y reglas de Excel permanecen separados.

@@ -26,11 +26,10 @@ Convenciones de esta página:
 ## Índice
 
 - [`__comun__/archivos.py`](#__comun__archivospy) — 39 líneas — Reglas compartidas para descartar temporales y copias de Windows.
-- [`__comun__/comparadores.py`](#__comun__comparadorespy) — 327 líneas — Infraestructura compartida por los dos comparadores.
+- [`__comun__/comparadores.py`](#__comun__comparadorespy) — 370 líneas — Infraestructura compartida por los dos comparadores.
 - [`__comun__/config.py`](#__comun__configpy) — 118 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 - [`__comun__/excel_xml.py`](#__comun__excel_xmlpy) — 185 líneas — Lectura rápida de columnas OOXML sin abrir Excel.
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
-- [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
 - [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 2064 líneas — ActualizaRemplazos.py
@@ -48,8 +47,8 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2374 líneas — Comparador_Etapas.py
-- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1752 líneas — Comparador_Tabulado.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2401 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
 
 
 ---
@@ -118,6 +117,23 @@ Una consulta de red por carpeta y reutilización hasta ``limpiar``.
 - `def limpiar(self)`
 - `def listar(self, carpeta)`
 - `def huella_entrada(self, ruta)`
+
+#### `class CachePorArchivo`
+
+Recuerda un cálculo caro por archivo mientras el archivo no cambie.
+
+Leer el esquema de un parquet abre el archivo y parsea su pie; la ventana
+lo hacía decenas de veces por cada repintado. La firma (mtime + tamaño)
+sale de un ``stat`` local, que es barato, y cambia sola cuando el archivo
+se reescribe: por eso no hace falta invalidar nada a mano después de
+consolidar.
+
+A diferencia de ``CacheDirectorios``, esta caché NO se limpia en cada
+refresco: la firma ya la mantiene honesta.
+
+- `def __init__(self, calcular)`
+- `def limpiar(self)`
+- `def firma(self, ruta)`
 
 #### `class ColaTk`
 
@@ -385,43 +401,6 @@ otro nombre, que despues nadie encuentra.
 #### `def carpetas_legado(dir_salidas) -> List[Path]`
 
 Lista las carpetas planas AAMM del formato anterior que aun existen.
-
-
----
-
-## `__comun__/tema.py`
-
-> Tema claro/oscuro compartido para las ventanas tkinter.
->
-> No depende de librerias externas.  ``aplicar`` configura ttk y devuelve la
-> paleta; ``pintar_tk`` completa el trabajo para los widgets tk clasicos, que no
-> obedecen los estilos ttk.
-
-**Importa:** `tkinter`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `CLARO` | `dict de 15 claves: 'modo', 'fondo', 'panel', …` |  |
-| `OSCURO` | `dict de 15 claves: 'modo', 'fondo', 'panel', …` |  |
-
-### Funciones
-
-#### `def paleta(modo='oscuro')`
-
-Devuelve una copia de la paleta pedida; cualquier otro valor es claro.
-
-#### `def aplicar(root, modo='oscuro') -> dict`
-
-Configura los estilos ttk de la ventana y devuelve la paleta.
-
-El llamador puede usar el resultado para pintar tambien los widgets ``tk``
-clasicos. El modo claro conserva exactamente los colores historicos.
-
-#### `def pintar_tk(widget, colores)`
-
-Pinta recursivamente widgets tk clasicos con una paleta de ``aplicar``.
 
 
 ---
@@ -2328,7 +2307,7 @@ Corre una comprobacion y devuelve un dict con su resultado.
 | `PAT_MES_DIR` | `re.compile('^(\\d{1,2})\\b')` |  |
 | `RAMAS_FACT` | `['02 Definitivo', '01 Preliminar']` |  |
 | `HOJA_CONFIG_EMPRESA` | `'Configuracion Empresa'` |  |
-| `COLORES` | `_tema.paleta('claro')` | La paleta clara conserva exactamente los colores historicos. |
+| `COLORES` | `dict de 6 claves: 'enlace', 'rojo', 'amarillo', …` | Los colores historicos, fijos. |
 | `MAPA_SOB` | `dict de 7 claves: 'claveaniomes', 'claveanomes', 'clavea_omes', …` | Nombres de columna que se buscan en la tabla Sobrecostos (normalizados) |
 | `MAPA_CEN` | `{'central': 'central', 'empresa': 'empresa'}` |  |
 | `_CACHE_DIRECTORIOS` | `_comp.CacheDirectorios()` | Acceso a disco con cache (clave para que esto no tarde minutos en el NAS) En una carpeta de red cada consulta es un viaje por la red. |
@@ -2368,7 +2347,6 @@ Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 #### `class App`
 
 - `def __init__(self, root)`
-- `def cambiar_tema(self)` — Guarda y aplica en vivo la preferencia compartida del equipo.
 - `def log(self, msg)`
 - `def set_progreso(self, **kw)`
 - `def set_estado(self, txt)`
@@ -2385,7 +2363,8 @@ Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 - `def construir_filas(self, meses)`
 - `def cambiar_inclusion(self, m)` — Marcar/desmarcar un mes para el consolidado anual.
 - `def alternar(self, m)`
-- `def pintar(self)`
+- `def refrescar_instantaneas(self, meses=None)` — Rehace lo que pintar() va a leer.
+- `def pintar(self)` — Solo mueve widgets: todo lo que sabe del disco sale de instant.
 - `def meses_visibles(self)`
 - `def confirmar_todo(self)`
 - `def consolidar(self, meses=None, forzar=False)`
@@ -2534,7 +2513,22 @@ Deja el propietario vigente en parquet. Idempotente por huella.
 
 #### `def color_de(estado)`
 
-#### `def estado_mes(est, aamm, rutas)`
+#### `def estado_mes(ests)`
+
+Resume las tres etapas ya calculadas. Antes las volvia a calcular:
+pintar() terminaba preguntando dos veces por cada .mdb de la red.
+
+#### `def instantanea_mes(est, aamm, rutas)`
+
+Todo lo que pintar() necesita saber del disco, resuelto de una vez.
+
+pintar() se llama en cada click —marcar un mes, terminar una etapa— y
+antes preguntaba al disco en cada vuelta: un is_file() por .mdb sobre la
+carpeta de red, y dos veces, porque estado_mes repetia la vuelta entera.
+Eran mas de cien viajes por repintado y en el NAS marcar una casilla
+tardaba lo mismo que la busqueda completa. Ahora el disco se lee aca,
+SIEMPRE desde el hilo de fondo, y la ventana pinta con lo que quedo
+guardado en memoria.
 
 **— Consolidacion -> parquet —**
 
@@ -2662,7 +2656,7 @@ memoria, pero es la unica forma de no borrar el trabajo de otra persona.
 | `PAT_SSCC` | `re.compile('ENTRADA[\\s_]*SOB[\\s_]*SSCC', re.IGNORECASE)` |  |
 | `PAT_SOB` | `re.compile('ENTRADA[\\s_]*SOB(?![\\s_]*SSCC)', re.IGNORECASE)` |  |
 | `PAT_COPIA` | `_archivos.PATRON_COPIA` |  |
-| `COLORES` | `_tema.paleta('claro')` | La paleta clara conserva exactamente los colores historicos. |
+| `COLORES` | `dict de 6 claves: 'enlace', 'rojo', 'amarillo', …` | Los colores historicos, fijos. |
 | `LIMITE_FILAS_HOJA` | `1048000` |  |
 | **— lectura del Consolidado_Tabulado —** | | |
 | `NOMBRE_CARPETA_DETALLES` | `'Detalles diarios'` |  |
@@ -2708,7 +2702,6 @@ Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 #### `class App`
 
 - `def __init__(self, root)`
-- `def cambiar_tema(self)` — Guarda y aplica en vivo la preferencia compartida del equipo.
 - `def log(self, msg)`
 - `def set_progreso(self, **kw)`
 - `def set_estado(self, txt)`
@@ -2723,7 +2716,8 @@ Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 - `def construir_filas(self, meses)`
 - `def cambiar_inclusion(self, m)`
 - `def alternar(self, m)`
-- `def pintar(self)`
+- `def refrescar_instantaneas(self, meses=None)` — Rehace lo que pintar() va a leer.
+- `def pintar(self)` — Solo mueve widgets: todo lo que sabe del disco sale de instant.
 - `def meses_visibles(self)`
 - `def tolerancia(self)`
 - `def confirmar_todo(self)`
@@ -2865,6 +2859,17 @@ hora_dia; se tratan como desactualizados para que se vuelvan a
 consolidar en vez de reventar al armar la vista.
 
 #### `def estado_etapa(est, aamm, etapa, rutas)`
+
+#### `def instantanea_mes(est, aamm, rutas)`
+
+Todo lo que pintar() necesita saber del disco, resuelto de una vez.
+
+pintar() se llama en cada click —marcar un mes, terminar una etapa— y
+antes preguntaba al disco en cada vuelta: un is_file() por etapa sobre la
+carpeta de red, mas el esquema del parquet. Eran decenas de viajes por
+repintado y en el NAS marcar una casilla tardaba lo mismo que la busqueda
+completa. Ahora el disco se lee aca, SIEMPRE desde el hilo de fondo, y la
+ventana pinta con lo que quedo guardado en memoria.
 
 #### `def consolidar_etapa(aamm, etapa, ruta, est, log=print)`
 

@@ -182,7 +182,6 @@ DIR_RAIZ = DIR_REVISOR.parent
 sys.path.insert(0, str(DIR_RAIZ))
 try:
     from __comun__ import salidas as _sal
-    from __comun__ import tema as _tema
     from __comun__ import config as _cfg
     from __comun__ import texto as _texto
     from __comun__ import archivos as _archivos
@@ -272,9 +271,16 @@ PAT_MES_DIR = re.compile(r"^(\d{1,2})\b")
 RAMAS_FACT = ["02 Definitivo", "01 Preliminar"]
 HOJA_CONFIG_EMPRESA = "Configuracion Empresa"
 
-# La paleta clara conserva exactamente los colores historicos. La ventana
-# reemplaza este dict solo si el tema pedido se pudo aplicar completo.
-COLORES = _tema.paleta("claro")
+# Los colores historicos, fijos. Hubo un piloto de tema claro/oscuro que se
+# saco: repintar el arbol de widgets entero costaba mas que lo que aportaba.
+COLORES = {
+    "enlace": "#1f3864",
+    "rojo": "#c0392b",
+    "amarillo": "#b8860b",
+    "verde": "#1e7a1e",
+    "gris": "#7f8c8d",
+    "texto_estado": "white",
+}
 
 # Nombres de columna que se buscan en la tabla Sobrecostos (normalizados)
 MAPA_SOB = {
@@ -943,13 +949,42 @@ def color_de(estado):
     return _comp.color_de(estado, COLORES)
 
 
-def estado_mes(est, aamm, rutas):
-    ests = [estado_etapa(est, aamm, e, rutas) for e in ETAPAS]
+def estado_mes(ests):
+    """Resume las tres etapas ya calculadas. Antes las volvia a calcular:
+    pintar() terminaba preguntando dos veces por cada .mdb de la red."""
     if all(x == "ok" for x in ests):
         return "ok"
     if any(x == "falta" for x in ests):
         return "falta"
     return "pendiente"
+
+
+def instantanea_mes(est, aamm, rutas):
+    """Todo lo que pintar() necesita saber del disco, resuelto de una vez.
+
+    pintar() se llama en cada click —marcar un mes, terminar una etapa— y
+    antes preguntaba al disco en cada vuelta: un is_file() por .mdb sobre la
+    carpeta de red, y dos veces, porque estado_mes repetia la vuelta entera.
+    Eran mas de cien viajes por repintado y en el NAS marcar una casilla
+    tardaba lo mismo que la busqueda completa. Ahora el disco se lee aca,
+    SIEMPRE desde el hilo de fondo, y la ventana pinta con lo que quedo
+    guardado en memoria.
+    """
+    rutas = rutas or {}
+    etapas = {}
+    for etapa in ETAPAS:
+        r = rutas.get(etapa) or {}
+        etapas[etapa] = {
+            # Sin bloque para la etapa no hay nada que preguntarle al disco:
+            # es lo mismo que devuelve estado_etapa cuando no hay ningun .mdb.
+            "estado": estado_etapa(est, aamm, etapa, rutas) if r else "falta",
+            "existe": {s: bool(r.get(s)) and Path(r[s]).is_file() for s in SLOTS},
+        }
+    return {
+        "etapas": etapas,
+        "mes": estado_mes([etapas[e]["estado"] for e in ETAPAS]),
+        "vista": path_vista(aamm).exists(),
+    }
 
 
 # ==========================================================================
@@ -1640,6 +1675,7 @@ class App:
         self.rutas_manuales = rj if isinstance(rj, dict) else {}
         self.rutas = {}           # aamm -> {etapa: {slot: ruta}}
         self.diag = {}            # aamm -> {etapa: hasta donde llego la busqueda}
+        self.instant = {}         # aamm -> instantanea_mes(); la lee pintar()
         self.filas = {}           # aamm -> widgets
         self.expandido = {}       # aamm -> bool
         self.trabajando = False
@@ -1660,11 +1696,8 @@ class App:
         self.var_tol = tk.StringVar(value=self.cfg.get("comp_tolerancia", "0.005"))
         self.var_forzar = tk.BooleanVar(value=False)
         self.var_preservar = tk.BooleanVar(value=True)
-        self.var_tema_oscuro = tk.BooleanVar(
-            value=self.cfg.get("tema", "claro") == "oscuro")
 
         self._construir()
-        self._aplicar_tema()
         self._puente_ui.conectar(self.txt, self.var_estado, self.barra)
         drv = driver_access()
         self.log(f"Driver Access: {drv or 'NO ENCONTRADO'} · Python "
@@ -1702,8 +1735,6 @@ class App:
                                    fg=COLORES["texto_estado"], width=16,
                                    command=lambda: self.lanzar(self.exportar))
         self.btn_excel.pack(side="left", padx=6)
-        tk.Checkbutton(pie, text="Tema oscuro", variable=self.var_tema_oscuro,
-                       command=self.cambiar_tema).pack(side="left", padx=8)
         tk.Label(pie, textvariable=self.var_tiempo, font=("Consolas", 11, "bold"),
                  fg=COLORES["verde"]).pack(side="right", padx=10)
 
@@ -1825,32 +1856,6 @@ class App:
         tk.Label(fb, text="tolerancia:").pack(side="left", padx=(10, 2))
         tk.Entry(fb, textvariable=self.var_tol, width=8).pack(side="left")
 
-    def _aplicar_tema(self):
-        """Aplica el tema sin impedir que la herramienta arranque si falla."""
-        global COLORES
-        modo = "oscuro" if self.var_tema_oscuro.get() else "claro"
-        try:
-            colores = _tema.aplicar(self.root, modo)
-            _tema.pintar_tk(self.root, colores)
-        except Exception as exc:
-            self.log(f"No se pudo aplicar el tema {modo}; se conserva el aspecto anterior: {exc}")
-            return False
-        COLORES = colores
-        self.btn_cons_pend.config(bg=COLORES["amarillo"],
-                                  fg=COLORES["texto_estado"])
-        self.btn_cons_todo.config(bg=COLORES["gris"],
-                                  fg=COLORES["texto_estado"])
-        self.btn_excel.config(bg=COLORES["verde"],
-                              fg=COLORES["texto_estado"])
-        return True
-
-    def cambiar_tema(self):
-        """Guarda y aplica en vivo la preferencia compartida del equipo."""
-        modo = "oscuro" if self.var_tema_oscuro.get() else "claro"
-        guardar_config({"tema": modo})
-        if self._aplicar_tema():
-            self.pintar()
-
     # ---------------- log / estado ----------------
     def log(self, msg):
         self._puente_ui.log(msg)
@@ -1896,6 +1901,10 @@ class App:
             finally:
                 self.timer["on"] = False
                 self.trabajando = False
+                # Ojo: esto va ANTES del pintar y en este hilo. pintar() no
+                # puede tocar el disco, y despues de consolidar o exportar el
+                # estado del mes cambio.
+                self.refrescar_instantaneas()
                 self._llamar_en_ui(self.botones, True)
                 self._llamar_en_ui(self.pintar)
                 self.set_estado("Listo")
@@ -2045,6 +2054,7 @@ class App:
                     self.set_estado(f"Buscando archivos... {m}  ({i}/{len(objetivo)})")
                     self.rutas[m], self.diag[m] = resolver_rutas(
                         m, raiz, self.rutas_manuales)
+                    self.instant[m] = instantanea_mes(self.est, m, self.rutas[m])
                     self.set_progreso(value=i)
             except Exception as e:
                 self.log(f"ERROR buscando archivos: {e}")
@@ -2144,7 +2154,6 @@ class App:
                              "inc": var_inc,
                              "info": lbl_info, "det": det, "lineas": lineas,
                              "btn_cons": btn_cons}
-        self._aplicar_tema()
 
     def cambiar_inclusion(self, m):
         """Marcar/desmarcar un mes para el consolidado anual."""
@@ -2168,12 +2177,30 @@ class App:
             f["det"].pack_forget()
             f["btn"].config(text=f"▶  {m}")
 
+    def refrescar_instantaneas(self, meses=None):
+        """Rehace lo que pintar() va a leer. SOLO desde un hilo de fondo.
+
+        Se llama al terminar cualquier trabajo que cambie el estado del mes
+        (consolidar, rearmar la vista, exportar). pintar() nunca la llama:
+        justamente existe para que pintar() no toque el disco.
+        """
+        # self.filas son los meses que pintar() recorre: los del anio que se
+        # esta viendo. self.rutas guarda ademas los de anios anteriores de la
+        # misma corrida, y rehacerlos seria trabajo de red para nada.
+        for m in (list(self.filas) if meses is None else meses):
+            self.instant[m] = instantanea_mes(self.est, m, self.rutas.get(m))
+
     def pintar(self):
+        """Solo mueve widgets: todo lo que sabe del disco sale de instant."""
         for m, f in self.filas.items():
             rutas = self.rutas.get(m) or {e: {s: None for s in SLOTS} for e in ETAPAS}
             dg = (self.diag.get(m) or {})
+            inst = self.instant.get(m) or {}
+            fotos = inst.get("etapas") or {}
             for etapa in ETAPAS:
-                st = estado_etapa(self.est, m, etapa, rutas)
+                foto = fotos.get(etapa) or {}
+                st = foto.get("estado", "falta")
+                existe = foto.get("existe") or {}
                 col = color_de(st)
                 f["chips"][etapa].config(fg=COLORES["texto_estado"], bg=col)
                 ld = f["lineas"][etapa].get("_diag")
@@ -2186,7 +2213,7 @@ class App:
                 for slot in SLOTS:
                     r = rutas[etapa].get(slot)
                     lr = f["lineas"][etapa][slot]
-                    if r and Path(r).is_file():
+                    if r and existe.get(slot):
                         lr.config(text=str(r), fg=COLORES["enlace"])
                     elif r:
                         lr.config(text=f"{r}   ← no existe", fg=COLORES["rojo"])
@@ -2195,14 +2222,13 @@ class App:
                         lr.config(text=f"[sin ruta] {msg}".strip(), fg=COLORES["rojo"])
             reg = self.est.get(m) or {}
             hechas = [ETIQUETA[e] for e in ETAPAS if (reg.get(e) or {}).get("consolidado")]
-            v = path_vista(m)
             info = (f"consolidado: {', '.join(hechas) or '—'}"
-                    f"   |   vista: {'si' if v.exists() else 'no'}")
+                    f"   |   vista: {'si' if inst.get('vista') else 'no'}")
             if not mes_incluido(self.est, m):
                 info += "   |   FUERA del consolidado anual"
             f["inc"].set(mes_incluido(self.est, m))
             f["info"].config(text=info)
-            f["btn"].config(fg=color_de(estado_mes(self.est, m, rutas)))
+            f["btn"].config(fg=color_de(inst.get("mes", "falta")))
         self.pintar_actual()
 
     # ---------------- procesos ----------------
@@ -2258,6 +2284,7 @@ class App:
                     self.log(f"  ERROR en {m} {ETIQUETA[etapa]}: {e}")
                     self.log(traceback.format_exc())
                 self.set_progreso(value=i)
+                self.refrescar_instantaneas([m])
                 self._llamar_en_ui(self.pintar)
             for m in sorted(tocados):
                 self.set_estado(f"Rearmando vista {m}")
