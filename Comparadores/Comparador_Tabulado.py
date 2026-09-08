@@ -200,7 +200,6 @@ DIR_RAIZ = DIR_REVISOR.parent
 sys.path.insert(0, str(DIR_RAIZ))
 try:
     from __comun__ import salidas as _sal
-    from __comun__ import tema as _tema
     from __comun__ import config as _cfg
     from __comun__ import texto as _texto
     from __comun__ import archivos as _archivos
@@ -267,9 +266,16 @@ PAT_SSCC = re.compile(r"ENTRADA[\s_]*SOB[\s_]*SSCC", re.IGNORECASE)
 PAT_SOB = re.compile(r"ENTRADA[\s_]*SOB(?![\s_]*SSCC)", re.IGNORECASE)
 PAT_COPIA = _archivos.PATRON_COPIA
 
-# La paleta clara conserva exactamente los colores historicos. La ventana
-# reemplaza este dict solo si el tema pedido se pudo aplicar completo.
-COLORES = _tema.paleta("claro")
+# Los colores historicos, fijos. Hubo un piloto de tema claro/oscuro que se
+# saco: repintar el arbol de widgets entero costaba mas que lo que aportaba.
+COLORES = {
+    "enlace": "#1f3864",
+    "rojo": "#c0392b",
+    "amarillo": "#b8860b",
+    "verde": "#1e7a1e",
+    "gris": "#7f8c8d",
+    "texto_estado": "white",
+}
 
 LIMITE_FILAS_HOJA = 1_048_000
 
@@ -769,6 +775,22 @@ def path_excel_anual(aa):
     return dir_resultados_anuales(aa) / f"Comparacion_Variables_{_sal.normalizar_anio(aa)}.xlsx"
 
 
+def _tiene_columnas(ruta, columnas):
+    """Abre el parquet una sola vez por version del archivo (ver la cache)."""
+    try:
+        return not (set(columnas) - set(pq.read_schema(ruta).names))
+    except Exception:
+        return False
+
+
+# Leer el esquema abre el archivo y parsea su pie. estado_etapa() lo pedia una
+# vez por mes y etapa —36 lecturas cada vez que se repintaba la ventana—, asi
+# que se recuerda por firma del archivo: se vuelve a leer solo si el parquet
+# cambio, que es justo cuando cambia la respuesta.
+_datos_completos = _comp.CachePorArchivo(
+    lambda ruta: _tiene_columnas(ruta, COLUMNAS_DATOS))
+
+
 def datos_completos(aamm, etapa):
     """El parquet de esa etapa, ¿trae todas las columnas de hoy?
 
@@ -776,13 +798,7 @@ def datos_completos(aamm, etapa):
     hora_dia; se tratan como desactualizados para que se vuelvan a
     consolidar en vez de reventar al armar la vista.
     """
-    p = dir_datos(aamm, etapa) / "datos.parquet"
-    if not p.exists():
-        return False
-    try:
-        return not (set(COLUMNAS_DATOS) - set(pq.read_schema(p).names))
-    except Exception:
-        return False
+    return _datos_completos(dir_datos(aamm, etapa) / "datos.parquet")
 
 
 def estado_etapa(est, aamm, etapa, rutas):
@@ -797,6 +813,27 @@ def estado_etapa(est, aamm, etapa, rutas):
     if not datos_completos(aamm, etapa):
         return "desactualizado"
     return "ok"
+
+
+def instantanea_mes(est, aamm, rutas):
+    """Todo lo que pintar() necesita saber del disco, resuelto de una vez.
+
+    pintar() se llama en cada click —marcar un mes, terminar una etapa— y
+    antes preguntaba al disco en cada vuelta: un is_file() por etapa sobre la
+    carpeta de red, mas el esquema del parquet. Eran decenas de viajes por
+    repintado y en el NAS marcar una casilla tardaba lo mismo que la busqueda
+    completa. Ahora el disco se lee aca, SIEMPRE desde el hilo de fondo, y la
+    ventana pinta con lo que quedo guardado en memoria.
+    """
+    rutas = rutas or {}
+    etapas = {}
+    for etapa in ETAPAS:
+        r = rutas.get(etapa)
+        etapas[etapa] = {
+            "estado": estado_etapa(est, aamm, etapa, rutas),
+            "existe": bool(r) and Path(r).is_file(),
+        }
+    return {"etapas": etapas, "vista": path_vista(aamm).exists()}
 
 
 def consolidar_etapa(aamm, etapa, ruta, est, log=print):
@@ -832,14 +869,12 @@ def etapas_consolidadas(aamm):
     return [e for e in ETAPAS if datos_completos(aamm, e)]
 
 
+_vista_completa = _comp.CachePorArchivo(
+    lambda ruta: _tiene_columnas(ruta, COLUMNAS_VISTA))
+
+
 def vista_completa(aamm):
-    v = path_vista(aamm)
-    if not v.exists():
-        return False
-    try:
-        return not (set(COLUMNAS_VISTA) - set(pq.read_schema(v).names))
-    except Exception:
-        return False
+    return _vista_completa(path_vista(aamm))
 
 
 def construir_vista(aamm, tol=0.01, log=print):
@@ -1171,6 +1206,7 @@ class App:
         self.manuales = rj if isinstance(rj, dict) else {}
         self.rutas = {}       # aamm -> {etapa: ruta|None}
         self.diag = {}        # aamm -> {etapa: diagnostico}
+        self.instant = {}     # aamm -> instantanea_mes(); la lee pintar()
         self.filas = {}
         self.expandido = {}
         self.trabajando = False
@@ -1189,11 +1225,8 @@ class App:
         self.var_forzar = tk.BooleanVar(value=False)
         self.var_preservar = tk.BooleanVar(value=True)
         self.var_anual = tk.StringVar(value=str(dir_resultados_anuales(anio_inicial)) if meses_del_anio(anio_inicial) else "")
-        self.var_tema_oscuro = tk.BooleanVar(
-            value=self.cfg.get("tema", "claro") == "oscuro")
 
         self._construir()
-        self._aplicar_tema()
         self._puente_ui.conectar(self.txt, self.var_estado, self.barra)
         self.log(f"Carpeta base: {BASE}")
         self.log("Lectura rapida de Excel: "
@@ -1222,8 +1255,6 @@ class App:
                                    fg=COLORES["texto_estado"], width=16,
                                    command=lambda: self.lanzar(self.exportar))
         self.btn_excel.pack(side="left", padx=6)
-        tk.Checkbutton(pie, text="Tema oscuro", variable=self.var_tema_oscuro,
-                       command=self.cambiar_tema).pack(side="left", padx=8)
         tk.Label(pie, textvariable=self.var_tiempo, font=("Consolas", 11, "bold"),
                  fg=COLORES["verde"]).pack(side="right", padx=10)
 
@@ -1316,32 +1347,6 @@ class App:
         tk.Label(fb, text="(proporcion: 0.01 = 1%)", fg=COLORES["gris"],
                  font=("Segoe UI", 8)).pack(side="left", padx=4)
 
-    def _aplicar_tema(self):
-        """Aplica el tema sin impedir que la herramienta arranque si falla."""
-        global COLORES
-        modo = "oscuro" if self.var_tema_oscuro.get() else "claro"
-        try:
-            colores = _tema.aplicar(self.root, modo)
-            _tema.pintar_tk(self.root, colores)
-        except Exception as exc:
-            self.log(f"No se pudo aplicar el tema {modo}; se conserva el aspecto anterior: {exc}")
-            return False
-        COLORES = colores
-        self.btn_cons.config(bg=COLORES["amarillo"],
-                             fg=COLORES["texto_estado"])
-        self.btn_todo.config(bg=COLORES["gris"],
-                             fg=COLORES["texto_estado"])
-        self.btn_excel.config(bg=COLORES["verde"],
-                              fg=COLORES["texto_estado"])
-        return True
-
-    def cambiar_tema(self):
-        """Guarda y aplica en vivo la preferencia compartida del equipo."""
-        modo = "oscuro" if self.var_tema_oscuro.get() else "claro"
-        guardar_config({"tema": modo})
-        if self._aplicar_tema():
-            self.pintar()
-
     # ---------------- log / estado ----------------
     def log(self, msg):
         self._puente_ui.log(msg)
@@ -1385,6 +1390,10 @@ class App:
             finally:
                 self.timer["on"] = False
                 self.trabajando = False
+                # Ojo: esto va ANTES del pintar y en este hilo. pintar() no
+                # puede tocar el disco, y despues de consolidar o exportar el
+                # estado del mes cambio.
+                self.refrescar_instantaneas()
                 self._llamar_en_ui(self.botones, True)
                 self._llamar_en_ui(self.pintar)
                 self.set_estado("Listo")
@@ -1473,6 +1482,7 @@ class App:
                     self.set_estado(f"Buscando archivos... {m}  ({i}/{len(objetivo)})")
                     self.rutas[m], self.diag[m] = resolver_rutas(
                         m, raiz, self.manuales, man_mdb)
+                    self.instant[m] = instantanea_mes(self.est, m, self.rutas[m])
                     self.set_progreso(value=i)
             except Exception as e:
                 self.log(f"ERROR buscando archivos: {e}")
@@ -1549,7 +1559,6 @@ class App:
                 lineas[etapa] = lr
             self.filas[m] = {"btn": btn, "chips": chips, "info": info,
                              "det": det, "lineas": lineas, "inc": var_inc}
-        self._aplicar_tema()
 
     def cambiar_inclusion(self, m):
         f = self.filas.get(m)
@@ -1572,19 +1581,35 @@ class App:
             f["det"].pack_forget()
             f["btn"].config(text=f"▶  {m}")
 
+    def refrescar_instantaneas(self, meses=None):
+        """Rehace lo que pintar() va a leer. SOLO desde un hilo de fondo.
+
+        Se llama al terminar cualquier trabajo que cambie el estado del mes
+        (consolidar, rearmar la vista, exportar). pintar() nunca la llama:
+        justamente existe para que pintar() no toque el disco.
+        """
+        # self.filas son los meses que pintar() recorre: los del anio que se
+        # esta viendo. self.rutas guarda ademas los de anios anteriores de la
+        # misma corrida, y rehacerlos seria trabajo de red para nada.
+        for m in (list(self.filas) if meses is None else meses):
+            self.instant[m] = instantanea_mes(self.est, m, self.rutas.get(m))
+
     def pintar(self):
+        """Solo mueve widgets: todo lo que sabe del disco sale de instant."""
         for m, f in self.filas.items():
             rutas = self.rutas.get(m) or {e: None for e in ETAPAS}
             dg = self.diag.get(m) or {}
+            inst = (self.instant.get(m) or {}).get("etapas") or {}
             ests = []
             for etapa in ETAPAS:
-                st = estado_etapa(self.est, m, etapa, rutas)
+                foto = inst.get(etapa) or {}
+                st = foto.get("estado", "falta")
                 ests.append(st)
                 f["chips"][etapa].config(fg=COLORES["texto_estado"], bg=color_de(st))
                 r = rutas.get(etapa)
                 lr = f["lineas"][etapa]
                 msg = dg.get(etapa) or ""
-                if r and Path(r).is_file():
+                if r and foto.get("existe"):
                     lr.config(text=str(r) + (f"   ({msg})" if msg and not
                                              msg.startswith(str(Path(r).parent)) else ""),
                               fg=COLORES["enlace"])
@@ -1592,8 +1617,9 @@ class App:
                     lr.config(text=f"[sin archivo] {msg}".strip(), fg=COLORES["rojo"])
             reg = self.est.get(m) or {}
             hechas = [ETIQUETA[e] for e in ETAPAS if (reg.get(e) or {}).get("consolidado")]
+            hay_vista = (self.instant.get(m) or {}).get("vista", False)
             info = (f"consolidado: {', '.join(hechas) or '—'}"
-                    f"   |   vista: {'si' if path_vista(m).exists() else 'no'}")
+                    f"   |   vista: {'si' if hay_vista else 'no'}")
             if not mes_incluido(self.est, m):
                 info += "   |   FUERA del consolidado anual"
             f["inc"].set(mes_incluido(self.est, m))
@@ -1654,6 +1680,7 @@ class App:
                 self.log(f"  ERROR en {m} {ETIQUETA[etapa]}: {e}")
                 self.log(traceback.format_exc())
             self.set_progreso(value=i)
+            self.refrescar_instantaneas([m])
             self._llamar_en_ui(self.pintar)
         tol = self.tolerancia()
         for m in sorted(tocados):

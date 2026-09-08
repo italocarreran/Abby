@@ -154,6 +154,40 @@ class TestComparadores(unittest.TestCase):
             Path("d"),
         )
 
+    def test_cache_por_archivo_no_recalcula_si_no_cambio(self):
+        vueltas = []
+
+        def calcular(ruta):
+            vueltas.append(str(ruta))
+            return Path(ruta).read_text()
+
+        cache = comparadores.CachePorArchivo(calcular)
+        with tempfile.TemporaryDirectory() as tmp:
+            archivo = Path(tmp) / "datos.parquet"
+            archivo.write_text("uno")
+            self.assertEqual(cache(archivo), "uno")
+            self.assertEqual(cache(archivo), "uno")
+            self.assertEqual(len(vueltas), 1)   # la segunda salio de la cache
+
+    def test_cache_por_archivo_se_entera_si_el_archivo_cambio(self):
+        """Reescribir el parquet tiene que dar la respuesta nueva, sin invalidar
+        nada a mano: es lo que pasa despues de consolidar un mes."""
+        cache = comparadores.CachePorArchivo(lambda ruta: Path(ruta).read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            archivo = Path(tmp) / "datos.parquet"
+            archivo.write_text("viejo")
+            self.assertEqual(cache(archivo), "viejo")
+            archivo.write_text("nuevo y mas largo")
+            self.assertEqual(cache(archivo), "nuevo y mas largo")
+
+    def test_cache_por_archivo_delega_cuando_no_existe(self):
+        cache = comparadores.CachePorArchivo(lambda ruta: Path(ruta).exists())
+        with tempfile.TemporaryDirectory() as tmp:
+            archivo = Path(tmp) / "no_esta.parquet"
+            self.assertFalse(cache(archivo))
+            archivo.write_text("ahora si")
+            self.assertTrue(cache(archivo))
+
     def test_tabla_por_nombre(self):
         self.assertEqual(
             comparadores.tabla_por_nombre(["Central_Empresa"], ["central empresa"]),
