@@ -33,7 +33,7 @@ Convenciones de esta página:
 - [`__comun__/tema.py`](#__comun__temapy) — 130 líneas — Tema claro/oscuro compartido para las ventanas tkinter.
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
-- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 1916 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relqreemplazos-reucactualizaremplazospy) — 2064 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq/Revisor_Reliquidacion.py`](#revisor_relqrevisor_reliquidacionpy) — 3792 líneas — Revisor de entregables - CASO RELIQUIDACION
 - [`Revisor_Relq/actualizadores/Actualiza_Access_P9.py`](#revisor_relqactualizadoresactualiza_access_p9py) — 1095 líneas — Actualiza el Access de la planilla 9
 - [`Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`](#revisor_relqactualizadoresactualiza_cuadro0py) — 1004 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
@@ -553,6 +553,8 @@ Lee ``argv[1]`` o devuelve ``None`` para continuar en modo manual.
 | `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
 | `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
 | `PATRONES_AUXILIARES` | `('datos_reuc*.xlsx', 'Reemplazos forzados*.xlsx')` | Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la carpeta vieja quedo algo de verdad y no solo basura suelta. |
+| `SELECTORES_CORREO` | `tupla de 9 elementos: 'input[type="email"]', 'input[name*="email" i]', 'input[id*="email" i]', …` | Campos donde el acceso unificado pide el correo. |
+| `RE_CORREO` | `re.compile('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')` |  |
 
 ### Funciones
 
@@ -678,7 +680,11 @@ guardada en config). Si ahi no esta, cae de respaldo a Auxiliares REUC
 -- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
 dos uso, para que quede claro y no parezca que "no encuentra nada".
 
-#### `def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600, espera_descarga_seg=180)`
+#### `def correo_valido(texto)`
+
+Un correo con forma de correo. No valida que exista, solo el formato.
+
+#### `def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600, espera_descarga_seg=180, correo=None, al_detectar_correo=None)`
 
 Abre un navegador para que el usuario inicie sesion en REUC y, apenas
 la sesion queda confirmada, descarga los dos exports:
@@ -694,10 +700,16 @@ Flujo:
   2. Confirma la sesion con una peticion liviana.
   3. Descarga cada export UNA sola vez, esperando con paciencia.
 
+Correo: si viene uno recordado se escribe solo en el campo del login
+(sin pisar lo que la persona haya empezado a escribir) y el cursor queda
+en la clave. Si en cambio lo escribe ella, se avisa por
+``al_detectar_correo(correo)`` para poder recordarlo la proxima vez.
+
 Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
 navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
-La clave nunca pasa por este script: se escribe directamente en la
-pagina real de REUC, dentro del navegador.
+La CLAVE nunca pasa por este script ni se guarda en ninguna parte: se
+escribe directamente en la pagina real de REUC, dentro del navegador.
+Lo unico que se recuerda es el correo.
 
 Devuelve un dict {"reuc": Path, "reemplazos": Path}.
 

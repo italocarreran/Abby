@@ -54,6 +54,49 @@
       hay forma de ver si el resultado es realmente legible/prolijo.
 ---
 
+## 2026-09-08 — Claude — el REUC recuerda el correo (la clave no, nunca)
+
+Tercer pedido de la usuaria en la misma sesión: al apretar **"Actualizar data
+REUC"** se abre un navegador limpio, sin perfil ni cookies, así que el correo
+había que escribirlo entero cada vez y el autocompletar del navegador no existe.
+Ahora el correo se recuerda y se escribe solo en el campo del login.
+
+- Campo **"Correo REUC"** en la ventana, al lado del botón. Se guarda en
+  `reemplazos_reuc.json` con la clave `correo_reuc`, indexado por PC+usuario
+  como el resto (`__comun__/config.py`). Se guarda al salir del campo, con Enter
+  y al apretar el botón; a medio escribir no se guarda ni molesta con un cartel,
+  porque el foco se pierde muchas veces mientras se usa la ventana.
+- `descargar_reuc()` recibe `correo=` y lo escribe apenas aparece el campo.
+  Reintenta **en cada página** (el acceso unificado redirige un par de veces y
+  el campo puede aparecer recién en la última) y **nunca pisa** lo que la
+  persona empezó a escribir. Después de escribirlo manda un Tab, así queda el
+  cursor en la clave.
+- Si el correo lo escribe ella —la primera vez, o si lo cambió— se lee del
+  propio campo mientras se espera el login y se avisa por
+  `al_detectar_correo(...)`, que en la ventana viaja por la cola (leer o
+  escribir una variable de tkinter desde el hilo del navegador no se hace) y se
+  guarda. O sea: la primera vez se escribe a mano una sola vez y queda.
+- El campo del login no es nuestro y puede cambiar, así que no se depende de un
+  solo selector: `SELECTORES_CORREO` prueba nueve y usa el primero **visible**.
+  Cualquier excepción de Playwright ahí adentro se ignora: si no se pudo
+  escribir el correo, se sigue igual, que es lo que hacía antes.
+- **La clave nunca se guarda ni pasa por el script**, y el navegador se sigue
+  abriendo sin perfil ni cookies persistidas. Lo único que se recuerda es el
+  correo. Está dicho en la ventana, en el log y en el docstring.
+
+`test_auxiliares.py` pasó a llamarse **`test_actualiza_remplazos.py`**, porque
+ya no prueba solo la carpeta: son 16 casos (los 7 de la carpeta + 9 del correo),
+con un `<input>` y una página de mentira, así que corre sin Playwright ni
+navegador.
+
+**Probado:** `bash scripts/verificar.sh` en verde. Lo que **no** se pudo probar
+acá es lo único que importa de verdad: que los selectores le peguen al campo
+real del acceso unificado. Eso hay que verlo en Windows, con el navegador
+abierto: si el correo no aparece escrito, hay que mirar el `name`/`id` real del
+input y agregarlo a `SELECTORES_CORREO`.
+
+---
+
 ## 2026-09-08 — Claude — los auxiliares del REUC se mudan a `__config__`
 
 Segundo pedido de la usuaria en la misma sesión. `ActualizaRemplazos.py` tenía

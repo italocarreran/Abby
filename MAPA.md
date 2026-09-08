@@ -362,6 +362,12 @@ para Excel y demás resultados entregables.
 - **Expone:** —
 - **Depende de:** `pandas`, `xlwings` y `playwright` (este último opcional). Su
   **propio** `reemplazos_reuc.json`, en `__config__/`, no el compartido.
+- **Correo del REUC:** se guarda en `reemplazos_reuc.json` (clave `correo_reuc`,
+  por PC+usuario) y se escribe solo en el campo del login cuando se abre el
+  navegador, sin pisar lo que la persona haya empezado a escribir; si lo escribe
+  ella, queda recordado para la próxima. **La clave nunca se guarda ni pasa por
+  el script:** se escribe en la página real del REUC, dentro del navegador, que
+  además sigue abriéndose sin perfil ni cookies persistidas.
 - **Carpeta de auxiliares:** `__config__/Auxiliares REUC/`, compartida por todos
   los usuarios: ahí caen los `datos_reuc_*` descargados y ahí se busca
   `Reemplazos forzados*`. Antes estaba al lado del `.py`
