@@ -17,6 +17,9 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **Comparador de etapas: se cerró solo al consolidar un mes** (2026-10-01).
+      Causa desconocida, probablemente una caída nativa. Pedir a la usuaria el
+      final de `__config__/_comparador_etapas.log` después de reproducirlo.
 - [ ] **Validar el Revisor modularizado de punta a punta en Windows con un mes
       real:** arranque de la ventana, árbol completo, V4…V17, OOXML y fallback
       Excel, lectura Access, estado/caché, lanzamiento de un actualizador e
@@ -48,6 +51,47 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+---
+
+## 2026-10-01 — Claude — el comparador de etapas deja registro en archivo
+
+Al consolidar un mes la usuaria vio los avisos de `read_sql` y **la ventana se
+cerró sola**, sin que alcanzara a leer el log. Un aviso no cierra nada, y los
+errores de Python en el hilo de consolidación ya se capturan y se muestran en
+el log. Si la ventana se cerró, lo más probable es que el proceso se haya
+caído en código nativo (driver ODBC de Access, pyarrow o duckdb), y eso no
+deja ninguna traza. **La causa sigue sin conocerse.**
+
+Para poder verla la próxima vez, `Comparador_Etapas.py` ahora escribe
+`__config__/_comparador_etapas.log`, que se rota a `.1` al pasar los 2 MB:
+- cada línea del log de la ventana (`App.log`), con la hora;
+- `faulthandler` con la pila de todos los hilos si el proceso se cae en código
+  nativo;
+- `threading.excepthook`, `sys.excepthook` y `report_callback_exception` de Tk.
+
+Pendiente: que la usuaria vuelva a consolidar el mes y mande el final de
+ese archivo. Con eso se ve en qué paso murió (lectura del .mdb, escritura del
+parquet o armado de la vista).
+
+---
+
+## 2026-10-01 — Claude — se silencia el aviso de pandas al consolidar en el comparador de etapas
+
+La usuaria vio, al consolidar un mes en `Comparadores/Comparador_Etapas.py`,
+cuatro `UserWarning: pandas only supports SQLAlchemy connectable ...` (líneas
+de `pd.read_sql` en `leer_sobrecostos` y `leer_centrales`). **No era un error:**
+pandas avisa cada vez que recibe una conexión pyodbc cruda, pero la lectura
+contra Access funciona igual. Pasar a SQLAlchemy no conviene: no hay un
+dialecto Access confiable.
+
+Se agregó un `warnings.filterwarnings` que ignora **solo ese mensaje** (no los
+`UserWarning` en general), junto a los cargadores perezosos. No cambia lo que
+se lee ni cómo. `Prorratear.py` y `Carga_Retiros.py` también usan `read_sql`
+con pyodbc y darían el mismo aviso; no se tocaron porque no lo reportó.
+
+Pendiente: nada. Si el consolidado de ese mes sí falló por otra causa, el
+aviso no lo explica — habría que ver el resto del log.
+
 ---
 
 ## 2026-09-08 — Claude — los comparadores dejan de tocar el disco al pintar

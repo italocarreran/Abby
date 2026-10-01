@@ -40,6 +40,7 @@ Requiere: pyodbc, pandas, pyarrow, duckdb, xlsxwriter
             arquitectura (32/64 bits) que el Python que lo ejecuta.
 """
 
+import faulthandler
 import json
 import importlib
 import importlib.util
@@ -53,6 +54,7 @@ import threading
 import time
 import traceback
 import unicodedata
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -135,6 +137,16 @@ pa = _Perezoso("pyarrow")
 pq = _Perezoso("pyarrow.parquet")
 xlsxwriter = _Perezoso("xlsxwriter")
 pyodbc = _Perezoso("pyodbc")
+
+# pd.read_sql con una conexion pyodbc cruda avisa "pandas only supports
+# SQLAlchemy connectable..." en cada lectura. Es solo un aviso: la lectura
+# contra Access funciona bien y SQLAlchemy no tiene un dialecto Access fiable.
+# Se silencia ESE aviso puntual, no los UserWarning en general.
+warnings.filterwarnings(
+    "ignore",
+    message=r"pandas only supports SQLAlchemy connectable",
+    category=UserWarning,
+)
 
 
 # ==========================================================================
@@ -242,6 +254,66 @@ def estado_path(anio):
 
 def rutas_path(anio):
     return cdir(anio) / "rutas.json"
+
+
+# ==========================================================================
+# Registro a archivo: lo que la ventana muestra, mas cualquier caida
+# ==========================================================================
+# El log de la ventana muere con la ventana. Si el proceso se cae de golpe
+# (driver de Access, pyarrow o duckdb revientan en codigo nativo) la ventana
+# se cierra sin traza. Por eso cada linea del log se copia tambien aca, y
+# faulthandler escribe en el mismo archivo la pila de TODOS los hilos si el
+# proceso muere por una falla nativa. Vive en __config__/ (no es un
+# resultado) y se rota a .1 al pasar de TOPE_LOG.
+LOG_ARCHIVO = CONFIG_RAIZ / "_comparador_etapas.log"
+TOPE_LOG = 2 * 1024 * 1024
+_log_lock = threading.Lock()
+_log_fh = None
+
+
+def abrir_log_archivo():
+    """Abre el registro (append) y engancha faulthandler y los excepthook."""
+    global _log_fh
+    try:
+        LOG_ARCHIVO.parent.mkdir(parents=True, exist_ok=True)
+        if LOG_ARCHIVO.is_file() and LOG_ARCHIVO.stat().st_size > TOPE_LOG:
+            os.replace(LOG_ARCHIVO, LOG_ARCHIVO.with_name(LOG_ARCHIVO.name + ".1"))
+        _log_fh = open(LOG_ARCHIVO, "a", encoding="utf-8", buffering=1)
+    except OSError:
+        _log_fh = None
+        return
+    escribir_log_archivo(f"===== inicio {datetime.now():%Y-%m-%d %H:%M:%S} · "
+                         f"pid {os.getpid()} · Python {sys.version.split()[0]} =====")
+    # Caida nativa (access violation y similares): pila de todos los hilos.
+    faulthandler.enable(file=_log_fh, all_threads=True)
+
+    def _hilo(args):
+        if args.exc_type is SystemExit:
+            return
+        escribir_log_archivo(
+            f"EXCEPCION NO CAPTURADA en hilo {args.thread.name if args.thread else '?'}:\n"
+            + "".join(traceback.format_exception(args.exc_type, args.exc_value,
+                                                 args.exc_traceback)))
+    threading.excepthook = _hilo
+
+    previo = sys.excepthook
+
+    def _principal(tipo, valor, tb):
+        escribir_log_archivo("EXCEPCION NO CAPTURADA:\n"
+                             + "".join(traceback.format_exception(tipo, valor, tb)))
+        previo(tipo, valor, tb)
+    sys.excepthook = _principal
+
+
+def escribir_log_archivo(msg):
+    if _log_fh is None:
+        return
+    try:
+        with _log_lock:
+            _log_fh.write(f"{datetime.now():%H:%M:%S} {msg}\n")
+            _log_fh.flush()
+    except (OSError, ValueError):
+        pass
 
 # Clave nueva y propia dentro del JSON de traspaso del revisor. Se agrega sin
 # tocar nada de lo que ya hay, para no romper a los otros scripts.
@@ -1707,6 +1779,8 @@ class App:
             self.log("  ! Sin driver de Access no se puede leer ningun .mdb. "
                      "Revisa que Python y Office sean de la misma arquitectura.")
         self.log(f"Carpeta base: {BASE}")
+        if _log_fh is not None:
+            self.log(f"Registro de esta corrida: {LOG_ARCHIVO}")
         self.pintar_actual()
         if self.var_anio.get():
             self.refrescar()
@@ -1858,6 +1932,7 @@ class App:
 
     # ---------------- log / estado ----------------
     def log(self, msg):
+        escribir_log_archivo(msg)
         self._puente_ui.log(msg)
 
     def _bombear_cola(self):
@@ -2392,7 +2467,16 @@ class App:
 
 
 def main():
+    abrir_log_archivo()
     root = tk.Tk()
+
+    # Un error en un callback de Tk se imprime en la consola y nada mas; con
+    # pythonw no queda rastro. Se copia al registro.
+    def _callback_tk(tipo, valor, tb):
+        escribir_log_archivo("EXCEPCION en callback de Tk:\n"
+                             + "".join(traceback.format_exception(tipo, valor, tb)))
+        traceback.print_exception(tipo, valor, tb)
+    root.report_callback_exception = _callback_tk
     App(root)
     root.mainloop()
 
