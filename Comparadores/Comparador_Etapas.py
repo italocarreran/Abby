@@ -53,6 +53,7 @@ import threading
 import time
 import traceback
 import unicodedata
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -135,6 +136,16 @@ pa = _Perezoso("pyarrow")
 pq = _Perezoso("pyarrow.parquet")
 xlsxwriter = _Perezoso("xlsxwriter")
 pyodbc = _Perezoso("pyodbc")
+
+# pd.read_sql con una conexion pyodbc cruda avisa "pandas only supports
+# SQLAlchemy connectable..." en cada lectura. Es solo un aviso: la lectura
+# contra Access funciona bien y SQLAlchemy no tiene un dialecto Access fiable.
+# Se silencia ESE aviso puntual, no los UserWarning en general.
+warnings.filterwarnings(
+    "ignore",
+    message=r"pandas only supports SQLAlchemy connectable",
+    category=UserWarning,
+)
 
 
 # ==========================================================================

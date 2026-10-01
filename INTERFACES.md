@@ -47,7 +47,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2401 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2412 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
 
 
@@ -2277,7 +2277,7 @@ Corre una comprobacion y devuelve un dict con su resultado.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `warnings`
 
 ### Constantes
 

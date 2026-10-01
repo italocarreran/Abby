@@ -50,6 +50,25 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-01 — Claude — se silencia el aviso de pandas al consolidar en el comparador de etapas
+
+La usuaria vio, al consolidar un mes en `Comparadores/Comparador_Etapas.py`,
+cuatro `UserWarning: pandas only supports SQLAlchemy connectable ...` (líneas
+de `pd.read_sql` en `leer_sobrecostos` y `leer_centrales`). **No era un error:**
+pandas avisa cada vez que recibe una conexión pyodbc cruda, pero la lectura
+contra Access funciona igual. Pasar a SQLAlchemy no conviene: no hay un
+dialecto Access confiable.
+
+Se agregó un `warnings.filterwarnings` que ignora **solo ese mensaje** (no los
+`UserWarning` en general), junto a los cargadores perezosos. No cambia lo que
+se lee ni cómo. `Prorratear.py` y `Carga_Retiros.py` también usan `read_sql`
+con pyodbc y darían el mismo aviso; no se tocaron porque no lo reportó.
+
+Pendiente: nada. Si el consolidado de ese mes sí falló por otra causa, el
+aviso no lo explica — habría que ver el resto del log.
+
+---
+
 ## 2026-09-08 — Claude — los comparadores dejan de tocar el disco al pintar
 
 La usuaria: correr el actualizador del consolidado tabulado va bien, pero
