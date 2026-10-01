@@ -47,7 +47,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2412 líneas — Comparador_Etapas.py
+- [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2485 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
 
 
@@ -2277,7 +2277,7 @@ Corre una comprobacion y devuelve un dict con su resultado.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `datetime`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `warnings`
+**Importa:** `datetime`, `faulthandler`, `importlib`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `warnings`
 
 ### Constantes
 
@@ -2293,6 +2293,8 @@ Corre una comprobacion y devuelve un dict con su resultado.
 | `CONFIG_RAIZ` | `_sal.raiz_config(BASE)` |  |
 | `CONFIG_PATH` | `CONFIG_RAIZ / 'config.json'` |  |
 | `SALIDAS` | `_sal.raiz_salidas(BASE)` |  |
+| `LOG_ARCHIVO` | `CONFIG_RAIZ / '_comparador_etapas.log'` | Registro a archivo: lo que la ventana muestra, mas cualquier caida El log de la ventana muere con la ventana. |
+| `TOPE_LOG` | `2 * 1024 * 1024` |  |
 | `CLAVE_JSON_PROPIA` | `'comparador_etapas'` | Clave nueva y propia dentro del JSON de traspaso del revisor. |
 | `NOMBRE_JSON_MES` | `'_traspaso_actualizador.json'` |  |
 | `ETAPAS` | `['def', 'rpre', 'rdef']` |  |
@@ -2390,6 +2392,12 @@ Se comporta como el modulo: pd.DataFrame, duckdb.connect, etc.
 #### `def estado_path(anio)`
 
 #### `def rutas_path(anio)`
+
+#### `def abrir_log_archivo()`
+
+Abre el registro (append) y engancha faulthandler y los excepthook.
+
+#### `def escribir_log_archivo(msg)`
 
 #### `def leer_json(path, defecto=None)`
 
