@@ -191,6 +191,14 @@ MAPEO_SOBRECOSTOS_FD = [
 # Consolidado_Tabulado a la hoja SOBRECOSTOS) se saco: en el modo 15 minutos
 # el tabulado no existe.
 
+# Planilla 3, modo 15 minutos: en las tres hojas el bloque que se pega empieza
+# en la F (antes D / E / E). La forma de cada hoja, segun la usuaria:
+#   CPF_FD: A:D formula | E "CPF" en toda la columna | F:N se pega | P:R formula
+#   CSF_FD: A:B formula | C "CSF" | D:E formula | F:L se pega | N:O y Q:Y formula
+#   CTF_FD: A:B formula | C "CTF" | D:E formula | F:M se pega | O:Q y S:Z formula
+# El origen (SSCC_Desempeno) se lee igual que antes. La columna del rotulo fijo
+# (E en CPF, C en CSF/CTF) va con las de formula: como ellas, solo se limpia
+# lo que sobre abajo cuando el mes trae menos filas.
 MAPEO_P3_FD = [
     {
         "hoja_origen":    "CPF Horario",
@@ -198,10 +206,10 @@ MAPEO_P3_FD = [
         "fila_ini_origen": 12,
         "fila_det_origen": "B",
         "hoja_destino":   "CPF_FD",
-        "cols_destino":   [("D", "L")],
+        "cols_destino":   [("F", "N")],
         "fila_ini_destino": 9,
-        "fila_det_destino": "D",
-        "cols_formulas":  [("A", "B"), ("N", "P")],
+        "fila_det_destino": "F",
+        "cols_formulas":  [("A", "E"), ("P", "R")],
     },
     {
         "hoja_origen":    "CSF Horario",
@@ -209,10 +217,10 @@ MAPEO_P3_FD = [
         "fila_ini_origen": 12,
         "fila_det_origen": "B",
         "hoja_destino":   "CSF_FD",
-        "cols_destino":   [("E", "K")],
+        "cols_destino":   [("F", "L")],
         "fila_ini_destino": 9,
-        "fila_det_destino": "E",
-        "cols_formulas":  [("A", "D"), ("M", "N"), ("P", "X")],
+        "fila_det_destino": "F",
+        "cols_formulas":  [("A", "E"), ("N", "O"), ("Q", "Y")],
     },
     {
         "hoja_origen":    "CTF Horario",
@@ -220,10 +228,10 @@ MAPEO_P3_FD = [
         "fila_ini_origen": 12,
         "fila_det_origen": "B",
         "hoja_destino":   "CTF_FD",
-        "cols_destino":   [("E", "L")],
+        "cols_destino":   [("F", "M")],
         "fila_ini_destino": 9,
-        "fila_det_destino": "E",
-        "cols_formulas":  [("A", "D"), ("N", "P"), ("R", "Y")],
+        "fila_det_destino": "F",
+        "cols_formulas":  [("A", "E"), ("O", "Q"), ("S", "Z")],
     },
 ]
 

@@ -66,6 +66,27 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-22 — Claude — FD de la planilla 3 (15 min): el pegado empieza en la F
+
+En la planilla 3 de 15 minutos las hojas de FD se corrieron una columna. La
+usuaria dio la forma de cada una:
+
+- `CPF_FD`: A:D fórmula · E "CPF" · **F:N se pega** (antes D:L) · P:R fórmula
+- `CSF_FD`: A:B fórmula · C "CSF" · D:E fórmula · **F:L se pega** (antes E:K) · N:O y Q:Y fórmula
+- `CTF_FD`: A:B fórmula · C "CTF" · D:E fórmula · **F:M se pega** (antes E:L) · O:Q y S:Z fórmula
+
+Se cambió solo `MAPEO_P3_FD` de `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
+(destino, columna de detección y columnas de fórmula). El origen
+`SSCC_Desempeno` se lee igual (comprobado: los anchos de origen y destino
+coinciden, 9/7/8). En estos mapeos las columnas de fórmula **solo se limpian
+abajo, no se extienden** (no tienen `ajustar_formulas`); el rótulo fijo se
+sumó a ese grupo. La horaria no se tocó.
+
+Pendiente: no probado con Excel. La usuaria todavía no sabe si las planillas
+5 y 6 (y el Cálculo SSCC) cambiaron igual.
+
+---
+
 ## 2026-10-22 — Claude — la versión 15 minutos se muda a este repositorio
 
 La reliquidación pasa a calcular algunas cosas en bloques de 15 minutos. El

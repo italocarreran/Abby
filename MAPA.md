@@ -483,6 +483,12 @@ y el paquete `revisor/`, salvo lo indicado).
 - **Expone:** el parámetro `planilla` con valores `sc`, `p3`, `p5`, `p6`; es como lo
   llama el revisor desde cada fila.
 - **Depende de:** `config.json` (clave `carpeta_reliq`).
+- **Planilla 3, FD en 15 minutos:** en `CPF_FD`, `CSF_FD` y `CTF_FD` el
+  bloque pegado empieza en la **F** (`F:N`, `F:L`, `F:M`; antes `D:L`, `E:K`,
+  `E:L`). El origen se lee igual. Las columnas de fórmula y del rótulo fijo
+  (`CPF`/`CSF`/`CTF`) solo se limpian abajo, no se extienden: la planilla
+  tiene que traerlas hasta donde lleguen los datos. Las planillas 5 y 6 y el
+  Cálculo SSCC todavía no se revisaron.
 - **Detalles que importan:** la prorrata se transforma de tabla larga a matriz
   pivote y se pega desde `B8`; suministradores ordenados alfabéticamente,
   faltantes en 0. **Modo 15 minutos:** la columna A del origen es el bloque de
