@@ -37,7 +37,14 @@ from pathlib import Path
 # Carpetas que se recorren, en este orden. Las que no existan se saltan, y un
 # archivo ya visto no se repite: "scripts/comun" va primero solo para que el
 # modulo compartido quede arriba en el indice.
-CARPETAS = ["__comun__", "Revisor_Relq", "Comparadores"]
+CARPETAS = ["__comun__", "Revisor_Relq", "Revisor_Relq_15min", "Comparadores"]
+
+# Las dos versiones del Revisor (horaria y 15 minutos) viven lado a lado y
+# comparten __comun__/ y Comparadores/. Que una constante este en las dos es
+# esperable: la de 15 minutos nacio como copia. Las duplicadas se buscan DENTRO
+# de cada version (cada una con lo compartido), no entre ellas.
+VERSIONES = {"Revisor_Relq": "Revisor_Relq_15min",
+             "Revisor_Relq_15min": "Revisor_Relq"}
 
 # Archivos que nunca entran a INTERFACES.md. __init__.py de un paquete
 # es solo el "que es esta carpeta"; su contenido ya esta en MAPA.md.
@@ -581,11 +588,32 @@ def render(modulos: list[dict]) -> str:
 
 
 def constantes_duplicadas(modulos: list[dict]) -> list[tuple[str, list[str]]]:
+    """Constantes en mas de un archivo de una MISMA version (ver VERSIONES).
+    Una que solo se repite entre la horaria y la de 15 minutos no cuenta.
+    Un archivo que define dos veces la misma constante aparece dos veces, como
+    siempre: es justamente la trampa de la definicion que queda muerta."""
+    def carpeta(ruta: str) -> str:
+        return ruta.split("/", 1)[0]
+
     donde: dict[str, list[str]] = {}
     for m in modulos:
         for c in m["constantes"]:
             donde.setdefault(c["nombre"], []).append(m["ruta"])
-    return sorted((n, r) for n, r in donde.items() if len(r) > 1)
+    resultado = []
+    for nombre, rutas in donde.items():
+        visibles = [r for r in rutas
+                    if any(carpeta(r) != ajena for ajena in VERSIONES.values())]
+        # Se reporta si en alguna version (ella + lo compartido) hay mas de una.
+        dup = any(len([r for r in rutas if carpeta(r) != ajena]) > 1
+                  for ajena in VERSIONES.values())
+        if dup:
+            # Se muestran solo los archivos de las versiones donde se repite.
+            mostrar = [r for r in visibles
+                       if carpeta(r) not in VERSIONES
+                       or len([x for x in rutas
+                               if carpeta(x) != VERSIONES[carpeta(r)]]) > 1]
+            resultado.append((nombre, mostrar))
+    return sorted(resultado)
 
 
 def esqueleto_mapa(modulos: list[dict], raiz: Path) -> str:

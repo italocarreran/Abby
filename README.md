@@ -66,7 +66,18 @@ Revisor_Relq/                   ← CARPETA DEL REVISOR
 └── Reemplazos REUC/           el noveno; usa __config__/reemplazos_reuc.json
                             y __config__/Auxiliares REUC/ para sus insumos
     └── ActualizaRemplazos.py
+Revisor_Relq_15min/             ← VERSIÓN 15 MINUTOS (misma idea, hermana)
+├── Revisor_Reliquidacion_15min.py   es el que se abre para un mes de 15 min
+├── actualizadores/            Actualiza_datos, Actualiza_Cuadro0,
+│                              Actualiza_SC_CO, Carga_Retiros
+└── Reemplazos REUC/
 ```
+
+**Horario o 15 minutos:** cada mes es de un solo modo. Para un mes horario se
+abre `Revisor_Relq/Revisor_Reliquidacion.py`; para uno de 15 minutos,
+`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`. Las dos comparten
+`__comun__/`, `__config__/` y `00_Salidas/`; la de 15 minutos guarda sus ajustes
+dentro de `"modo_15min"` en `config.json`, así que no se pisan.
 
 Dos cosas que **no son un descuido** y no conviene reordenar a mano:
 

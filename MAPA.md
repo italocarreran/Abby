@@ -38,7 +38,19 @@ Revisor_Relq/
 └── Reemplazos REUC/               usa __config__/reemplazos_reuc.json
                                    y __config__/Auxiliares REUC/
     └── ActualizaRemplazos.py
+Revisor_Relq_15min/                la versión 15 minutos (ver su sección, al final)
+├── Revisor_Reliquidacion_15min.py
+├── revisor/
+├── actualizadores/                Actualiza_datos, Actualiza_Cuadro0,
+│                                  Actualiza_SC_CO, Carga_Retiros
+└── Reemplazos REUC/
 ```
+
+**Dos versiones, una raíz.** `Revisor_Relq/` es la reliquidación **horaria** y
+`Revisor_Relq_15min/` la de **bloques de 15 minutos**. Comparten `__comun__/`,
+`__config__/`, `00_Salidas/` y `Comparadores/`. Todo lo que sigue hasta "El
+módulo común" describe la horaria; la de 15 minutos tiene su propia sección al
+final de este archivo, con lo que cambia respecto de la horaria.
 
 `__config__/config.json` es **compartido** entre el Revisor, los 8
 actualizadores y los comparadores. El noveno usa `__config__/reemplazos_reuc.json`
@@ -385,6 +397,105 @@ para Excel y demás resultados entregables.
   empresas por $6.000 salían como $3.000). El mapa se aplica dos veces, así que un
   `Reemplazante` que sea a la vez `Reemplazada` salta dos escalones; el script lo
   avisa en el log.
+
+---
+
+## Versión 15 minutos — `Revisor_Relq_15min/`
+
+Nació como copia de `Revisor_Relq/` (2026-10-22) y se adapta de a poco, a
+medida que la usuaria necesita cada actualizador. **Lo que no se describe acá
+es igual que en la horaria** (Cuadro0, SC_CO, Carga_Retiros, ActualizaRemplazos
+y el paquete `revisor/`, salvo lo indicado).
+
+- **Lo que no existe en 15 minutos y se sacó:** detalles diarios, CCA, 02
+  Consolidado_Tabulado y las tres bases Access, con sus nodos, las
+  verificaciones V4, V5, V6, V12 y V17, y los actualizadores
+  `Actualiza_Data_Access`, `Actualiza_Energia`, `Actualiza_Access_P9` y
+  `Prorratear`.
+- **Config propio:** los seis scripts de esta versión leen y escriben
+  `config.json` y `reemplazos_reuc.json` **solo dentro de la clave
+  `"modo_15min"`**, con la misma forma que el archivo entero. Lo de afuera es
+  de la horaria. Está en los envoltorios de cada script (`SECCION_CONFIG`), no
+  en `__comun__/`. Lo comprueba `Revisor_Relq_15min/revisor/test_seccion_config.py`.
+- **Carpetas por mes compartidas:** `__config__/AAAA/MM Mes` y
+  `00_Salidas/AAAA/MM Mes` son las mismas para las dos versiones; no chocan
+  porque un mes es de un solo modo.
+- **Comparadores:** siguen siendo de la horaria y buscan
+  `Revisor_Reliquidacion.py`, o sea `Revisor_Relq/`.
+- **Pendiente** (ver `BITACORA.md`): qué reemplaza el "Traer Consolidado", el
+  `Prorratear` y las comprobaciones contra los `.mdb`.
+
+### `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
+
+- **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,
+  verifica por fecha de modificación (copias contra sus maestros) y por valores
+  (V7…V16, con cadena de dependencias entre verificaciones), y desde cada fila lanza
+  el actualizador que corresponde.
+- **Consume:** el árbol de `02 CASO RELIQUIDACION` + `FD/` (solo Excel y el
+  parquet de retiros; ya no hay `.mdb`), `config.json` (`carpeta_base`,
+  `ultimo_mes`, `carpetas_por_mes`, `_valores`).
+- **Produce:** `__config__/AAAA/MM Mes/` — estado, caché y
+  `_traspaso_actualizador.json`, que le pasa como único argumento al
+  actualizador que lanza. El CSV del CPRT va a `00_Salidas/`.
+- **Expone:** el JSON de traspaso (`origen`, `version`, `aamm`, `carpeta_reliq`,
+  `planilla`, `rutas`, `nodo`, `clave_nodo`, `ruta_nodo`; el `origen` sigue
+  siendo `"Revisor_Reliquidacion"`, es el contrato de `__comun__/traspaso.py`);
+  `plan_traer_maestro(nodo, ruta_copia, ruta_maestro, carpeta_copia)` separado
+  del ejecutor; `cache_directorios()` como context manager; `CENTRALES_EMBALSE`
+  (27); `UMBRAL_DESCUADRE_CPRT` (**1000.0**, no 500) y `UMBRAL_PAR_SEGURO`
+  (100.0); `TOLERANCIA` (1.0), `TOL_PAGO_EMPRESA` (150.0), `TOL_MTIME` (2 s);
+  `NODOS` (**25**) y `VERIFICADORES` (**9**: V7, V8, V9, V10, V11, V13, V14,
+  V15, V16).
+- **Depende de:** los 5 scripts que lanza, pero solo por línea de comandos — no
+  los importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**
+- **División interna:** `revisor/archivos.py` contiene la búsqueda y el caché
+  acotado de directorios; `revisor/estado.py` contiene estado mensual y caché
+  persistente, con sus dependencias inyectadas. El archivo principal conserva
+  todos los nombres históricos mediante imports o wrappers breves.
+- **Lo que se sacó en el modo 15 minutos:** el tipo de nodo `diarios` (y con él
+  `listar_diarios`, el botón «detalle» y la detección del mes por las fechas
+  AAAAMMDD), el tipo de valor `mdb` y sus lectores Access, y los tipos de
+  comprobación `sobrecosto_por_fila` (era V17) y `centrales_sin_dueno` (era
+  V12). V7 quedó solo con `M5 = 0`; V8 sin el `EE6 = SCAGC` del tabulado; V13
+  sin la suma del `Ocupar_este.mdb` y colgando de V9/V10/V11; V14 sin la suma
+  del `03b ENTRADA_SOB_SSCC.mdb` y colgando de V8.
+- **Detalles que importan:** la cadena del cuadro cero es ahora
+  `V16 -> V15 -> V14 -> V8` (y `V15 -> V13 -> V9/V10/V11`). El caché de
+  directorios está apagado por omisión y solo se enciende dentro del `with`,
+  porque `mtime()` se usa después para decidir si una verificación venció.
+  `cache_directorios` es una clase, no una función: al salir deja
+  `self.stats = (scans, hits)` para poder decir en la bitácora cuánto se ahorró.
+
+### `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
+
+- **Qué hace:** trae las hojas FD desde `SSCC_Desempeno*` y la prorrata de
+  retiros, a `Cálculo_SobrecostosSSCC` y a las planillas 3, 5 y 6. Dos opciones:
+  "Actualizar FD" y "Actualizar Prorrata" (esta última solo en 3/5/6). El "Traer
+  Consolidado" del modo horario se sacó junto con el tabulado.
+- **Consume:** `FD/SSCC_Desempeno*.xlsx|xlsm` (hojas `CT Diario`, `CPF Horario`,
+  `CSF Horario`, `CTF Horario`, desde la fila 12);
+  `04 Planilla 9/Prorrata_Retiros_*.xlsx`, hoja
+  `PRORRATA_HORARIA_TABULAR`.
+- **Produce:** escribe en `Cálculo_SobrecostosSSCC` (`FD_CT`, `FD_CPF`, `FD_CSF`,
+  `FD_CTF`, `FD_CSF_Disponibilidad`, `FD_CTF_Disponibilidad`) y en las
+  planillas 3/5/6 (`CPF_FD`, `CSF_FD`, `CTF_FD`, `FD_CPF`, `FD_CSF`, `FD_CTF`, `FD`,
+  `PRORRATA_RETIROS`).
+- **Expone:** el parámetro `planilla` con valores `sc`, `p3`, `p5`, `p6`; es como lo
+  llama el revisor desde cada fila.
+- **Depende de:** `config.json` (clave `carpeta_reliq`).
+- **Detalles que importan:** la prorrata se transforma de tabla larga a matriz
+  pivote y se pega desde `B8`; suministradores ordenados alfabéticamente,
+  faltantes en 0. **Modo 15 minutos:** la columna A del origen es el bloque de
+  15 minutos (hasta 2976 filas por mes, `MAX_FILAS_PRORRATA` = 2980 con el
+  cambio de hora). Antes de pegar se borra `B8:EC` hasta la fila más larga entre
+  la matriz vieja (columna B corrida) y la nueva — ya no hasta la 756 fija. Las
+  columnas siguen siendo `B:EC` porque a la derecha las planillas 5 y 6 tienen
+  bloques de montos. Si el origen trae 745 filas o menos avisa que parece
+  horario; si trae más de 2980, corta. Si no está la hoja
+  `PRORRATA_HORARIA_TABULAR` usa la única que tenga PRORRATA y TABULAR en el
+  nombre. Los `.xlsm` destino tienen que estar cerrados.
+  El motor `aplicar_mapeo` todavía acepta `filtro_col`, `detectar_fin_primera_vacia`
+  y `ajustar_formulas`, que hoy no usa ningún mapeo (los usaba el del tabulado).
 
 ---
 

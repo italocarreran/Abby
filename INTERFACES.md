@@ -47,6 +47,17 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
+- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2093 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3367 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 1029 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1340 líneas
+- [`Revisor_Relq_15min/actualizadores/Carga_Retiros.py`](#revisor_relq_15minactualizadorescarga_retirospy) — 875 líneas — Carga Retiros_h.parquet a SQL Server
+- [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
+- [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
+- [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 239 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
+- [`Revisor_Relq_15min/revisor/lectores.py`](#revisor_relq_15minrevisorlectorespy) — 691 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
+- [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1440 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2485 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
 
@@ -2258,6 +2269,1252 @@ Corre una comprobacion y devuelve un dict con su resultado.
 
 ---
 
+## `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`
+
+> ActualizaRemplazos.py
+>
+> Entradas (por ahora, en la carpeta desde donde se ejecuta el script):
+> "Reemplazos forzados.xlsx"                                      Copiar del ultimo mes reliquidado y confirmar
+> "datos_reuc_reemplazos_*.xlsx"                                  descargar de la pag REUC
+> "datos_reuc_*.xlsx"                                             descargar de la pag REUC
+> "Cuadros de Pago_Balances_SEN_*_Simplificado_def.xlsb"          de PLABACOM, el más actualizado
+> "1_CUADROS_PAGO_SSCC_*.xlsm"                                    del disco T, el más actualizado
+>
+> Archivo destino (se selecciona en la ventana):
+> "0_CUADROS_RELIQUIDACIÓN SSCC_*.xlsm"  -> el del mes que estamos trabajando.
+>
+> El programa:
+>   1. Genera el archivo de salida "Reemplazos_AAAAMMDD_SSCC.xlsx" (igual que antes).
+>   2. Escribe directamente en la hoja EMPRESAS del archivo destino:
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pandas`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_CONFIG` | `Path(__file__).resolve().parents[2] / '__config__'` | CONFIG POR PC/USUARIO La carpeta de auxiliares vive en __config__/, junto al resto de los datos intermedios del sistema, y es compartida por todos los usuarios. |
+| `NOMBRE_AUXILIARES` | `'Auxiliares REUC'` |  |
+| `CARPETA_AUXILIARES` | `DIR_CONFIG / NOMBRE_AUXILIARES` |  |
+| `CARPETA_AUXILIARES_LEGADO` | `Path(__file__).parent / 'Auxiliares'` | Donde estaba antes: al lado del .py. |
+| `CONFIG_PATH` | `DIR_CONFIG / 'reemplazos_reuc.json'` |  |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: reemplazos_reuc.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | UTILIDADES TRASPASO DESDE EL REVISOR El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
+| **— BÚSQUEDA EN DISCO COMPARTIDO (PLABACOM) —** | | |
+| `RAIZ_PLABACOM_DEFAULT` | `'T:\\Facturacion\\Plabacom'` |  |
+| `PATRON_BALANCES` | `'balances_sen.*simplificado.*\\.xlsb$'` | Se compara contra el nombre normalizado (minúsculas, sin tildes). |
+| **— BÚSQUEDA CONJUNTA: BALANCES SEN + 1_CUADROS_PAGO_SSCC —** | | |
+| `RAIZ_FACTURACION_DEFAULT` | `'T:\\Facturacion'` |  |
+| `NARANJO` | `'#d97706'` |  |
+| `PATRON_SSCC` | `'1_cuadros_pago_sscc.*\\.xlsm$'` |  |
+| `MESES_ES` | `lista de 12 elementos: 'enero', 'febrero', 'marzo', …` |  |
+| **— Verificación de coherencia nombre de archivo vs carpeta —** | | |
+| `MESES_ABR` | `dict de 13 claves: 'ene', 'feb', 'mar', …` |  |
+| **— DESCARGA AUTOMÁTICA DESDE REUC (playwright) —** | | |
+| `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
+| `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
+| `PATRONES_AUXILIARES` | `('datos_reuc*.xlsx', 'Reemplazos forzados*.xlsx')` | Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la carpeta vieja quedo algo de verdad y no solo basura suelta. |
+| `SELECTORES_CORREO` | `tupla de 9 elementos: 'input[type="email"]', 'input[name*="email" i]', 'input[id*="email" i]', …` | Campos donde el acceso unificado pide el correo. |
+| `RE_CORREO` | `re.compile('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')` |  |
+
+### Funciones
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def leer_traspaso(argv)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def buscar_archivo(ruta, patron)`
+
+Busca por glob y devuelve el más reciente (ignora temporales ~$).
+
+#### `def extraer_fecha(texto)`
+
+Busca una fecha tipo AAAAMMDD dentro de un string.
+
+#### `def extraer_fecha_aamm(texto)`
+
+Extrae fecha AAMM.
+
+#### `def fecha_aaaammdd_a_ddmmaaaa(aaaammdd)`
+
+'20260722' -> '22-07-2026'. Si no calza el formato, devuelve tal cual.
+
+#### `def col_letra_a_num(letra)`
+
+#### `def subcarpeta_que_contiene(carpeta, *fragmentos)`
+
+Devuelve la primera subcarpeta cuyo nombre normalizado contiene TODOS
+los fragmentos dados. Tolera tildes, mayúsculas y espacios de más.
+
+#### `def meses_hacia_atras(desde=None, cantidad=36)`
+
+Genera tuplas (año, mes) desde el mes actual hacia atrás.
+
+#### `def archivos_que_matchean(carpeta, patron)`
+
+#### `def archivo_en_carpeta_resultados(carpeta_version, aamm, patron_regex, log=None)`
+
+Dentro de "<version>/Publicar/01 Resultados_AAMM_.../" busca el archivo.
+Si no lo encuentra por esa ruta, hace una búsqueda recursiva de respaldo
+dentro de la carpeta de la versión. Devuelve la ruta o None.
+
+#### `def buscar_plabacom(raiz=RAIZ_PLABACOM_DEFAULT, patron_regex=PATRON_BALANCES, meses=36, log=None)`
+
+Recorre T:\Facturacion\Plabacom\<AAAA>\<AAMM>\<02 Definitivo | 01 Preliminar>
+         \Publicar\01 Resultados_AAMM_...\<archivo>
+
+Va del mes más reciente hacia atrás. En cada mes prueba primero
+"02 Definitivo" y luego "01 Preliminar". Devuelve (ruta, descripcion) o
+(None, mensaje de error).
+
+log: callback opcional para ver el detalle del recorrido.
+
+#### `def carpeta_mes_facturacion(raiz_facturacion, y, m)`
+
+T:\Facturacion\<AAAA>\<MM Mes>   (ej: 2026\06 Junio)
+Acepta que la carpeta se llame por número, por nombre, o ambos.
+
+#### `def buscar_sscc_en_version(carpeta_version, patron_regex=PATRON_SSCC, log=None)`
+
+Dentro de "<version>/SSCC/" busca 1_CUADROS_PAGO_SSCC_*.xlsm.
+
+#### `def aamm_desde_nombre(nombre)`
+
+Intenta sacar el AAMM del nombre del archivo. Reconoce dos formatos:
+  - "..._2606_..."          -> 2606
+  - "..._jun26_..."         -> 2606
+Devuelve None si no logra determinarlo.
+
+#### `def sufijo_desde_nombre(nombre)`
+
+Devuelve 'def', 'pre' o None según el sufijo del archivo.
+
+#### `def verificar_coherencia(ruta, aamm_carpeta, version_carpeta)`
+
+Compara el nombre del archivo contra la carpeta donde está.
+Devuelve una lista de avisos (vacía si todo calza).
+
+#### `def buscar_par_mensual(raiz_facturacion=RAIZ_FACTURACION_DEFAULT, meses=36, log=None)`
+
+Busca los DOS archivos exigiendo que vengan del MISMO mes y del MISMO
+proceso (Definitivo o Preliminar):
+
+    Balances SEN : <raiz>\Plabacom\<AAAA>\<AAMM>\<version>\Publicar\01 Resultados_...
+    SSCC         : <raiz>\<AAAA>\<MM Mes>\<version>\SSCC
+
+Recorre del mes más reciente hacia atrás. En cada mes prueba Definitivo y
+después Preliminar; solo acepta la combinación si ENCUENTRA LOS DOS.
+
+Devuelve (dict, info) o (None, mensaje).
+
+#### `def carpeta_auxiliares()`
+
+Carpeta ``__config__/Auxiliares REUC``. La crea si no existe.
+
+#### `def carpeta_datos_guardada(cfg)`
+
+Carpeta de datos del config, corrigiendo la que apunta a la carpeta vieja.
+
+Esto es lo unico que se migra solo: un texto en el JSON de config. Los
+archivos los mueve la persona (ver ``avisar_legado``).
+
+#### `def pendientes_en_legado()`
+
+Archivos de auxiliares que quedaron en la carpeta vieja, al lado del .py.
+
+#### `def avisar_legado(log=print)`
+
+Avisa que hay auxiliares en la carpeta vieja, al lado del .py.
+
+No se mueve nada solo: es la misma regla que el resto de ``__config__``,
+donde la migracion la hace la persona. Pero callarse tampoco sirve, porque
+desde afuera solo se ve que "no encuentra los archivos".
+
+#### `def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print)`
+
+Busca primero en carpeta_preferida (la que eligio el usuario o quedo
+guardada en config). Si ahi no esta, cae de respaldo a Auxiliares REUC
+-- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
+dos uso, para que quede claro y no parezca que "no encuentra nada".
+
+#### `def correo_valido(texto)`
+
+Un correo con forma de correo. No valida que exista, solo el formato.
+
+#### `def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600, espera_descarga_seg=180, correo=None, al_detectar_correo=None)`
+
+Abre un navegador para que el usuario inicie sesion en REUC y, apenas
+la sesion queda confirmada, descarga los dos exports:
+  - datos_reuc_*.xlsx               (exportar_reuc)
+  - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
+
+Los guarda en la carpeta de auxiliares (por defecto
+``__config__/Auxiliares REUC``, compartida por todos los usuarios).
+
+Flujo:
+  1. Espera a que el usuario termine el login (el acceso unificado
+     rebota entre dominios; solo se acepta la URL de REUC misma).
+  2. Confirma la sesion con una peticion liviana.
+  3. Descarga cada export UNA sola vez, esperando con paciencia.
+
+Correo: si viene uno recordado se escribe solo en el campo del login
+(sin pisar lo que la persona haya empezado a escribir) y el cursor queda
+en la clave. Si en cambio lo escribe ella, se avisa por
+``al_detectar_correo(correo)`` para poder recordarlo la proxima vez.
+
+Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
+navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
+La CLAVE nunca pasa por este script ni se guarda en ninguna parte: se
+escribe directamente en la pagina real de REUC, dentro del navegador.
+Lo unico que se recuerda es el correo.
+
+Devuelve un dict {"reuc": Path, "reemplazos": Path}.
+
+#### `def ultima_fila(sheet, col_letra, desde)`
+
+Última fila con contenido en una columna (considera fórmulas).
+
+#### `def procesar_datos(carpeta_datos, archivo_cuadros, archivo_xlsb=None, archivo_xlsm=None, log=print)`
+
+Devuelve un dict con los DataFrames que se usan tanto para el archivo
+de salida como para escribir en el archivo destino.
+
+archivo_xlsb / archivo_xlsm: rutas explícitas (disco compartido). Si vienen
+en None, se buscan en la carpeta de datos como respaldo.
+
+#### `def carpeta_reemplazos_reuc(ruta_destino)`
+
+Dos niveles por encima de la carpeta del "0_CUADROS_RELIQUIDACION":
+
+    ...\SSCC\02 CASO RELIQUIDACION\00 Entregables\0_CUADROS_...xlsm
+         ^-- aca se crea "Reemplazos REUC"
+
+O sea: <carpeta del archivo>.parents[2] / "Reemplazos REUC".
+
+#### `def respaldar_fuentes(datos, carpeta, log=print)`
+
+Copia a "Reemplazos REUC" los archivos que se usaron para armar el
+resultado, para que quede todo junto y trazable. Si ya existen, se
+reemplazan.
+
+#### `def generar_archivo_salida(datos, carpeta_salida, log=print)`
+
+#### `def escribir_en_destino(ruta_destino, datos, log=print, dejar_abierto=True)`
+
+Hoja EMPRESAS del archivo destino:
+  B:C -> EMPRESA / RUT           (desde df_salida)
+  H:I -> Reemplazada / Reemplazante  (reemplazos válidos + forzados)
+Fila 1 = encabezado en ambos bloques. Se limpia el contenido antes de pegar,
+manteniendo el formato de las celdas.
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
+
+> Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+> Ventana que replica la estructura de carpetas de "02 CASO RELIQUIDACION" y permite:
+>
+>   * ACTUALIZAR  -> ubica todos los archivos, compara copias contra su maestro por
+>                    fecha y hora de modificacion (pinta AMARILLO las copias
+>                    desactualizadas, ROJO lo que falta) y revisa la vigencia de
+>                    las verificaciones de valores.
+>   * VERIFICAR   -> boton por archivo que compara sumas de sobrecostos entre
+>                    archivos (.xlsm / .xlsx) y deja registrada la verificacion
+>                    con su fecha y las fechas de modificacion de sus dependencias.
+>
+> Modo 15 minutos: no hay detalles diarios, CCA, 02 Consolidado_Tabulado ni
+> bases Access. El arbol, las verificaciones y los actualizadores ya no los
+> incluyen.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `csv`, `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_RAIZ_CODIGO` | `Path(__file__).resolve().parent.parent` |  |
+| `TOLERANCIA` | `1.0` |  |
+| `UMBRAL_DESCUADRE_CPRT` | `1000.0` | Residuo maximo aceptado en el descuadre del cuadro de pago (CPRT!I3). |
+| `TOL_PAGO_EMPRESA` | `150.0` | Diferencia maxima aceptada al comparar el pago por empresa y concepto entre la planilla 1 y la 9 (o la 4). |
+| `TOTALES_PRORRATA` | `(1.0, 100.0)` | Las filas de prorrata suman el 100%, escrito como 1 o como 100 segun la planilla. |
+| `TOL_PRORRATA` | `0.0001` |  |
+| `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
+| `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
+| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
+| `VALORES` | `dict de 38 claves: 'PAGO_M5', 'SSCC_H1', 'DESCUADRE_CPRT', …` |  |
+| `VERIFICADORES` | `dict de 9 claves: 'V8', 'V9', 'V10', …` |  |
+| `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
+| `NODOS` | `lista de 25 elementos: dict(id='c_fd', tipo='carpeta', pref='', texto='../FD/          « ORIGEN — fuera de 02 CASO RELIQUIDACION »'), dict(id='a_sscc_desempeno', tipo='archivo', pref='    └── ', texto='SSCC_Desempeno*.xlsx\|xlsm   (origen de las hojas FD)', carpeta=['FD'], sube=True, solo_info=True, patron='^sscc_desempeno', ext=XL, espejo=None), dict(id='c_ent', tipo='carpeta', pref='├── ', texto='00 Entregables/'), …` |  |
+| `NODO_POR_ID` | `{n['id']: n for n in NODOS}` |  |
+| `ACTUALIZADORES` | `dict de 6 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_retiros_parq', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita. |
+| `CLAVES_TRASPASO` | `dict de 11 claves: 'a_sscc_desempeno', 'a_prorrata', 'a_calc_sscc_01', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
+| `ARCHIVO_TRASPASO` | `'_traspaso_actualizador.json'` |  |
+| `TRASPASO_VERSION` | `_traspaso.VERSION_ACTUAL` |  |
+| `ACCIONES_INTERNAS` | `{'a_0_cuadros': [('Exportar CPRT', '_exportar_cprt')]}` | Acciones que corren DENTRO del revisor, sin lanzar otro proceso. |
+| `C_OK` | `'#1a7f1a'` | colores |
+| `C_FALTA` | `'#c00000'` |  |
+| `C_AMARILLO` | `'#ffe600'` |  |
+| `C_VENCIDA` | `'#ff9900'` |  |
+| `C_GRIS` | `'#777777'` |  |
+| `C_NEUTRO` | `'SystemButtonFace'` |  |
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `DIR_RAIZ` | `DIR_SCRIPT.parent` |  |
+| `CONFIG_PATH` | `DIR_RAIZ / '__config__' / 'config.json'` |  |
+| `DIR_CONFIG` | `DIR_RAIZ / '__config__'` |  |
+| `DIR_SALIDAS` | `DIR_RAIZ / '00_Salidas'` |  |
+| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
+| `CACHE` | `CacheValores()` |  |
+| `ESTADO` | `Estado()` |  |
+| `C_LOG_MALO` | `'#c00000'` | Coloreado del log y del detalle Los mensajes ya vienen rotulados: ">>" es fallo, "OK" es bien, "?" es sin datos y ".." es "trabajando". |
+| `C_LOG_DUDA` | `'#b45309'` |  |
+| `C_LOG_BIEN` | `'#1d6b1d'` |  |
+| `_PALABRAS_MALO` | `tupla de 13 elementos: 'FALTA ', 'FALTA EL ARCHIVO', 'NO CUADRA', …` | Palabras que pintan la linea sin importar el bloque en que caiga. |
+| `_PALABRAS_DUDA` | `tupla de 10 elementos: 'OJO', 'AMARILLO', 'ADVERTENCIA', …` | Ojo: aca NO van "omitidas" ni "descartadas". |
+| `HOJA_CPRT` | `'CPRT'` | Exportar el CPRT a csv El cuadro cero trae en su hoja "CPRT" el cuadro de pago ya armado. |
+| `CPRT_FILAS_META` | `5` |  |
+| `CPRT_FILA_ENCABEZADO` | `6` |  |
+| `CPRT_N_CAMPOS` | `7` | El csv lleva 7 campos: A:F mas UNA columna de monto. |
+| `CPRT_COL_MONTO` | `8` |  |
+| `CPRT_ROTULO_DESDE_G` | `True` | El ROTULO de esa columna se sigue tomando de la G, o sea que el encabezado dice "Monto" y no "Monto retenido". |
+| `CPRT_CODIF` | `'cp1252'` |  |
+| `UMBRAL_PAR_SEGURO` | `100.0` | El cuadro de pagos: la matriz y la tabla dinamica CuadroPago arma en 01.SSCC_Recurso_Tecnico una matriz cruzada: N8 = "Pagan" O8:..8 = las empresas que RECIBEN N9:N.. |
+
+### Clases
+
+#### `class Estado(_Estado)`
+
+Compatibilidad histórica con las dependencias del punto de entrada.
+
+- `def __init__(self)`
+
+#### `class CacheValores(_CacheValores)`
+
+Compatibilidad histórica con las dependencias del punto de entrada.
+
+- `def __init__(self)`
+
+#### `class Revisor`
+
+- `def __init__(self, root)`
+- `def log(self, msg='')`
+- `def examinar(self)`
+- `def actualizar(self, motivo=None, solo_ids=None)` — Relee la carpeta: reubica los archivos, repinta fechas y recalcula la vigencia de las verificaciones.
+- `def estado_verificador(self, vid, _visitados=None)` — OK | VENCIDA | NO CUADRA | NO SE PUDO | SIN VERIFICAR.
+- `def configurar_valores(self)` — Ventana para indicar donde esta cada valor, sin editar el codigo.
+- `def ir_a_mes(self)` — Lleva TODA la ventana al mes escrito: cambia la carpeta del caso a la que se usó ese mes, recarga el árbol y su estado…
+- `def reiniciar_mes(self)` — Borra el estado y los valores guardados de un mes, para partir limpio.
+- `def ver_detalle_verificacion(self, vid)` — Totales, comprobaciones y bitácora de la última corrida.
+- `def ver_estado_mes(self)` — Abre el estado guardado del AAMM escrito en el cuadro.
+- `def verificar(self, vid)`
+- `def verificar_todo(self)`
+
+### Funciones
+
+#### `def dir_mes(aamm, crear=False)`
+
+00_Salidas/AAAA/MM Mes, hermana de Revisor_Relq.
+
+La logica vive en __comun__/salidas.py porque los comparadores tienen que armar
+exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
+
+#### `def dir_config_mes(aamm, crear=False)`
+
+__config__/AAAA/MM Mes para estado, cache y traspasos internos.
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def leer_valores_cfg()`
+
+La ubicacion de los valores es estructural, no por usuario: va en la
+clave compartida '_valores', DENTRO de la seccion de esta version (ver
+SECCION_CONFIG). Los '_valores' de afuera son los de la horaria.
+
+#### `def guardar_valores_cfg(clave, campos)`
+
+#### `def aplicar_valores_cfg()`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def detectar_aamm(rutas)`
+
+Deduce el AAMM reliquidado del sufijo _AAMM_ de los nombres de archivo
+(se queda con el mas repetido). Devuelve (aamm, motivo) o (None, motivo).
+En el modo horario habia un segundo intento con las fechas AAAAMMDD de los
+detalles diarios; en el modo 15 minutos esos archivos no existen.
+
+#### `def firma_verificador(vid)`
+
+Huella corta y estable de COMO esta definida una verificacion.
+
+Existe para que un resultado guardado con una definicion vieja no se muestre
+nunca como si fuera del chequeo actual. Si se cambian las hojas, columnas,
+filas o comprobaciones de un verificador, la huella cambia y el registro
+anterior se descarta en vez de quedar mostrando datos de rangos que ya no se
+leen (por ejemplo columnas que ni existen en la definicion nueva).
+
+#### `def partir_signo(clave)`
+
+En las listas de comprobaciones una clave puede llevar '-' delante para
+entrar con signo cambiado.  '-P4_L6' -> ('P4_L6', -1.0)
+
+#### `def huella_spec(spec)`
+
+Firma de QUE se lee de un archivo. Si cambia la hoja, la celda, la
+columna o el filtro, la huella cambia y el cache no aplica.
+
+#### `def leer_estado_mes(aamm)`
+
+Lee el estado de cualquier mes sin tocar el estado en uso.
+
+#### `def configurar_tags_log(widget)`
+
+Deja el widget listo para recibir lineas con color.
+
+#### `def clasificar_linea(linea, bloque=None)`
+
+(tag, bloque_nuevo) para una linea del log.
+
+bloque recuerda si venimos de un ">>" o de un "OK", para que las lineas
+indentadas que siguen hereden el color. Devolver el bloque permite pintar
+de a una linea (log en vivo) o una lista entera (ventana de detalle).
+
+#### `def insertar_con_color(widget, lineas, bloque=None)`
+
+Inserta lineas ya coloreadas. Devuelve el bloque en que quedo.
+
+#### `def exportar_cprt(ruta_xlsm, ruta_csv, log)`
+
+Escribe el csv del CPRT. Devuelve (n_filas_datos, n_con_retencion).
+
+#### `def columnas_de_fila(ruta, hoja, fila, log)`
+
+Letras de las columnas que tienen algo en esa fila, en orden.
+
+Existe para no poner un tope fijo de columnas. La matriz del cuadro de pagos
+tiene una columna por cada empresa que RECIBE, y eso cambia todos los meses:
+con un tope escrito a mano, el mes que se pase se pierden receptores en
+silencio y las verificaciones reportan faltantes que en realidad estan ahi.
+
+#### `def leer_matriz_pago(ruta, hoja, log, fila_enc=8, col_ini='N')`
+
+Lee la matriz cruzada. Devuelve dict con:
+    pagan     : {nombre: fila}
+    reciben   : {nombre: columna}
+    montos    : {(pagador, receptor): monto}
+    ultima_fila / ultima_col  (numero de columna)
+o None si no se pudo leer.
+
+Se descartan la fila y la columna de totales: CuadroPago escribe un "Total"
+al final de cada lado, y esos no son pares de pago.
+
+#### `def leer_nombre_definido(ruta, nombre)`
+
+El rango al que apunta un nombre definido, tal como esta guardado.
+Puede venir en A1 ($N$8:$T$89) o en R1C1 localizado (F8C14:F84C22).
+
+#### `def celdas_de_rango(texto)`
+
+(fila_fin, col_fin) del final de un rango, sea A1 o R1C1 localizado.
+Devuelve None si no se entiende.
+
+#### `def plan_traer_maestro(nodo, ruta_copia, ruta_maestro, carpeta_copia)`
+
+Arma la lista de operaciones, sin tocar el disco.
+
+Devuelve (acciones, avisos). Cada accion es
+    ("copiar"|"reemplazar"|"borrar", origen_o_None, destino, etiqueta)
+
+Se separa del ejecutor a proposito: asi se puede mostrar al usuario exactamente
+que se va a hacer ANTES de hacerlo, y se puede probar sin borrar nada.
+
+#### `def ids_de_verificacion(vid)`
+
+Nodos del arbol que un verificador necesita leer.
+
+Se usa para releer del disco SOLO lo que hace falta antes de verificar. En
+un disco de red la lectura completa del arbol se lleva su tiempo, y para
+verificar un archivo no aporta nada.
+
+Se juntan de todos lados para no dejar ninguno afuera: el archivo propio, los
+"depende", los archivos que nombra cada comprobacion (incluidos los anidados
+en referencia/lado_a/lado_b) y los de los VALORES que use.
+
+#### `def ids_de_verificaciones(vids)`
+
+Union de los nodos que necesitan varios verificadores, con sus previas.
+
+#### `def ultimo_significativo(datos, columna)`
+
+(fila, valor) del ultimo dato util de una columna, omitiendo vacios,
+ceros y errores. (None, None) si no hay ninguno.
+
+#### `def leer_valor_por_etiqueta(ruta, hoja, col_etiqueta, texto, col_valor, fila_inicio, log)`
+
+Busca la fila cuya col_etiqueta diga `texto` y devuelve el numero que hay
+en col_valor de esa misma fila. Sirve para tablas que cambian de largo: no
+importa en que fila quede el "Total general", se lo busca por el rotulo.
+Si aparece mas de una vez se usa la ULTIMA.
+
+#### `def leer_valor_excel(ruta, hoja, celda, log)`
+
+Lee una celda o la suma de un rango. Tres caminos, del mas rapido al mas
+lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
+
+#### `def obtener_hojas(ruta)`
+
+#### `def listar_hojas(ruta, log)`
+
+#### `def obtener_valor(clave, rutas, log, usar_cache=True)`
+
+#### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`
+
+> Actualiza Cuadro 0   (0_CUADROS_RELIQUIDACION SSCC)
+> ALCANCE: deja los DATOS y las FORMULAS al dia, nada mas.
+>     - pega la tabla del 1_CUADROS
+>     - la tasa de O2, si se le da una
+>     - reescribe las listas de empresas (K de la hoja #3, I de 01.SSCC)
+>     - estira o corta las formulas de L:P, R:U, A:G y J:K
+> NO llama a Cuadro de pagos, NO llama a Actualiza Rango y NO refresca la tabla
+> dinamica de CPRT: eso se hace a mano en Excel despues de correr esto. La
+> dinamica cuelga de una Power Query ("Consulta - TEE") que depende de un libro
+> externo, y automatizarla escondia los errores en vez de resolverlos.
+>
+> ES EL ARCHIVO QUE SE VA A PAGO, asi que cada paso queda escrito en el log con
+> lo que habia antes y lo que quedo despues.
+>
+> COMO ESTA ARMADO EL LIBRO  (lo que hay que entender antes de tocar nada)
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| **— Hojas y celdas —** | | |
+| `IDX_HOJA_3` | `2` |  |
+| `HOJA_SSCC` | `'01.SSCC_Recurso_Técnico'` |  |
+| `HOJA_ORIGEN_CUADRO1` | `'01.SSCC_Recurso_Técnico'` |  |
+| `CELDA_TASA` | `'O2'` |  |
+| `ORIGEN_TABLA` | `('I', 'K')` | Tabla que se pega del 1_CUADROS: I9:K de su hoja -> A5:C de la hoja #3 |
+| `ORIGEN_TABLA_FILA` | `9` |  |
+| `DESTINO_TABLA` | `('A', 'C')` |  |
+| `DESTINO_TABLA_FILA` | `5` |  |
+| `BLOQUES_TABLA` | `[('D', 'D')]` | La D de la hoja #3 es una formula que acompaña a la tabla A:C: D5 = B5 + C5 (el neto por empresa: lo que paga mas lo que recibe) O sea que su largo lo manda la TABLA PEGADA, no la lista K. |
+| `FILA_K` | `5` | --- Formulas que se escriben ---------------------------------------------- IMPORTANTE: por COM las formulas se escriben en INGLES y con COMA como separador, aunque en pantalla se vean en espanol con… |
+| `FORMULA_K` | `'=LET(x,UNIQUE(VSTACK(F{f}:F{tope},A{f}:A{tope})),FILTER(x,(x<>0)*(x<>"")))'` |  |
+| `TOPE_K` | `1000` |  |
+| `FILA_I` | `9` |  |
+| `FORMULA_I` | `'=LET(x,UNIQUE(C{f}:C{tope}),FILTER(x,(x<>0)*(x<>"")))'` |  |
+| `TOPE_I` | `4345` |  |
+| `BLOQUES` | `lista de 3 elementos: ('#3', 5, [('L', 'P'), ('R', 'U')], 'K'), ('SSCC', 9, [('A', 'G')], 'K'), ('SSCC', 9, [('J', 'K')], 'I'), …` | --- Bloques de formulas que hay que estirar o cortar ---------------------- (hoja, primera_fila, [(col_ini, col_fin), ...], que define el largo) "K" -> tantas filas como empresas haya en K de la hoja… |
+| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
+
+### Funciones
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def leer_tasa_guardada(cfg, aamm)`
+
+(valor, fecha) de la tasa guardada para ese mes, o (None, None).
+
+Se guarda POR MES a proposito: la tasa es del periodo. Guardada suelta, el
+mes siguiente arrastraria la del anterior sin que se note.
+
+#### `def guardar_tasa(aamm, valor)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+#### `def buscar_hoja(wb, nombre)`
+
+Busca la hoja tolerando tildes y mayusculas.
+
+#### `def col_num(letra)`
+
+#### `def ultima_fila(sh, col, desde=1)`
+
+Ultima fila con ALGO en la columna, mirando de abajo hacia arriba.
+Cuenta las cadenas vacias como contenido: para el desbordamiento un "" es
+tan estorbo como un numero.
+
+#### `def recalcular(app, log, motivo)`
+
+Recalcula UNA vez y dice cuanto tardo.
+
+El libro se queda en calculo MANUAL de punta a punta. Con automatico, cada
+AutoFill dispara un recalculo completo, y las formulas de aca son caras: L5
+es =SUMIF(A:A,K5,D:D), un SUMIF de COLUMNA ENTERA repetido por cada empresa,
+y J9/K9 evaluan su SUMIF dos veces (una en la condicion y otra en el
+resultado). Recalcular cuatro veces a proposito, en vez de una por cada
+escritura, es la diferencia entre segundos y minutos.
+
+Se cronometra y queda en el log: si algun mes se pone lento, se ve donde.
+
+#### `def fmt_tiempo(seg)`
+
+#### `def paso_pegar_tabla(sh1, sh3, log)`
+
+I9:K del cuadro 1 -> A5:C de la hoja #3. Solo valores.
+
+#### `def paso_tasa(sh3, valor, log)`
+
+#### `def paso_formula_desbordada(sh, celda, formula, col, fila, log, etiqueta)`
+
+Limpia la columna y escribe la formula. Devuelve la ultima fila ocupada.
+
+Limpiar PRIMERO es obligatorio: cualquier celda no vacia debajo hace que la
+formula desbordada tire #DESBORDAMIENTO, y al reliquidar el archivo llega
+con los datos del mes anterior.
+
+#### `def paso_estirar(sh, fila_ini, bloques, hasta, log)`
+
+Deja las formulas de esos bloques cubriendo exactamente hasta 'hasta'.
+
+#### `def paso_validar_signos(sh, log)`
+
+AVISO, no corta. Comprueba lo mismo que valida CuadroPago antes de armar
+la matriz: en la tabla I:K, todo numero de la columna J (paga) tiene que ser
+NEGATIVO y todo numero de la K (recibe) POSITIVO.
+
+Se avisa aca porque CuadroPago ATRAPA su propio error: muestra un MsgBox y
+sale con Exit Sub sin escribir la matriz. Corriendola a mano se ve el cartel,
+pero conviene saber de antemano si va a fallar. Devuelve True si esta OK.
+
+#### `def ejecutar(rutas, op, log, progreso)`
+
+Corre la secuencia completa. Lo unico opcional es la tasa, porque puede
+llegar al final del mes, y guardar.
+
+op: {"tasa": float o None para no tocarla, "guardar": bool}
+Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`
+
+> Actualiza la hoja "SC y CO" de la planilla 5_
+> Pega los SC y los CO de los EMBALSES, con su prorrata de instruccion directa.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Revisor_Reliquidacion_15min.py. |
+| **— Configuracion de origenes y destino —** | | |
+| `HOJA_DESTINO` | `'SC y CO'` |  |
+| `FILA_DESTINO` | `9` |  |
+| `COLS_ID` | `('C', 'G')` | Bloque de identificacion (C:G) y de prorrata (I:X), y las formulas (Y:AF). |
+| `COLS_PRO` | `('I', 'X')` |  |
+| `BLOQUES_FORMULA` | `[('Y', 'AB'), ('AD', 'AF')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a proposito. |
+| `COL_TIPO` | `'D'` |  |
+| `COL_CLAVE` | `'C'` |  |
+| `COL_CENTRAL` | `'E'` |  |
+| `N_ID` | `5` |  |
+| `N_PRO` | `16` |  |
+| `TIPO_SC` | `'SCCF'` |  |
+| `TIPO_CO` | `'CO'` |  |
+| `FUENTES` | `dict de 2 claves: 'SC', 'CO', …` |  |
+| `ORDEN` | `['SC', 'CO']` |  |
+| `RE_UNIDAD` | `re.compile('-\\d+\\s*$')` | Una central "-numero" que no este en la lista es sospechosa: el sufijo indica unidad, y las unidades son justamente lo que tienen los embalses. |
+| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
+
+### Funciones
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+#### `def buscar_hoja(wb, nombre)`
+
+#### `def col_num(letra)`
+
+#### `def col_letra(n)`
+
+#### `def ultima_fila(sh, col, desde=1)`
+
+#### `def fmt_tiempo(seg)`
+
+#### `def leer_fuente(app, ruta, cfg, log)`
+
+Devuelve (filas_id, filas_pro, avisos).
+
+filas_id: lista de listas de 5 valores (C:G). Si la fuente no trae la Clave
+          Año_Mes, el primer valor queda en None y se completa despues.
+filas_pro: lista de listas de 16 valores (I:X), alineada con filas_id.
+
+#### `def leer_bloque_destino(sh, tipo, log)`
+
+Lee del propio destino las filas de un tipo (SCCF o CO).
+
+Sirve para conservar el bloque que el usuario NO eligio actualizar: como los
+dos bloques van uno debajo del otro, hay que reescribirlos juntos.
+
+#### `def ejecutar(rutas, hacer, aamm_respaldo, log, progreso)`
+
+hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
+
+**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| **— Constantes configurables —** | | |
+| `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
+| `CONFIG_PATH` | `Path(__file__).resolve().parent.parent.parent / '__config__' / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` | ── Traspaso desde el Revisor ─────────────────────────────────────────────── El Revisor escribe un JSON en __config__/AAAA/MM Mes/ y pasa su ruta como argv[1]. |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
+| `MAPEO_SOBRECOSTOS_FD` | `lista de 6 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'D', 'hoja_destino': 'FD_CT', 'cols_destino': [('C', 'H')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B')]}, {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('C', 'K')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('B', 'B'), ('L', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('C', 'I')], 'fila_ini_destino': 12, 'fila_det_destino': 'C', 'cols_formulas': [('A', 'B'), ('J', 'M')]}, …` |  |
+| `MAPEO_P3_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CPF_FD', 'cols_destino': [('D', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'D', 'cols_formulas': [('A', 'B'), ('N', 'P')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CSF_FD', 'cols_destino': [('E', 'K')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('M', 'N'), ('P', 'X')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CTF_FD', 'cols_destino': [('E', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'E', 'cols_formulas': [('A', 'D'), ('N', 'P'), ('R', 'Y')]}, …` |  |
+| `MAPEO_P5_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('B', 'J')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CTF', 'cols_destino': [('B', 'I')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, …` |  |
+| `MAPEO_P6_FD` | `lista de 1 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('B', 'B'), ('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': []}, …` |  |
+| `BLOQUES_POR_HORA` | `4` | ── Configuración Prorrata (pivot tabla→matriz) ────────────────────────────── Origen: hoja PRORRATA_HORARIA_TABULAR, fila 2 en adelante Col A: Hora Mensual \| Col B: Suministrador \| Col C: Prorrata_ho… |
+| `MAX_FILAS_PRORRATA` | `31 * 24 * BLOQUES_POR_HORA + BLOQUES_POR_HORA` |  |
+| `PRORRATA_CONFIG` | `dict de 9 claves: 'hoja_origen', 'fila_ini_origen', 'col_hora', …` |  |
+
+### Funciones
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def leer_traspaso(argv)`
+
+**— Utilidades —**
+
+#### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
+
+#### `def buscar_sscc_desempeno(carpeta_reliq: Path) -> Path | None`
+
+FD está un nivel arriba de 02 CASO RELIQUIDACION.
+
+#### `def buscar_sobrecostos_xlsm(carpeta_reliq: Path) -> Path | None`
+
+#### `def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None`
+
+#### `def buscar_prorrata(carpeta_reliq: Path) -> Path | None`
+
+04 Planilla 9/Prorrata_Retiros_AAMM…
+
+**— Lógica xlwings —**
+
+#### `def col_letra_a_num(letra: str) -> int`
+
+#### `def expandir_cols(rangos: list) -> list`
+
+#### `def ultima_fila(sheet, col_letra: str, desde: int) -> int`
+
+Última fila con valor O fórmula en la columna, desde 'desde'.
+
+#### `def sheet_last_row_col(sheet, col_num: int, desde: int) -> int`
+
+Última fila con valor o fórmula en columna por número, desde 'desde'.
+
+#### `def ultima_fila_usedrange(sheet, fila_ini: int) -> int`
+
+Última fila usada en la hoja según UsedRange (incluye fórmulas y formatos).
+
+#### `def fmt_tiempo(segundos)`
+
+#### `def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func=None)`
+
+Aplica una lista de mapeos entre wb_o (origen) y wb_d (destino).
+
+#### `def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_func=None)`
+
+Transforma tabla larga (Hora,Suministrador,Valor) a matriz pivote en destino.
+
+#### `def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str, hacer_fd: bool, hacer_otro: bool, log_func=print, progreso_func=None, rutas: dict | None=None) -> tuple[bool, list]`
+
+planilla: 'sc' | 'p3' | 'p5' | 'p6'
+hacer_fd: actualizar FD
+hacer_otro: p3/p5/p6=Prorrata. En sc no hace nada: el "Traer Consolidado"
+            del modo horario se saco junto con el tabulado.
+rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
+       cual y NO se vuelve a buscar el archivo; las que falten caen al
+       buscar_* de siempre.
+Retorna (ok, lista_rutas_modificadas)
+
+**— Ventana —**
+
+#### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/actualizadores/Carga_Retiros.py`
+
+> Carga Retiros_h.parquet a SQL Server
+> Version con ventana del script original. Lo que hace es lo mismo:
+>     1. lee el parquet
+>     2. BORRA del servidor los periodos que trae el parquet (o la tabla entera)
+>     3. carga por trozos
+>     4. verifica que la cuenta cuadre
+>
+> ESTO ESCRIBE EN UNA BASE DE DATOS Y BORRA FILAS. Por eso:
+>   - antes de borrar muestra exactamente que va a borrar y pide confirmacion
+>   - hay un modo SOLO MIRAR que hace los conteos y no toca nada
+>   - todo queda en el log con las cuentas antes y despues
+>
+> SI FALLA A MITAD DE LA CARGA: el borrado ya se hizo y quedan filas a medias.
+> No es grave: volver a correrlo borra ese periodo otra vez y recarga. Lo que NO
+> hay que hacer es dejarlo asi, porque la tabla queda con datos incompletos.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
+| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
+| **— Configuracion —** | | |
+| `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
+| `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
+| `TABLA` | `'Retiros'` |  |
+| `SERVER` | `'SRV-DTE'` |  |
+| `DRIVER` | `'ODBC Driver 17 for SQL Server'` |  |
+| `BASES` | `['02_RETIROS', '14_RETIROS_RELIQUIDACION']` | Las bases entre las que se puede elegir. |
+| `CHUNK` | `50000` |  |
+| `LARGO_TEXTO` | `255` | Largo de las columnas de texto SI HAY QUE CREAR la tabla. |
+| `COL_PERIODO` | `'Clave Año_Mes'` | Los nombres de columna NO se escriben igual en todos lados: el parquet a veces trae "Clave Año_Mes" (con espacio y ñ) y a veces "Clave_Anio_Mes" o "Clave_anio_mes", y la tabla de SQL Server tiene el… |
+| `COL_SUMINISTRADOR` | `'Suministrador'` |  |
+| `COL_HORA` | `'Hora Mensual'` |  |
+| `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe. |
+| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
+| **— TRASPASO DESDE EL REVISOR —** | | |
+| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
+| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
+
+### Funciones
+
+#### `def resolver_columna(columnas, objetivo)`
+
+El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
+
+#### `def leer_config()`
+
+#### `def guardar_config(data)`
+
+#### `def abrir_en_explorador(ruta, es_archivo=False)`
+
+#### `def leer_traspaso(argv)`
+
+#### `def fmt_tiempo(seg)`
+
+#### `def fmt_n(n)`
+
+12345 -> '12.345'  (separador de miles chileno).
+
+#### `def buscar_parquet(carpeta_reliq)`
+
+El Retiros_h.parquet dentro de '04 Planilla 9'.
+
+#### `def aplicar_cambio_hora(df, col_hora, hora_cambio, log)`
+
+Empuja una hora hacia arriba todo lo que este DESDE hora_cambio.
+
+En el mes del cambio de primavera la hora `hora_cambio` no existe. Si el
+archivo viene corrido (1..719), lo que esta guardado como 145 es en realidad
+la 146, lo que esta como 146 es la 147, y asi. Sumando 1 desde ahi queda
+1..144 y 146..720, con la 145 ausente, que es lo correcto.
+
+Devuelve (df, aplicado, motivo).
+
+COMO SE DETECTA SI YA VIENE APLICADO: mirando si la hora del cambio EXISTE
+en los datos.
+  - si existe  -> todavia no se aplico, hay que empujar
+  - si no esta -> ya se aplico (o no hay retiros a esa hora), no se toca
+Es la comprobacion correcta porque el desplazamiento es justamente lo que
+deja ese hueco: no se puede aplicar dos veces sin que se note.
+
+#### `def ejecutar(ruta_parquet, base_datos, hora_cambio, log, progreso)`
+
+Carga el parquet en la tabla, vaciandola antes.
+
+hora_cambio: None, o la hora mensual del cambio de horario de primavera.
+Si viene, se empuja una hora todo lo que este desde ahi (ver
+aplicar_cambio_hora). El parquet NO se toca.
+
+Devuelve (ok, resumen).
+
+**— VENTANA —**
+
+#### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/revisor/archivos.py`
+
+> Búsqueda de carpetas y archivos con caché acotada a una relectura.
+>
+> Por qué existe el caché: una relectura completa hacía 68 recorridos de carpeta
+> para 13 carpetas distintas — cada nodo del árbol recorría la carpeta entera de
+> nuevo, y encima ``resolver_carpeta`` recorría la raíz una vez por nodo. En un
+> disco local no se nota; en la T: cada recorrido es un viaje de red y ahí está el
+> tiempo.
+>
+> Se usa ``os.scandir`` y no ``iterdir`` porque trae la fecha y el tamaño en el
+> mismo recorrido: con ``Path.iterdir`` + ``.stat()`` cada archivo cuesta un viaje
+> aparte.
+>
+> El caché está **apagado por omisión** y solo se enciende dentro de
+> ``with cache_directorios():``. Fuera de ahí todo lee del disco como siempre, que
+> es lo que hace falta para que ``mtime()`` no devuelva datos viejos cuando se
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `__comun__`, `datetime`, `os`, `pathlib`, `re`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `TOL_MTIME` | `2` | Segundos de tolerancia al comparar fechas de modificacion entre una copia y su maestro. |
+| `RE_COPIA` | `_archivos.PATRON_COPIA` |  |
+| `_DIR_CACHE` | `{'on': False, 'datos': {}, 'hits': 0, 'scans': 0}` | Apagado por omisión: fuera del context manager las fechas siempre vienen del disco. |
+
+### Clases
+
+#### `class cache_directorios`
+
+Enciende el caché durante un bloque y publica ``(scans, hits)`` al salir.
+
+
+### Funciones
+
+#### `def leer_dir(carpeta)`
+
+Obtiene el listado de una carpeta, usando el caché si está encendido.
+
+#### `def buscar_carpeta(base, nombre)`
+
+Busca una subcarpeta tolerando tildes, mayúsculas y espacios extra.
+
+#### `def resolver_carpeta(base, partes)`
+
+Resuelve partes sucesivas; cada una puede ofrecer nombres alternativos.
+
+#### `def buscar_archivo(carpeta, patron_regex, extensiones)`
+
+Devuelve el archivo original más reciente que coincide con el patrón.
+
+#### `def mtime(ruta)`
+
+Fecha de modificación, tomada del recorrido cuando el caché está activo.
+
+#### `def tamano(ruta)`
+
+Tamaño, tomado del recorrido cuando el caché está activo.
+
+#### `def fmt_fecha(ts)`
+
+#### `def iguales_mtime(a, b)`
+
+#### `def fmt_monto(valor)`
+
+
+---
+
+## `Revisor_Relq_15min/revisor/estado.py`
+
+> Persistencia del estado de verificaciones y del caché de valores.
+
+**Importa:** `datetime`, `json`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `ARCHIVO_ESTADO` | `'_revisor_verificaciones.json'` |  |
+| `ARCHIVO_CACHE` | `'_revisor_cache_valores.json'` |  |
+
+### Clases
+
+#### `class Estado`
+
+Verificaciones de un mes. Se guardan en ``__config__/AAAA/MM Mes``.
+
+Las rutas, la escritura y la firma se reciben explícitamente.
+
+- `def __init__(self, dir_mes, escribir_json, firma_verificador)`
+- `def cargar(self, aamm)`
+- `def existe(self)`
+- `def guardar(self)`
+- `def get(self, vid)`
+- `def vigente(self, vid)` — El registro guardado, si hay alguno.
+- `def firma_guardada_distinta(self, vid)` — True si hay un registro pero es de una definición anterior.
+- `def set(self, vid, registro)`
+
+#### `class CacheValores`
+
+Guarda el valor ya leído de cada origen junto con la ruta y la fecha de
+modificación del archivo. Si el archivo no cambió y se pide lo mismo, no se
+vuelve a abrir. Se guarda en ``__config__/AAAA/MM Mes`` entre ejecuciones.
+
+Las dependencias de disco las inyecta el punto de entrada.
+
+- `def __init__(self, dir_mes, escribir_json, mtime, tamano, fmt_fecha)`
+- `def cargar(self, aamm)`
+- `def guardar(self)`
+- `def obtener(self, clave, ruta, huella)`
+- `def poner(self, clave, ruta, huella, valor, filas=None)`
+- `def descartar(self, claves=None)`
+
+### Funciones
+
+#### `def leer_estado_mes(aamm, dir_mes)`
+
+Lee el estado de otro mes sin modificar la instancia activa.
+
+
+---
+
+## `Revisor_Relq_15min/revisor/lanzamiento.py`
+
+> Traspaso y lanzamiento de los actualizadores desde el Revisor.
+>
+> Las dependencias de UI, rutas y configuración se inyectan desde el punto de
+> entrada para que este módulo no lo importe ni forme ciclos.
+
+**Importa:** `pathlib`, `re`
+
+### Funciones
+
+#### `def configurar(dependencias)`
+
+Inyecta el espacio histórico del Revisor sin importar su ventana.
+
+#### `def bloqueado_para_escritura(self, ruta)`
+
+True si otro proceso tiene el archivo tomado y no se va a poder
+guardar. Es la prueba DIRECTA de lo que importa: se pide permiso de
+escritura y se cierra al instante, sin escribir ni un byte.
+
+Es mejor que mirar el "~$": Excel deja ese archivo huérfano cuando se
+cae o lo matan, y entonces el "~$" existe para siempre aunque el libro
+esté cerrado. Esta prueba, en cambio, dice la verdad de ahora.
+
+#### `def lock_excel(self, ruta)`
+
+Ruta del "~$" que Excel deja al lado del libro abierto, si existe.
+
+#### `def dueno_del_lock(self, lock)`
+
+Nombre de quien tiene el libro abierto. Excel lo guarda dentro del
+"~$": un byte con el largo y despues el nombre, a veces en ANSI y a
+veces en UTF-16. El formato no esta documentado, asi que esto es al
+mejor esfuerzo: si no se entiende se devuelve None y listo.
+
+#### `def armar_traspaso(self, aamm, planilla, nid=None)`
+
+JSON que reciben los actualizadores. Solo se escriben las rutas que
+el revisor pudo resolver; el actualizador tolera que falte alguna.
+
+nid: la fila DESDE LA QUE se apreto el boton. Hace falta cuando el mismo
+script cuelga de varias filas (en el modo horario, Prorratear estaba en los
+tres .mdb): sin esto el script no puede saber a cual le dieron y tiene que
+adivinar.
+Se manda el id del nodo y tambien la clave de su ruta, ya resuelta.
+
+#### `def lanzar_actualizador(self, nid, indice=0)`
+
+
+---
+
+## `Revisor_Relq_15min/revisor/lectores.py`
+
+> Adaptadores de lectura Excel usados por los verificadores del Revisor.
+>
+> Este módulo no conoce la ventana ni las reglas V4…V17. Conserva los fallbacks
+> openpyxl/xlwings y los diagnósticos OOXML del punto de entrada histórico.
+
+**Importa:** `__comun__`, `pathlib`, `re`, `revisor`, `sys`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `CACHE_COLUMNAS` | `{}` |  |
+| `NS_XL` | `_excel_xml.NS_XL` |  |
+| `NS_REL` | `_excel_xml.NS_REL` |  |
+
+### Funciones
+
+#### `def col_letra(n)`
+
+4 -> "D".  Al reves de col_letra_a_num.
+
+#### `def col_letra_a_num(letra)`
+
+#### `def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_filtro, log)`
+
+Suma una columna completa desde fila_inicio hacia abajo.
+Si se indica col_filtro, suma solo las filas cuyo valor de esa columna esta
+en valores_filtro (comparacion sin tildes ni mayusculas).
+Devuelve (suma, n_filas, {valor_filtro: suma}) o (None, 0, {}).
+
+#### `def buscar_marcas_rapido(ruta, hoja, fila_inicio, reglas, log, tope_detalle=30)`
+
+Busca errores de fórmula y textos prohibidos en columnas puntuales,
+escaneando el XML de la hoja por trozos en vez de cargar el libro.
+
+reglas: [{"rangos": ["CF:CI"], "errores": True, "textos": ["REVISAR"]}, ...]
+Devuelve {"conteo": {motivo: n}, "marcas": [(celda, motivo, valor)]} o None.
+
+#### `def leer_celdas_rapido(ruta, hoja, celdas)`
+
+Lee celdas puntuales de un .xlsx/.xlsm sin cargar el libro completo.
+
+Un .xlsm es un ZIP con XML adentro. Se recorre el XML de la hoja en
+streaming y se corta en cuanto se pasa de la ultima fila pedida, asi que
+para celdas de las primeras filas (H1, EE6) casi no se lee nada, aunque el
+archivo tenga miles de filas y millones de formulas.
+
+Devuelve {celda: valor} con los valores YA CALCULADOS que Excel dejo
+guardados. Si el archivo nunca fue calculado y guardado, no habra valores.
+Devuelve None si no se pudo (formato distinto, hoja inexistente, etc.).
+
+#### `def diagnosticar_celda(ruta, hoja, celda, log)`
+
+Cuando una celda no entrega valor, explica POR QUE mirando el XML crudo:
+si esta vacia, si tiene formula sin resultado guardado, si trae texto, si es
+un error, o si es parte de una celda combinada.
+
+#### `def resolver_hoja(nombres, hoja)`
+
+Traduce lo pedido al nombre real de la hoja: acepta '#1' (por posicion) y
+tolera tildes y mayusculas. Devuelve None si no calza ninguna.
+
+#### `def es_significativo(v)`
+
+Sirve para decidir si una celda 'cuenta' al buscar el ultimo dato de una
+columna: se omiten vacios, ceros y errores de formula (#REF!, #N/D...).
+
+#### `def leer_formulas_rapido(ruta, hoja, columnas, fila_inicio, log)`
+
+Devuelve {"COL": set(filas_que_TIENEN_formula)}.
+
+A diferencia de leer_columnas_rapido, que lee el resultado, esto detecta la
+PRESENCIA del nodo <f>, o sea si la celda es una formula o un valor escrito
+a mano. Sirve para saber hasta donde se arrastro una formula.
+
+Ojo con las formulas compartidas: la primera celda trae la formula completa
+(<f t="shared" ref="L5:L120" si="0">...) y las siguientes solo <f t="shared"
+si="0"/> sin texto. Como aca solo importa que exista un <f>, las dos formas
+cuentan igual.
+
+#### `def armar_tabla(datos, col_clave, cols_valor, log, etiqueta='', excluir=('0',), info=None)`
+
+Convierte {"A":{fila:val}} en {clave_normalizada: (nombre, [valores])}.
+Se salta las filas sin clave, que es lo que aparece como vacios al final.
+
+excluir: claves normalizadas que NO son empresas y hay que descartar. Por
+         defecto el "0", porque ninguna empresa se llama asi y se cuela
+         cuando sobran formulas arrastrando ceros.
+info:    dict opcional que se rellena con {"duplicadas", "excluidas",
+         "vacias"} para que quien llame decida si eso es un fallo.
+
+#### `def configurar(dependencias)`
+
+Inyecta VALORES, CACHE y helpers del punto de entrada sin importarlo.
+
+#### `def obtener_valor(clave, rutas, log, usar_cache=True)`
+
+Devuelve (valor, mensaje_error_o_None).
+Si el archivo no cambio desde la ultima lectura y se pide exactamente lo
+mismo, devuelve el valor guardado sin abrir el archivo.
+
+
+---
+
+## `Revisor_Relq_15min/revisor/verificaciones.py`
+
+> Motor de las comprobaciones V4…V17 del Revisor.
+>
+> No importa el punto de entrada para evitar ciclos. ``configurar`` recibe una vez
+> las constantes y adaptadores históricos que usa el motor; la ventana solo llama
+> a ``comprobar`` y conserva el orden observable de ejecución.
+
+### Funciones
+
+#### `def configurar(dependencias)`
+
+Inyecta el espacio histórico del Revisor sin importar su ventana.
+
+#### `def comprobar(self, c, valores, L)`
+
+Corre una comprobacion y devuelve un dict con su resultado.
+
+
+---
+
 ## `Comparadores/Comparador_Etapas.py`
 
 > Comparador_Etapas.py
@@ -2913,18 +4170,18 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 |---|---|
 | `APP_TITULO` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `BASE` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `CENTRALES_EMBALSE` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py` |
+| `CENTRALES_EMBALSE` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py` |
 | `CHUNK` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `CLAVE_JSON_PROPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COLORES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COLUMNAS_VISTA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
-| `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
+| `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `CONFIG_RAIZ` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `DIR_CONFIG` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py` |
-| `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `DIR_CONFIG` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py` |
+| `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
 | `ETAPAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA_SLOT` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
@@ -2934,20 +4191,21 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `LARGO_TEXTO` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `LIMITE_FILAS_HOJA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `NOMBRE_JSON_MES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `NS_REL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py` |
-| `NS_XL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py` |
+| `NS_REL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py`, `Revisor_Relq_15min/revisor/lectores.py` |
+| `NS_XL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py`, `Revisor_Relq_15min/revisor/lectores.py` |
 | `PAT_COPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `PAT_SOB` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `PAT_SSCC` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `REQUISITOS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `SALIDAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `SECCION_CONFIG` | `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
 | `SERVER` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `SLOTS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `TRAMOS_DEF` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
-| `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
+| `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
 | `_CACHE_DIR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_CACHE_DIRECTORIOS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_NECESITA` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |
-| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
+| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
 | `_TIENE` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |

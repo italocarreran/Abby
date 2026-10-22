@@ -34,6 +34,10 @@ pero comparte su raíz con otras carpetas necesarias:
 - `actualizadores/` tiene los 8 que el Revisor lanza por botón.
 - `Reemplazos REUC/` — con ese nombre exacto, espacio y mayúsculas, porque el
   Revisor lo busca literal — tiene el noveno.
+- **`Revisor_Relq_15min/`** es la **versión de 15 minutos**, hermana de
+  `Revisor_Relq/` (que es la horaria). Misma estructura adentro, con
+  `Revisor_Reliquidacion_15min.py` en su raíz. Al trabajar en una versión,
+  **no tocar la otra** salvo que se pida. Ver §7, «Dos versiones».
 
 **`__config__/config.json` es compartido** entre el Revisor, los 8
 actualizadores y los comparadores. `reemplazos_reuc.json` es propio del noveno,
@@ -260,6 +264,29 @@ tienen bloque en `MAPA.md`.
   documento de dominio". Al corregir el documento, borrar la fila de esa tabla.
 
 ---
+
+- **Dos versiones en el mismo repositorio (2026-10-22).** La reliquidación
+  pasa a calcular algunas cosas en bloques de 15 minutos. La versión nueva vive
+  en `Revisor_Relq/` → `Revisor_Relq_15min/`, al lado de la horaria, y las dos
+  comparten `__comun__/`, `__config__/`, `00_Salidas/` y `Comparadores/`, igual
+  que en el PC de la usuaria. Primero se hizo en un repositorio aparte
+  (`Revisor_Reliq_15min`) y se mudó acá para tener **un solo `__comun__/`**.
+  Reglas:
+  - **Un cambio en `__comun__/` afecta a las dos versiones.** Correr
+    `scripts/verificar.sh`, que prueba las dos.
+  - **Todo lo que la versión 15 min guarda en `config.json` y
+    `reemplazos_reuc.json` va dentro de la clave `"modo_15min"`** (con la misma
+    forma que el archivo entero). La horaria sigue usando el nivel de arriba.
+    Se resuelve en los envoltorios de cada script (`SECCION_CONFIG`), no en
+    `__comun__/`. Un script nuevo de 15 min tiene que copiar esos envoltorios
+    y sumarse a `revisor/test_seccion_config.py`.
+  - Las carpetas por mes no se separan: un mes es de un solo modo.
+  - En 15 min no existen detalles diarios, CCA, 02 Consolidado_Tabulado ni
+    Access; no reintroducirlos copiando desde la horaria.
+  - `CENTRALES_EMBALSE` ahora está en **cuatro** archivos (Revisor y SC_CO de
+    cada versión). `generar_interfaces.py` busca constantes repetidas dentro
+    de cada versión, no entre ellas (`VERSIONES`).
+  - Los comparadores siguen siendo de la horaria.
 
 ## 8. Al empezar y al cerrar cada sesión
 

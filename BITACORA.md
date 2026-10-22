@@ -17,6 +17,19 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **Versión 15 minutos — definir qué reemplaza lo quitado** (2026-10-22).
+      En `Revisor_Relq_15min/` se sacaron detalles diarios, CCA, 02
+      Consolidado_Tabulado y los Access. La usuaria va de a poco, actualizador
+      por actualizador; no adelantarse. Falta saber: (a) de dónde sale la hoja
+      `SOBRECOSTOS` de `Cálculo_SobrecostosSSCC` (antes "Traer Consolidado");
+      (b) qué arma `Pago_Retiro_reporte_tabla` sin `Prorratear.py`, y si
+      `Carga_Retiros.py` sigue haciendo falta; (c) si `Consolidado_AAMM` y
+      `Pago_Sobrecostos` siguen existiendo (quedaron en el árbol sin
+      actualizador); (d) si la L6 de la planilla 4 se cuadra contra algo.
+- [ ] **Prorrata 15 min de las planillas 3, 5 y 6 — probar con Excel real**
+      (2026-10-22). Confirmar el formato del Prorrata_Retiros de 15 minutos
+      (nombre de hoja, columna A = bloque único) y que las fórmulas de las
+      planillas lleguen a ~2984 filas.
 - [ ] **Comparador de etapas: se cerró solo al consolidar un mes** (2026-10-01).
       Causa desconocida, probablemente una caída nativa. Pedir a la usuaria el
       final de `__config__/_comparador_etapas.log` después de reproducirlo.
@@ -51,6 +64,171 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+---
+
+## 2026-10-22 — Claude — la versión 15 minutos se muda a este repositorio
+
+La reliquidación pasa a calcular algunas cosas en bloques de 15 minutos. El
+trabajo empezó en un repositorio aparte, `italocarreran/Revisor_Reliq_15min`
+(un clon de este en el commit `539bf7a`; se comprobó archivo por archivo que
+no había divergencias). La usuaria prefirió **un solo repositorio**: así hay
+un solo `__comun__/` y cualquier chat, sea de horario o de 15 minutos, ve todo.
+
+- `Revisor_Relq/` del otro repositorio entró tal cual como
+  **`Revisor_Relq_15min/`**. `Revisor_Relq/` (horario) no se tocó.
+- `__comun__/` no cambió: en el otro repositorio había quedado idéntico al
+  de acá a propósito.
+- `generar_interfaces.py`: recorre también `Revisor_Relq_15min/`, y la tabla
+  de constantes repetidas se arma **dentro de cada versión** (`VERSIONES`),
+  para que cada par horario/15 min no la llene de ruido. Sin la carpeta nueva,
+  la tabla sale idéntica a la de antes (comprobado con `diff`).
+- MAPA, AGENTS y README con la sección de la versión 15 minutos.
+- `scripts/verificar.sh` en `TODO OK`: corren las pruebas de las dos versiones.
+
+Las tres entradas de abajo, del mismo día, se copiaron del otro repositorio
+para no perder el historial. **Donde dicen `Revisor_Relq/`, acá es
+`Revisor_Relq_15min/`**; y lo que cuentan de los comparadores y de
+`__comun__/comparadores.py` quedó en ese repositorio (los de acá no se tocaron).
+El otro repositorio queda con una nota que dice que se mudó.
+
+---
+
+## 2026-10-22 — Claude — la versión 15 minutos convive con la horaria
+
+La usuaria quiere una sola raíz para los dos modos: el mismo `__comun__/`,
+`__config__/` y `00_Salidas/`, con las dos carpetas de Revisor lado a lado.
+Confirmó que **un mismo mes nunca se reliquida en los dos modos**, así que las
+carpetas por mes (`__config__/AAAA/MM Mes`, `00_Salidas/AAAA/MM Mes`) no
+chocan y no se separaron.
+
+Lo que sí chocaba era lo global de `config.json`: `carpeta_base`,
+`ultimo_mes`, `carpeta_reliq`, las rutas recordadas y `_valores` (las celdas
+de «Configurar valores…»). Ahora los seis scripts de esta versión (Revisor,
+`Actualiza_datos`, `Actualiza_Cuadro0`, `Actualiza_SC_CO`, `Carga_Retiros` y
+`ActualizaRemplazos`, este último en su `reemplazos_reuc.json`) leen y
+escriben **solo dentro de la clave `"modo_15min"`**, que tiene la misma forma
+que el archivo entero. Los mutadores existentes (por ejemplo la tasa por mes
+de `Actualiza_Cuadro0`) no cambiaron: reciben la sección como si fuera el
+archivo. Si la sección existe y no es un dict, no se escribe.
+
+No se tocó `__comun__/`: así sirve la copia que tenga la usuaria. Por lo mismo
+se **revirtió** el cambio de `__comun__/comparadores.py` (`hallar_revisor`
+buscando `_15min`), que además no lo llamaba nadie: `__comun__/` queda
+idéntico al del commit inicial, o sea al del repositorio horario.
+
+La primera vez que se abra cada script de esta versión arranca sin rutas
+recordadas (la sección está vacía): no hereda las de la horaria, a propósito.
+
+Pruebas: `revisor/test_seccion_config.py` (nueva, 5 casos) saca las funciones
+de cada script con `ast` y las corre contra un config temporal con el
+`__comun__/config.py` real: misma sección en los seis, ningún `_cfg.leer(` ni
+`_cfg.guardar(` directo, lo de la horaria y de otros equipos queda intacto,
+`_valores` del Revisor va dentro de la sección y una sección rota no se pisa.
+`scripts/verificar.sh` en `TODO OK`.
+
+---
+
+## 2026-10-22 — Claude — prorrata de las planillas 3, 5 y 6 a 15 minutos
+
+La usuaria va a migrar de a poco, actualizador por actualizador, a medida que
+los necesite. Primero las planillas 3, 5 y 6: el FD se mantiene igual y la
+prorrata pasa a ser de 15 minutos (antes 744 filas máximas, una por hora;
+ahora 4 por hora, hasta 2976).
+
+En `Actualiza_datos.py` (`aplicar_prorrata`):
+- El pivote no cambió: agrupa por lo que traiga la columna A del origen, sea
+  hora o bloque.
+- El borrado ya no es el `B8:EC756` fijo: va hasta la fila más larga entre la
+  matriz vieja (columna B corrida desde la 9) y la nueva. Columnas siguen
+  `B:EC` para no tocar los bloques de montos de la derecha (planillas 5 y 6).
+- Control del largo: ≤ 745 filas avisa que parece horario (pega igual); más de
+  `MAX_FILAS_PRORRATA` (2980) corta.
+- Origen leído hasta el `used_range` y no hasta la fila 1.048.576.
+- Si no existe `PRORRATA_HORARIA_TABULAR`, usa la única hoja con PRORRATA y
+  TABULAR en el nombre; con varias candidatas corta.
+
+Probado con un libro simulado (2976 bloques sobre una planilla con la matriz
+horaria vieja): borra `B8:EC2984`, pega 2977 filas y deja intacta una columna
+más allá de EC. **No probado con Excel real.**
+
+V9/V10/V11 (`prorrata_al_dia`) no se tocaron: comparan sumas por
+suministrador y no dependen del largo. Siguen leyendo la hoja
+`PRORRATA_HORARIA_TABULAR` del origen por nombre: si el archivo de 15
+minutos la llama distinto, hay que cambiarla también en el Revisor.
+
+Pendiente: confirmar con la usuaria el formato real del Prorrata_Retiros de
+15 minutos (nombre de hoja, que la columna A sea un bloque único y no
+fecha + hora + cuarto en varias columnas, y si el rótulo de `B8` debe seguir
+siendo "Hora"). Las fórmulas de las planillas que leen `PRORRATA_RETIROS`
+tienen que alcanzar las ~2976 filas: eso es del Excel, no del script.
+
+---
+
+## 2026-10-22 — Claude — modo 15 minutos: se quita lo que ya no existe
+
+Este repositorio viene del de la reliquidación horaria. En el modo nuevo
+algunas cosas pasan a calcularse en bloques de 15 minutos. La usuaria pidió,
+como primer paso y dejando de lado los comparadores, sacar del Revisor y de los
+actualizadores todo lo que ya no existe: **detalles diarios, CCA, consolidado
+tabulado y los Access**, y renombrar el script principal.
+
+**Revisor** (`Revisor_Relq/Revisor_Reliquidacion.py` →
+`Revisor_Reliquidacion_15min.py`, con `git mv`):
+- Árbol: de 36 a 25 nodos. Fuera los cinco `Detalles diarios/`, la carpeta
+  `03 Costo de Combustible Adicional/` con su `Consolidado_CCA`, el `02
+  Consolidado_Tabulado` y los tres `.mdb` (`03b ENTRADA_SOB_SSCC`, `03b
+  ENTRADA_SOB`, `Ocupar_este_para_Reliquidacion`).
+- Verificaciones: de 14 a 9. Fuera **V4, V5, V6, V12 y V17**. Recortadas:
+  V7 (solo `M5 = 0`), V8 (sin `EE6 = SCAGC` del tabulado; ya no cuelga de V17),
+  V13 (sin la suma del `Ocupar_este.mdb`; ahora depende de las planillas 3/5/6
+  y de V9/V10/V11, que es de donde salía ese `.mdb`), V14 (sin la suma del
+  `03b ENTRADA_SOB_SSCC.mdb`; ahora depende de Cálculo SSCC + Cálculo CO y de
+  V8, que es lo que antes le llegaba vía V4). Como cambió su definición, la
+  firma de V7/V8/V13/V14 cambia y los resultados guardados de esos cuatro se
+  descartan solos la primera vez: hay que volver a verificarlos.
+- VALORES: fuera los totales del tabulado, CCA, Consolidado_AAMM vs tabulado,
+  `SSCC_EE6`, `PAGO_L5` y los tres `MDB_*`. Quedaron sin uso `TOTAL_SSCC` y
+  `TOTAL_CO` (solo los usaba V4) y también se sacaron.
+- Código: fuera el tipo de nodo `diarios` (`_actualizar_diarios`,
+  `_ver_detalle`, el botón «detalle» de carpeta, la rama de diarios de
+  `plan_traer_maestro`, que pierde dos argumentos, y el segundo intento de
+  `detectar_aamm` por fechas AAAAMMDD), el tipo de valor `mdb` (wrappers,
+  `huella_spec`, el diálogo «Configurar valores» con tablas/WHERE) y la
+  constante `TOL_SOBRECOSTO_FILA`. `ACTUALIZADORES` y `CLAVES_TRASPASO` sin los
+  nodos que ya no existen.
+- `revisor/`: `lectores.py` sin la sección Access (`conexion_mdb`,
+  `listar_tablas_mdb`, `obtener_tablas_columnas`, `desglose_por_tipo`,
+  `leer_valor_mdb` y la rama `mdb` de `obtener_valor`); `verificaciones.py`
+  sin `centrales_sin_dueno` ni `sobrecosto_por_fila`; `archivos.py` sin
+  `listar_diarios` (y su prueba); `lanzamiento.py` ya no deja la clave `mdb`
+  en `config.json` al lanzar (la que ya esté ahí queda, no se borran claves).
+
+**Actualizadores:** se borraron `Actualiza_Data_Access.py`,
+`Actualiza_Energia.py`, `Actualiza_Access_P9.py` y `Prorratear.py` (todos leían
+o escribían Access, o salían del tabulado). `Actualiza_datos.py` perdió el
+"Traer Consolidado" de sc: `MAPEO_SOBRECOSTOS_CONSOLIDADO`, `buscar_consolidado`,
+la etiqueta de origen y el casillero (`hacer_fila_planilla` acepta ahora
+`nombre_otro=None` para no dibujarlo). `Carga_Retiros.py` se dejó: escribe en
+SQL Server, no en Access; ver pendiente sobre si sigue haciendo falta.
+
+**Rename:** los que buscan el Revisor por su archivo (`__comun__/comparadores.py`
+y los dos comparadores) buscan ahora `Revisor_Reliquidacion_15min.py`. Es lo
+único que se tocó de los comparadores. El `ORIGEN` del traspaso sigue siendo
+`"Revisor_Reliquidacion"`: es el contrato, no el nombre del archivo.
+
+**Pruebas:** `scripts/verificar.sh` en `TODO OK`. `test_modulos_fase4.py`
+apuntaba al nombre viejo y usaba `lectores.conexion_mdb` como muestra; ahora
+usa `lectores.obtener_valor`, y el mínimo de wrappers bajó de 10 a 7 (se fueron
+los 5 de Access). Además, una prueba de humo importando el Revisor con tkinter
+simulado: carga, 25 nodos, 9 verificaciones, todas las referencias entre
+VALORES/VERIFICADORES/NODOS/ACTUALIZADORES resuelven, `detectar_aamm` y
+`plan_traer_maestro` responden. **No se probó la ventana** (sin tkinter en el
+contenedor) ni contra un mes real.
+
+**Pendiente:** ver "Migración a 15 minutos" y "Comparadores en modo horario"
+en Pendientes abiertos. `docs/ESTRUCTURA_CASO_RELIQUIDACION.md` sigue
+describiendo el modo horario (anotado en `MAPA.md`).
+
 ---
 
 ## 2026-10-01 — Claude — el comparador de etapas deja registro en archivo
