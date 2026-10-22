@@ -66,6 +66,14 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-22 — Claude — FD de las planillas 5 y 6 (15 min): sin cambios
+
+La usuaria confirmó que el FD de las planillas 5 y 6 funciona bien con los
+mapeos de siempre (`MAPEO_P5_FD`, `MAPEO_P6_FD`): no se corrieron como la 3.
+No se tocó código. Queda por ver el Cálculo SSCC, cuando llegue a ese paso.
+
+---
+
 ## 2026-10-22 — Claude — FD de la planilla 3 (15 min): el pegado empieza en la F
 
 En la planilla 3 de 15 minutos las hojas de FD se corrieron una columna. La

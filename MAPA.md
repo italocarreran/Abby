@@ -487,8 +487,9 @@ y el paquete `revisor/`, salvo lo indicado).
   bloque pegado empieza en la **F** (`F:N`, `F:L`, `F:M`; antes `D:L`, `E:K`,
   `E:L`). El origen se lee igual. Las columnas de fórmula y del rótulo fijo
   (`CPF`/`CSF`/`CTF`) solo se limpian abajo, no se extienden: la planilla
-  tiene que traerlas hasta donde lleguen los datos. Las planillas 5 y 6 y el
-  Cálculo SSCC todavía no se revisaron.
+  tiene que traerlas hasta donde lleguen los datos. Las planillas 5 y 6
+  siguen con los mapeos de siempre (confirmado por la usuaria); el Cálculo
+  SSCC todavía no se revisó.
 - **Detalles que importan:** la prorrata se transforma de tabla larga a matriz
   pivote y se pega desde `B8`; suministradores ordenados alfabéticamente,
   faltantes en 0. **Modo 15 minutos:** la columna A del origen es el bloque de
