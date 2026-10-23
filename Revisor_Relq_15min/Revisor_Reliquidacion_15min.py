@@ -120,7 +120,7 @@ clave_central = _texto.clave_mayusculas
 #  O sea que la lista vieja se nota al verificar, no pasa en silencio.
 #
 #  Al agregar una unidad nueva va con el nombre EXACTO como viene en el origen
-#  (columna U de Calculo_SobrecostosSSCC / columna D de Calculo_CO).
+#  (columna U de Calculo_SobrecostosSSCC / columna H del Reporte_CRA_15min).
 CENTRALES_EMBALSE = [
     "CANUTILLAR-1", "CANUTILLAR-2",
     "ELTORO-1", "ELTORO-2", "ELTORO-3", "ELTORO-4",
@@ -352,7 +352,7 @@ VERIFICADORES = {
     "V10": {
         "archivo": "a_5_p9",
         "titulo": 'Planilla 5 (maestro): RESUMEN, la hoja "SC y CO" y la prorrata',
-        "depende": ["a_calc_sscc_01", "a_calc_co", "a_prorrata"],
+        "depende": ["a_calc_sscc_01", "a_reporte_cra", "a_prorrata"],
         "verif_previas": [],
         "comprobaciones": [
             {"tipo": "igualdad", "desc": "RESUMEN  D7 = E7",
@@ -377,13 +377,17 @@ VERIFICADORES = {
              "destino": {"archivo": "a_5_p9", "hoja": "SC y CO", "fila_inicio": 9,
                          "col_tipo": "D", "tipo": "CO", "col_monto": "G",
                          "col_central": "E"},
-             "origen": {"archivo": "a_calc_co", "hoja": "PRORRATA CO",
-                        "fila_inicio": 7, "col_central": "D", "col_monto": "G"}},
+             # 15 minutos: el CO sale del Reporte_CRA_15min (csv), no del
+             # Calculo_CO. La hoja no aplica en un csv.
+             "origen": {"archivo": "a_reporte_cra", "hoja": "",
+                        "fila_inicio": 2, "col_central": "H", "col_monto": "I"}},
 
+            # 15 minutos: se revisan las tres sumas por servicio (AA:AC), que
+            # existen para SC y para CO. Las 18 de I:Z son solo de los SC.
             {"tipo": "suma_fila",
-             "desc": 'SC y CO: cada fila de I:X suma el 100%',
+             "desc": 'SC y CO: cada fila de AA:AC (CPF+CSF+CTF) suma el 100%',
              "archivo": "a_5_p9", "hoja": "SC y CO",
-             "rango": "I:X", "fila_inicio": 9, "col_referencia": "E",
+             "rango": "AA:AC", "fila_inicio": 9, "col_referencia": "E",
              "col_tipo": "D"},
 
             # Solo pueden estar los embalses de la lista.
@@ -392,12 +396,15 @@ VERIFICADORES = {
              "archivo": "a_5_p9", "hoja": "SC y CO",
              "columna": "E", "fila_inicio": 9, "exigir": True},
 
-            # Las formulas de Y:AF tienen que cubrir exactamente las filas que hay.
+            # Las formulas tienen que cubrir exactamente las filas que hay. Es la
+            # misma particion que BLOQUES_FORMULA de Actualiza_SC_CO.py (15 min):
+            # AD (residuo), AF:AG (homologacion dict_SCCO) y AI (control). AE y
+            # AH quedan AFUERA: no llevan formula. AA:AC ya no son formula: el
+            # actualizador pega ahi las sumas calculadas.
             {"tipo": "formulas_cubren",
-             "desc": 'SC y CO: las fórmulas de Y:AB y AD:AF cubren todas las filas',
+             "desc": 'SC y CO: las fórmulas de AD, AF:AG y AI cubren todas las filas',
              "archivo": "a_5_p9", "hoja": "SC y CO",
-             # La AC queda AFUERA: no lleva formula.
-             "cols": ["Y:AB", "AD:AF"], "fila_inicio": 9,
+             "cols": ["AD", "AF:AG", "AI"], "fila_inicio": 9,
              "referencia": {"archivo": "a_5_p9", "hoja": "SC y CO",
                             "col": "E", "fila_inicio": 9}},
 
@@ -409,8 +416,8 @@ VERIFICADORES = {
              "columna": "U", "fila_inicio": 7, "avisar_sufijo": True},
             {"tipo": "centrales_en_lista",
              "desc": "origen CO: no quedó fuera ninguna central «-número»",
-             "archivo": "a_calc_co", "hoja": "PRORRATA CO",
-             "columna": "D", "fila_inicio": 7, "avisar_sufijo": True},
+             "archivo": "a_reporte_cra", "hoja": "",
+             "columna": "H", "fila_inicio": 2, "avisar_sufijo": True},
             # La prorrata pegada en esta planilla tiene que ser la del
             # Prorrata_Retiros de ESTE mes. Es facil olvidarse de actualizarla y
             # nada mas la delata: los totales del RESUMEN cuadran igual.
@@ -481,7 +488,7 @@ VERIFICADORES = {
         # en el modo 15 minutos ya no existe. Las dependencias que tenia por ese
         # .mdb (Calculo SSCC + Calculo CO, via V4) pasan directo aca, para que la
         # cadena del cuadro cero siga llegando hasta V8.
-        "depende": ["a_calc_sscc_01", "a_calc_co"],
+        "depende": ["a_calc_sscc_01", "a_reporte_cra"],
         "verif_previas": ["V8"],
         "comprobaciones": [
             {"tipo": "igualdad", "desc": "K6 = -L6",
@@ -700,9 +707,12 @@ NODOS = [
          patron=r"^calculo_sobrecostossscc_", ext=XL, espejo="a_calc_sscc_01"),
 
     dict(id="c_ent_co", tipo="carpeta", pref="│   ├── ", texto="02 Costo de Oportunidad/"),
-    dict(id="a_calc_co", tipo="archivo", pref="│   │   └── ", texto="Cálculo_CO_AAMM_*.xlsm",
+    # 15 minutos: el CO sale del Reporte_CRA_15min_AAMM.csv, que reemplaza al
+    # Calculo_CO en la misma carpeta (confirmado por la usuaria, 2026-10-23).
+    dict(id="a_reporte_cra", tipo="archivo", pref="│   │   └── ",
+         texto="Reporte_CRA_15min_AAMM.csv   (origen del CO de «SC y CO»)",
          carpeta=["00 Entregables", "02 Costo de Oportunidad"],
-         patron=r"^calculo_co_", ext=XL, espejo=None),
+         patron=r"^reporte_cra", ext=(".csv",), espejo=None),
 
     dict(id="a_0_cuadros", tipo="archivo", pref="│   ├── ", texto="0_CUADROS_RELIQUIDACIÓN SSCC_AAMM_*.xlsm",
          carpeta=["00 Entregables"], patron=r"^0_cuadros", ext=XL, espejo=None),
@@ -808,7 +818,7 @@ CLAVES_TRASPASO = {
     "a_sscc_desempeno": "sscc_desempeno",
     "a_prorrata":       "prorrata_retiros",
     "a_calc_sscc_01":   "calculo_sscc_maestro",
-    "a_calc_co":        "calculo_co",
+    "a_reporte_cra":    "reporte_cra",
     "a_3_p9":           "p3",
     "a_5_p9":           "p5",
     "a_6_p9":           "p6",

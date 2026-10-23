@@ -28,6 +28,7 @@ Convenciones de esta página:
 - [`__comun__/archivos.py`](#__comun__archivospy) — 39 líneas — Reglas compartidas para descartar temporales y copias de Windows.
 - [`__comun__/comparadores.py`](#__comun__comparadorespy) — 370 líneas — Infraestructura compartida por los dos comparadores.
 - [`__comun__/config.py`](#__comun__configpy) — 118 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
+- [`__comun__/csv_columnas.py`](#__comun__csv_columnaspy) — 104 líneas — Lectura de un .csv por letra de columna y fila, como si fuera una hoja.
 - [`__comun__/excel_xml.py`](#__comun__excel_xmlpy) — 185 líneas — Lectura rápida de columnas OOXML sin abrir Excel.
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
@@ -48,15 +49,15 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2093 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3367 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3377 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 1029 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 906 líneas — Actualiza la hoja "SC y CO" de la planilla 5_
+- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1124 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1348 líneas
 - [`Revisor_Relq_15min/actualizadores/Carga_Retiros.py`](#revisor_relq_15minactualizadorescarga_retirospy) — 875 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 239 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
-- [`Revisor_Relq_15min/revisor/lectores.py`](#revisor_relq_15minrevisorlectorespy) — 691 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
+- [`Revisor_Relq_15min/revisor/lectores.py`](#revisor_relq_15minrevisorlectorespy) — 700 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1441 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2485 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
@@ -290,6 +291,59 @@ pisarlo le borraria los ajustes a los demas scripts.
 #### `def guardar(ruta, data: dict) -> bool`
 
 Agrega o actualiza claves en el bloque del equipo actual.
+
+
+---
+
+## `__comun__/csv_columnas.py`
+
+> Lectura de un .csv por letra de columna y fila, como si fuera una hoja.
+>
+> Nace con la versión 15 minutos: el CO de la hoja "SC y CO" de la planilla 5
+> sale de ``Reporte_CRA_15min_AAMM.csv`` y no de un Excel. Lo usan
+> ``Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`` (para pegarlo) y el
+> Revisor 15 min (V10, para compararlo), así que vive acá y no copiado en los dos.
+>
+> Devuelve lo mismo que ``excel_xml.leer_columnas_rapido``: ``{COL: {fila: valor}}``,
+> con la fila contada como en Excel (el encabezado es la fila 1). Las celdas
+> vacías no aparecen. Ante un archivo que no se puede leer devuelve ``None``.
+>
+> Formato del Reporte_CRA real (ver Balance_SSCC, ``docs/Estructura_Archivos_
+> Reales.md`` §D.1): UTF-8, separador ``;``, punto decimal. Igual se toleran
+> ``,`` o tabulador como separador, coma decimal cuando el separador es ``;``
+> y archivos guardados en cp1252.
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `csv`, `pathlib`, `re`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `_RE_ENTERO` | `re.compile('[-+]?\\d+')` |  |
+| `_RE_DECIMAL` | `re.compile('[-+]?(\\d+\\.\\d*\|\\.\\d+\|\\d+)([eE][-+]?\\d+)?')` |  |
+
+### Funciones
+
+#### `def letra_columna(n)`
+
+1 -> A, 27 -> AA.
+
+#### `def valor_csv(texto, separador=';')`
+
+Texto de una celda -> int, float, str o None (vacía).
+
+Con separador ``;`` se acepta la coma como decimal ("3,5"). Un número con
+ceros a la izquierda se deja como número igual que haría Excel ("0038" -> 38).
+
+#### `def leer_filas_csv(ruta)`
+
+(filas, separador): todas las filas como listas de texto, o (None, None).
+
+#### `def leer_columnas_csv(ruta, columnas=None, fila_inicio=1, log=None)`
+
+``{COL: {fila: valor}}`` de las columnas pedidas (todas si ``None``).
 
 
 ---
@@ -2930,8 +2984,10 @@ Devuelve (ok, resumen).
 
 ## `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`
 
-> Actualiza la hoja "SC y CO" de la planilla 5_
-> Pega los SC y los CO de los EMBALSES, con su prorrata de instruccion directa.
+> Actualiza la hoja "SC y CO" de la planilla 5_  —  VERSION 15 MINUTOS
+> Pega los SC y los CO de los EMBALSES, con su prorrata por servicio.
+> Metodologia: la del CRA de Balance_SSCC (trazabilidad v5, seccion 6.6),
+> confirmada por la usuaria el 2026-10-23.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
@@ -2947,16 +3003,21 @@ Devuelve (ok, resumen).
 | **— Configuracion de origenes y destino —** | | |
 | `HOJA_DESTINO` | `'SC y CO'` |  |
 | `FILA_DESTINO` | `9` |  |
-| `COLS_ID` | `('C', 'G')` | Bloque de identificacion (C:G) y de prorrata (I:X), y las formulas (Y:AF). |
-| `COLS_PRO` | `('I', 'X')` |  |
-| `BLOQUES_FORMULA` | `[('Y', 'AB'), ('AD', 'AF')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a proposito. |
+| `COLS_ID` | `('C', 'G')` | Tres bloques de VALORES: identificacion (C:G), las 18 prorratas (I:Z) y las tres sumas por servicio (AA:AC). |
+| `COLS_PRO` | `('I', 'Z')` |  |
+| `COLS_SUMA` | `('AA', 'AC')` |  |
+| `BLOQUES_FORMULA` | `[('AD', 'AD'), ('AF', 'AG'), ('AI', 'AI')]` | Bloques de formulas, EN BLOQUES y no un rango corrido: AE y AH no llevan formula, y a la derecha (AT:AV) esta la tabla dict_SCCO, que es un maestro. |
+| `COL_FIN_CONTROL_FORMULAS` | `'AS'` | Hasta donde se mira la fila 9 para avisar si hay formulas fuera de la particion (la tabla dict_SCCO empieza en AT). |
 | `COL_TIPO` | `'D'` |  |
 | `COL_CLAVE` | `'C'` |  |
 | `COL_CENTRAL` | `'E'` |  |
 | `N_ID` | `5` |  |
-| `N_PRO` | `16` |  |
+| `N_PRO` | `18` |  |
+| `N_SUMA` | `3` |  |
 | `TIPO_SC` | `'SCCF'` |  |
 | `TIPO_CO` | `'CO'` |  |
+| `BLOQUES_POR_DIA` | `96` | Bloques de 15 minutos por dia en la formula de Clave_Bloque de SC (la del Excel). |
+| `SUMAS_SC` | `{'CPF': (0, 1, 6, 7, 12, 13), 'CSF': (2, 4, 8, 10, 14, 16), 'CTF': (3, 5, 9, 11, 15, 17)}` | Posiciones dentro de I:Z (0 = I) que suma cada servicio, igual que las formulas AA:AC del libro. |
 | `FUENTES` | `dict de 2 claves: 'SC', 'CO', …` |  |
 | `ORDEN` | `['SC', 'CO']` |  |
 | `RE_UNIDAD` | `re.compile('-\\d+\\s*$')` | Una central "-numero" que no este en la lista es sospechosa: el sufijo indica unidad, y las unidades son justamente lo que tienen los embalses. |
@@ -2985,13 +3046,28 @@ Devuelve (ok, resumen).
 
 #### `def fmt_tiempo(seg)`
 
-#### `def leer_fuente(app, ruta, cfg, log)`
+#### `def dia_de(v)`
 
-Devuelve (filas_id, filas_pro, avisos).
+DIA() de Excel para lo que venga en la celda de fecha: un datetime (xlwings),
+un numero de serie, o un texto "dd-mm-aaaa" / "dd/mm/aaaa" / "aaaa-mm-dd"
+(el CSV). None si no se entiende.
 
-filas_id: lista de listas de 5 valores (C:G). Si la fuente no trae la Clave
-          Año_Mes, el primer valor queda en None y se completa despues.
-filas_pro: lista de listas de 16 valores (I:X), alineada con filas_id.
+#### `def clave_bloque(dia, bloque)`
+
+DIA & "#" & bloque, como lo arma el Excel ("1#38").
+
+#### `def leer_sc(app, ruta, cfg, log)`
+
+Devuelve (filas_id, filas_pro, filas_suma, avisos) del Calculo_Sobrecostos.
+
+filas_id:   5 valores (C:G).
+filas_pro:  las 18 prorratas (I:Z), tal cual.
+filas_suma: CPF, CSF, CTF (AA:AC), sumadas desde las 18.
+
+#### `def leer_co(ruta, cfg, log)`
+
+Devuelve (filas_id, filas_pro, filas_suma, avisos) del Reporte_CRA (csv).
+filas_pro va vacia: el CSV no trae el desglose ID / Pmax / Real.
 
 #### `def leer_bloque_destino(sh, tipo, log)`
 
@@ -2999,6 +3075,13 @@ Lee del propio destino las filas de un tipo (SCCF o CO).
 
 Sirve para conservar el bloque que el usuario NO eligio actualizar: como los
 dos bloques van uno debajo del otro, hay que reescribirlos juntos.
+
+#### `def controlar_formulas(sh, log)`
+
+Mira la fila 9 entre AD y COL_FIN_CONTROL_FORMULAS y avisa si la
+particion BLOQUES_FORMULA no calza con el libro: una columna de la particion
+sin formula (se estiraria vacia) o una formula fuera de la particion (no se
+estiraria). No cambia nada: solo avisa.
 
 #### `def ejecutar(rutas, hacer, aamm_respaldo, log, progreso)`
 
@@ -3456,6 +3539,14 @@ tolera tildes y mayusculas. Devuelve None si no calza ninguna.
 
 Sirve para decidir si una celda 'cuenta' al buscar el ultimo dato de una
 columna: se omiten vacios, ceros y errores de formula (#REF!, #N/D...).
+
+#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
+
+``{COL: {fila: valor}}`` sin abrir Excel. Un ``.csv`` (el
+Reporte_CRA_15min del CO, modo 15 minutos) se lee con
+``__comun__/csv_columnas.py`` y la hoja no aplica; todo lo demas va al
+lector OOXML de siempre, que ante un formato que no entiende devuelve None
+para que el llamador caiga a xlwings.
 
 #### `def leer_formulas_rapido(ruta, hoja, columnas, fila_inicio, log)`
 

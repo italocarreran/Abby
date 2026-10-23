@@ -1,31 +1,42 @@
 # =============================================================================
-#  Actualiza la hoja "SC y CO" de la planilla 5_
+#  Actualiza la hoja "SC y CO" de la planilla 5_  —  VERSION 15 MINUTOS
 # =============================================================================
-#  Pega los SC y los CO de los EMBALSES, con su prorrata de instruccion directa.
+#  Pega los SC y los CO de los EMBALSES, con su prorrata por servicio.
+#  Metodologia: la del CRA de Balance_SSCC (trazabilidad v5, seccion 6.6),
+#  confirmada por la usuaria el 2026-10-23.
 #
 #  ORIGEN Y DESTINO
 #  ----------------------------------------------------------------------------
 #  Los dos bloques van en la MISMA hoja, uno debajo del otro: primero SC, despues
-#  CO. Los dos escriben en las mismas columnas.
+#  CO, desde la fila 9.
 #
 #  SC — Calculo_SobrecostosSSCC, hoja "SOBRECOSTOS", desde la fila 7:
 #      S -> C   Clave Año_Mes
 #      T -> D   tipo (SCCF)
-#      U -> E   central          <- por aca se filtra
-#      V -> F   hora mensual
+#      U -> E   central                       <- por aca se filtra
+#      A, R -> F   Clave_Bloque = DIA(A) & "#" & (R - (DIA(A)-1)*96)
 #      W -> G   monto
-#      AU:BJ -> I:X   prorrata (16 columnas)
+#      AW:BN -> I:Z   las 18 prorratas, tal cual (ID, Pmax y Real; cada grupo
+#                     en el orden CPF+, CPF-, CSF+, CTF+, CSF-, CTF-)
+#      AA:AC  CPF, CSF y CTF: la SUMA de esas 18, calculada aca y pegada como
+#             valor (AA = I,J,O,P,U,V · AB = K,M,Q,S,W,Y · AC = L,N,R,T,X,Z)
 #
-#  CO — Calculo_CO, hoja "PRORRATA CO", desde la fila 7:
-#      (la Clave Año_Mes no viene: se copia la de los SC)  -> C
+#  CO — Reporte_CRA_15min_AAMM.csv, desde la fila 2 (ya NO Calculo_CO):
+#      A -> C   Clave Año_Mes
 #      B -> D   tipo (CO)
-#      D -> E   central          <- por aca se filtra
-#      F -> F   hora mensual
-#      G -> G   monto
-#      BM:CB -> I:X   prorrata (16 columnas)
+#      H -> E   central                       <- por aca se filtra
+#      C, E -> F   Clave_Bloque = DIA(C) & "#" & E   (E = bloque 1..96 del dia)
+#      I -> G   monto (RCO)
+#      I:Z      vacio: el CSV no trae el desglose ID / Pmax / Real
+#      AA:AC  CPF = J+K, CSF = L+M, CTF = N+O del CSV
 #
-#  Y:AF del destino son formulas (8 columnas): se estiran o se cortan para cubrir
-#  exactamente las filas que quedaron.
+#  OJO con el 96 de la Clave_Bloque de SC: es la formula del Excel y se copia
+#  tal cual. En un mes con cambio de hora (dia de 92 o 100 bloques) los dias
+#  siguientes quedan corridos; se avisa en el log, no se corrige.
+#
+#  Las columnas de formula (BLOQUES_FORMULA) se estiran o se cortan para cubrir
+#  exactamente las filas que quedaron. Las que estan entre medio (AE, AH) y la
+#  tabla dict_SCCO de AT:AV no se tocan.
 #
 #  POR QUE SE REESCRIBEN LOS DOS BLOQUES SIEMPRE
 #  ----------------------------------------------------------------------------
@@ -83,7 +94,7 @@ def _morir(titulo, mensaje):
 #  O sea que la lista vieja se nota al verificar, no pasa en silencio.
 #
 #  Al agregar una unidad nueva va con el nombre EXACTO como viene en el origen
-#  (columna U de Calculo_SobrecostosSSCC / columna D de Calculo_CO).
+#  (columna U de Calculo_SobrecostosSSCC / columna H del Reporte_CRA).
 CENTRALES_EMBALSE = [
     "CANUTILLAR-1", "CANUTILLAR-2",
     "ELTORO-1", "ELTORO-2", "ELTORO-3", "ELTORO-4",
@@ -103,22 +114,45 @@ CENTRALES_EMBALSE = [
 HOJA_DESTINO = "SC y CO"
 FILA_DESTINO = 9
 
-# Bloque de identificacion (C:G) y de prorrata (I:X), y las formulas (Y:AF).
+# Tres bloques de VALORES: identificacion (C:G), las 18 prorratas (I:Z) y las
+# tres sumas por servicio (AA:AC). La H queda afuera: no se toca.
 COLS_ID = ("C", "G")
-COLS_PRO = ("I", "X")
-# Bloques de formulas, EN BLOQUES y no un rango corrido: la AC queda AFUERA a
-# proposito. Si se hiciera AutoFill de Y:AF de una, la AC se rellenaria tambien
-# con lo que tenga en la fila 9, y esa columna no lleva formula.
-BLOQUES_FORMULA = [("Y", "AB"), ("AD", "AF")]
+COLS_PRO = ("I", "Z")
+COLS_SUMA = ("AA", "AC")
+# Bloques de formulas, EN BLOQUES y no un rango corrido: AE y AH no llevan
+# formula, y a la derecha (AT:AV) esta la tabla dict_SCCO, que es un maestro.
+# Un AutoFill corrido de AD:AI rellenaria AE y AH con lo que tengan en la 9.
+# Es la misma particion que usa V10 del Revisor 15 min.
+#   AD = 1 - SUM(AA:AC)                        residuo
+#   AF = AG & "_" & F, AG = INDEX(dict_SCCO)   homologacion al nombre CRA
+#   AI = control de duplicados
+BLOQUES_FORMULA = [("AD", "AD"), ("AF", "AG"), ("AI", "AI")]
+# Hasta donde se mira la fila 9 para avisar si hay formulas fuera de la
+# particion (la tabla dict_SCCO empieza en AT).
+COL_FIN_CONTROL_FORMULAS = "AS"
 
 COL_TIPO = "D"          # SCCF o CO
 COL_CLAVE = "C"         # Clave Año_Mes
 COL_CENTRAL = "E"
 N_ID = 5                # C:G
-N_PRO = 16              # I:X
+N_PRO = 18              # I:Z
+N_SUMA = 3              # AA:AC
 
 TIPO_SC = "SCCF"
 TIPO_CO = "CO"
+
+# Bloques de 15 minutos por dia en la formula de Clave_Bloque de SC (la del
+# Excel). Ver el OJO del encabezado sobre el cambio de hora.
+BLOQUES_POR_DIA = 96
+
+# Posiciones dentro de I:Z (0 = I) que suma cada servicio, igual que las
+# formulas AA:AC del libro. Cada grupo de 6 (ID, Pmax, Real) viene en el orden
+# CPF+, CPF-, CSF+, CTF+, CSF-, CTF-: por eso el CSF no son posiciones seguidas.
+SUMAS_SC = {
+    "CPF": (0, 1, 6, 7, 12, 13),       # I, J, O, P, U, V
+    "CSF": (2, 4, 8, 10, 14, 16),      # K, M, Q, S, W, Y
+    "CTF": (3, 5, 9, 11, 15, 17),      # L, N, R, T, X, Z
+}
 
 FUENTES = {
     "SC": {
@@ -126,23 +160,18 @@ FUENTES = {
         "clave_traspaso": "calculo_sscc_maestro",
         "hoja": "SOBRECOSTOS",
         "fila_ini": 7,
-        # bloques de la parte de identificacion, EN EL ORDEN en que se pegan.
-        # La Clave Año_Mes viene en el origen (columna S).
-        "bloques_id": [("S", "W")],
-        "trae_clave": True,
-        "col_central": "U",
-        "bloques_pro": [("AU", "BJ")],
+        "col_clave": "S", "col_tipo": "T", "col_central": "U",
+        "col_fecha": "A", "col_periodo": "R", "col_monto": "W",
+        "bloque_pro": ("AW", "BN"),
     },
     "CO": {
-        "etiqueta": "CO  —  Calculo_CO, hoja PRORRATA CO",
-        "clave_traspaso": "calculo_co",
-        "hoja": "PRORRATA CO",
-        "fila_ini": 7,
-        # Aca NO viene la Clave Año_Mes: se completa con la de los SC.
-        "bloques_id": [("B", "B"), ("D", "D"), ("F", "G")],
-        "trae_clave": False,
-        "col_central": "D",
-        "bloques_pro": [("BM", "CB")],
+        "etiqueta": "CO  —  Reporte_CRA_15min_AAMM.csv",
+        "clave_traspaso": "reporte_cra",
+        "fila_ini": 2,
+        "col_clave": "A", "col_tipo": "B", "col_central": "H",
+        "col_fecha": "C", "col_bloque": "E", "col_monto": "I",
+        # CPF = J+K, CSF = L+M, CTF = N+O
+        "sumas": {"CPF": ("J", "K"), "CSF": ("L", "M"), "CTF": ("N", "O")},
     },
 }
 ORDEN = ["SC", "CO"]        # el orden en que quedan en la hoja: SC arriba
@@ -164,6 +193,7 @@ try:
     from __comun__ import config as _cfg
     from __comun__ import traspaso as _traspaso
     from __comun__ import texto as _texto
+    from __comun__ import csv_columnas as _csv
 except ImportError as e:
     _morir("Falta la carpeta __comun__/",
            "No se pudo cargar __comun__/config.py.\n\n"
@@ -291,51 +321,58 @@ def _vacio(v):
 # =============================================================================
 #  LECTURA DEL ORIGEN
 # =============================================================================
-def leer_fuente(app, ruta, cfg, log):
-    """Devuelve (filas_id, filas_pro, avisos).
+def _numero(v):
+    """Valor de celda -> float, o None si no es un numero (como SUMA de Excel,
+    que ignora el texto)."""
+    if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    return None
 
-    filas_id: lista de listas de 5 valores (C:G). Si la fuente no trae la Clave
-              Año_Mes, el primer valor queda en None y se completa despues.
-    filas_pro: lista de listas de 16 valores (I:X), alineada con filas_id.
-    """
-    permitidas = {clave_central(c) for c in CENTRALES_EMBALSE}
-    log(f"  Abriendo (solo lectura): {Path(ruta).name}")
-    wb = app.books.open(str(ruta), read_only=True, update_links=False)
-    try:
-        sh = buscar_hoja(wb, cfg["hoja"])
-        if sh is None:
-            raise RuntimeError(f"No está la hoja '{cfg['hoja']}' en "
-                               f"{Path(ruta).name}")
-        log(f"    hoja: {sh.name}")
-        f_ini = cfg["fila_ini"]
-        col_c = cfg["col_central"]
 
-        # La ultima fila se busca en la columna de la central y en la primera del
-        # primer bloque: si una tiene huecos, la otra salva.
-        primera = cfg["bloques_id"][0][0]
-        f_fin = max(ultima_fila(sh, col_c, f_ini), ultima_fila(sh, primera, f_ini))
-        if f_fin < f_ini:
-            raise RuntimeError(f"No hay datos en {col_c}{f_ini} hacia abajo.")
-        log(f"    filas leídas: {f_ini} a {f_fin}  ({f_fin - f_ini + 1})")
+def _entero_si_se_puede(x):
+    if isinstance(x, float) and x.is_integer():
+        return int(x)
+    return x
 
-        def bloque(c1, c2):
-            d = sh.range((f_ini, col_num(c1)), (f_fin, col_num(c2))).options(ndim=2).value
-            return d or []
 
-        partes_id = [bloque(a, b) for a, b in cfg["bloques_id"]]
-        partes_pro = [bloque(a, b) for a, b in cfg["bloques_pro"]]
-        centrales = bloque(col_c, col_c)
-    finally:
+def dia_de(v):
+    """DIA() de Excel para lo que venga en la celda de fecha: un datetime (xlwings),
+    un numero de serie, o un texto "dd-mm-aaaa" / "dd/mm/aaaa" / "aaaa-mm-dd"
+    (el CSV). None si no se entiende."""
+    import datetime as _dt
+    if isinstance(v, (_dt.datetime, _dt.date)):
+        return v.day
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
         try:
-            wb.close()
+            return (_dt.datetime(1899, 12, 30) + _dt.timedelta(days=float(v))).day
         except Exception:
-            pass
+            return None
+    if isinstance(v, str):
+        partes = re.split(r"[-/ ]", v.strip())
+        try:
+            if len(partes[0]) == 4:          # aaaa-mm-dd
+                return int(partes[2])
+            return int(partes[0])            # dd-mm-aaaa
+        except (ValueError, IndexError):
+            return None
+    return None
 
-    filas_id, filas_pro = [], []
-    n_total = f_fin - f_ini + 1
-    vistas, descartadas, sospechosas = set(), {}, {}
-    for i in range(n_total):
-        nom = centrales[i][0] if i < len(centrales) and centrales[i] else None
+
+def clave_bloque(dia, bloque):
+    """DIA & "#" & bloque, como lo arma el Excel ("1#38")."""
+    if dia is None or bloque is None:
+        return None
+    return f"{dia}#{_entero_si_se_puede(bloque)}"
+
+
+def _filtrar_embalses(filas, log):
+    """filas: lista de (central, fila_id, fila_pro, fila_suma). Devuelve
+    (las de embalse, avisos) y deja en el log lo que se descarto."""
+    permitidas = {clave_central(c) for c in CENTRALES_EMBALSE}
+    quedan, vistas, descartadas, sospechosas = [], set(), {}, {}
+    for nom, fid, fpro, fsum in filas:
         if _vacio(nom):
             continue
         k = clave_central(nom)
@@ -347,20 +384,9 @@ def leer_fuente(app, ruta, cfg, log):
                 sospechosas[k] = str(nom).strip()
             continue
         vistas.add(k)
-        fid = []
-        for p in partes_id:
-            fid.extend(p[i] if i < len(p) else [])
-        if not cfg["trae_clave"]:
-            fid = [None] + fid          # el hueco de la Clave Año_Mes
-        fid = (fid + [None] * N_ID)[:N_ID]
-        fpro = []
-        for p in partes_pro:
-            fpro.extend(p[i] if i < len(p) else [])
-        fpro = (fpro + [None] * N_PRO)[:N_PRO]
-        filas_id.append(fid)
-        filas_pro.append(fpro)
+        quedan.append((fid, fpro, fsum))
 
-    log(f"    embalses: {len(filas_id)} fila(s) de {len(vistas)} central(es)")
+    log(f"    embalses: {len(quedan)} fila(s) de {len(vistas)} central(es)")
     log(f"    descartadas: {len(descartadas)} central(es) que no son embalse")
 
     avisos = []
@@ -380,7 +406,124 @@ def leer_fuente(app, ruta, cfg, log):
             log(f"          {c}")
         if len(sospechosas) > 12:
             log(f"          ... y {len(sospechosas) - 12} más")
-    return filas_id, filas_pro, avisos
+    return quedan, avisos
+
+
+def leer_sc(app, ruta, cfg, log):
+    """Devuelve (filas_id, filas_pro, filas_suma, avisos) del Calculo_Sobrecostos.
+
+    filas_id:   5 valores (C:G).
+    filas_pro:  las 18 prorratas (I:Z), tal cual.
+    filas_suma: CPF, CSF, CTF (AA:AC), sumadas desde las 18.
+    """
+    log(f"  Abriendo (solo lectura): {Path(ruta).name}")
+    wb = app.books.open(str(ruta), read_only=True, update_links=False)
+    try:
+        sh = buscar_hoja(wb, cfg["hoja"])
+        if sh is None:
+            raise RuntimeError(f"No está la hoja '{cfg['hoja']}' en "
+                               f"{Path(ruta).name}")
+        log(f"    hoja: {sh.name}")
+        f_ini = cfg["fila_ini"]
+        col_c = cfg["col_central"]
+
+        # La ultima fila se busca en la columna de la central y en la de la
+        # clave: si una tiene huecos, la otra salva.
+        f_fin = max(ultima_fila(sh, col_c, f_ini),
+                    ultima_fila(sh, cfg["col_clave"], f_ini))
+        if f_fin < f_ini:
+            raise RuntimeError(f"No hay datos en {col_c}{f_ini} hacia abajo.")
+        log(f"    filas leídas: {f_ini} a {f_fin}  ({f_fin - f_ini + 1})")
+
+        def bloque(c1, c2):
+            d = sh.range((f_ini, col_num(c1)), (f_fin, col_num(c2))).options(ndim=2).value
+            return d or []
+
+        def col(c):
+            return [f[0] if f else None for f in bloque(c, c)]
+
+        claves, tipos, centrales = col(cfg["col_clave"]), col(cfg["col_tipo"]), col(col_c)
+        fechas, periodos, montos = (col(cfg["col_fecha"]), col(cfg["col_periodo"]),
+                                    col(cfg["col_monto"]))
+        pros = bloque(*cfg["bloque_pro"])
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
+
+    n = f_fin - f_ini + 1
+    filas, fuera_de_dia = [], 0
+    for i in range(n):
+        dia = dia_de(fechas[i] if i < len(fechas) else None)
+        per = _numero(periodos[i] if i < len(periodos) else None)
+        bloque_dia = None if dia is None or per is None else per - (dia - 1) * BLOQUES_POR_DIA
+        if bloque_dia is not None and not (1 <= bloque_dia <= BLOQUES_POR_DIA):
+            fuera_de_dia += 1
+        fid = [claves[i] if i < len(claves) else None,
+               tipos[i] if i < len(tipos) else None,
+               centrales[i] if i < len(centrales) else None,
+               clave_bloque(dia, bloque_dia),
+               montos[i] if i < len(montos) else None]
+        fpro = (list(pros[i]) if i < len(pros) and pros[i] else []) + [None] * N_PRO
+        fpro = fpro[:N_PRO]
+        fsum = [sum(_numero(fpro[j]) or 0.0 for j in SUMAS_SC[s])
+                for s in ("CPF", "CSF", "CTF")]
+        filas.append((fid[2], fid, fpro, fsum))
+
+    quedan, avisos = _filtrar_embalses(filas, log)
+    sin_clave = sum(1 for fid, _, _ in quedan if fid[3] is None)
+    if sin_clave:
+        avisos.append(f"{sin_clave} fila(s) SC sin fecha (A) o período (R): "
+                      "quedan sin Clave_Bloque.")
+        log(f"    OJO: {sin_clave} fila(s) sin fecha en A o período en R: "
+            "quedan sin Clave_Bloque")
+    if fuera_de_dia:
+        avisos.append(f"{fuera_de_dia} fila(s) SC con bloque fuera de 1..96: "
+                      "¿mes con cambio de hora?")
+        log(f"    OJO: {fuera_de_dia} fila(s) dan un bloque fuera de 1..{BLOQUES_POR_DIA}"
+            f" con R - (DIA(A)-1)*{BLOQUES_POR_DIA}. Si el mes tiene cambio de")
+        log("         hora, la Clave_Bloque de los días siguientes queda corrida.")
+    return ([f for f, _, _ in quedan], [p for _, p, _ in quedan],
+            [s for _, _, s in quedan], avisos)
+
+
+def leer_co(ruta, cfg, log):
+    """Devuelve (filas_id, filas_pro, filas_suma, avisos) del Reporte_CRA (csv).
+    filas_pro va vacia: el CSV no trae el desglose ID / Pmax / Real."""
+    log(f"  Leyendo: {Path(ruta).name}")
+    cols = [cfg["col_clave"], cfg["col_tipo"], cfg["col_central"],
+            cfg["col_fecha"], cfg["col_bloque"], cfg["col_monto"]]
+    for a, b in cfg["sumas"].values():
+        cols += [a, b]
+    d = _csv.leer_columnas_csv(ruta, cols, cfg["fila_ini"], log)
+    if d is None:
+        raise RuntimeError(f"No se pudo leer {Path(ruta).name}")
+    filas_n = sorted(set().union(*(set(v) for v in d.values())) if d else set())
+    if not filas_n:
+        raise RuntimeError(f"No hay datos en {Path(ruta).name} desde la fila "
+                           f"{cfg['fila_ini']}.")
+    log(f"    filas leídas: {filas_n[0]} a {filas_n[-1]}  ({len(filas_n)})")
+
+    g = lambda c, f: d.get(c, {}).get(f)
+    filas = []
+    for f in filas_n:
+        fid = [g(cfg["col_clave"], f), g(cfg["col_tipo"], f), g(cfg["col_central"], f),
+               clave_bloque(dia_de(g(cfg["col_fecha"], f)), g(cfg["col_bloque"], f)),
+               g(cfg["col_monto"], f)]
+        fsum = [(_numero(g(a, f)) or 0.0) + (_numero(g(b, f)) or 0.0)
+                for a, b in (cfg["sumas"][s] for s in ("CPF", "CSF", "CTF"))]
+        filas.append((fid[2], fid, [None] * N_PRO, fsum))
+
+    quedan, avisos = _filtrar_embalses(filas, log)
+    sin_clave = sum(1 for fid, _, _ in quedan if fid[3] is None)
+    if sin_clave:
+        avisos.append(f"{sin_clave} fila(s) CO sin fecha (C) o bloque (E): "
+                      "quedan sin Clave_Bloque.")
+        log(f"    OJO: {sin_clave} fila(s) sin fecha en C o bloque en E: "
+            "quedan sin Clave_Bloque")
+    return ([f for f, _, _ in quedan], [p for _, p, _ in quedan],
+            [s for _, _, s in quedan], avisos)
 
 
 def leer_bloque_destino(sh, tipo, log):
@@ -390,24 +533,63 @@ def leer_bloque_destino(sh, tipo, log):
     dos bloques van uno debajo del otro, hay que reescribirlos juntos."""
     c_id1, c_id2 = (col_num(x) for x in COLS_ID)
     c_p1, c_p2 = (col_num(x) for x in COLS_PRO)
+    c_s1, c_s2 = (col_num(x) for x in COLS_SUMA)
     ult = max(ultima_fila(sh, COL_TIPO, FILA_DESTINO),
               ultima_fila(sh, COL_CENTRAL, FILA_DESTINO))
     if ult < FILA_DESTINO:
         log(f"    el destino no tenía filas de {tipo}")
-        return [], []
+        return [], [], []
     ids = sh.range((FILA_DESTINO, c_id1), (ult, c_id2)).options(ndim=2).value or []
     pros = sh.range((FILA_DESTINO, c_p1), (ult, c_p2)).options(ndim=2).value or []
+    sums = sh.range((FILA_DESTINO, c_s1), (ult, c_s2)).options(ndim=2).value or []
     objetivo = normalizar(tipo)
     idx_tipo = col_num(COL_TIPO) - c_id1
-    fid, fpro = [], []
+    fid, fpro, fsum = [], [], []
     for i, fila in enumerate(ids):
         if not fila or normalizar(fila[idx_tipo] if idx_tipo < len(fila) else None) != objetivo:
             continue
         fid.append((list(fila) + [None] * N_ID)[:N_ID])
         p = pros[i] if i < len(pros) else []
         fpro.append((list(p) + [None] * N_PRO)[:N_PRO])
+        q = sums[i] if i < len(sums) else []
+        fsum.append((list(q) + [None] * N_SUMA)[:N_SUMA])
     log(f"    conservadas {len(fid)} fila(s) de {tipo} que ya estaban en el destino")
-    return fid, fpro
+    return fid, fpro, fsum
+
+
+def controlar_formulas(sh, log):
+    """Mira la fila 9 entre AD y COL_FIN_CONTROL_FORMULAS y avisa si la
+    particion BLOQUES_FORMULA no calza con el libro: una columna de la particion
+    sin formula (se estiraria vacia) o una formula fuera de la particion (no se
+    estiraria). No cambia nada: solo avisa."""
+    c1, c2 = col_num(BLOQUES_FORMULA[0][0]), col_num(COL_FIN_CONTROL_FORMULAS)
+    try:
+        fila = sh.range((FILA_DESTINO, c1), (FILA_DESTINO, c2)).formula
+    except Exception:
+        return []
+    if fila and isinstance(fila[0], (list, tuple)):
+        fila = fila[0]
+    en_particion = set()
+    for a, b in BLOQUES_FORMULA:
+        en_particion |= set(range(col_num(a), col_num(b) + 1))
+    sin_formula, fuera = [], []
+    for i, f in enumerate(fila or []):
+        c = c1 + i
+        es_formula = isinstance(f, str) and f.startswith("=")
+        if c in en_particion and not es_formula:
+            sin_formula.append(col_letra(c))
+        elif c not in en_particion and es_formula:
+            fuera.append(col_letra(c))
+    avisos = []
+    if sin_formula:
+        avisos.append(f"En la fila {FILA_DESTINO} no hay fórmula en "
+                      f"{', '.join(sin_formula)}, que se esperaba que la tuviera.")
+        log(f"    OJO: sin fórmula en la fila {FILA_DESTINO}: {', '.join(sin_formula)}")
+    if fuera:
+        avisos.append(f"Hay fórmulas en {', '.join(fuera)} que el script no "
+                      "estira (no están en BLOQUES_FORMULA).")
+        log(f"    OJO: fórmulas que el script NO estira: {', '.join(fuera)}")
+    return avisos
 
 
 # =============================================================================
@@ -445,15 +627,21 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
             log("=" * 70)
             if cual in hacer:
                 log(f"{cual}: leyendo del origen")
-                fid, fpro, av = leer_fuente(app, rutas[cual], FUENTES[cual], log)
+                if cual == "SC":
+                    fid, fpro, fsum, av = leer_sc(app, rutas[cual], FUENTES[cual], log)
+                else:
+                    fid, fpro, fsum, av = leer_co(rutas[cual], FUENTES[cual], log)
                 avisos_todos += [f"{cual}: {a}" for a in av]
             else:
                 log(f"{cual}: NO se actualiza, se conserva lo que ya está")
                 tipo = TIPO_SC if cual == "SC" else TIPO_CO
-                fid, fpro = leer_bloque_destino(sh_d, tipo, log)
-            bloques[cual] = (fid, fpro)
+                fid, fpro, fsum = leer_bloque_destino(sh_d, tipo, log)
+            bloques[cual] = (fid, fpro, fsum)
 
-        # ---- la Clave Año_Mes de los CO sale de los SC ---------------------
+        # ---- la Clave Año_Mes ----------------------------------------------
+        # En 15 minutos el Reporte_CRA ya la trae. Si a algun CO le faltara, se
+        # completa como antes: con la de los SC, o la que tenian los CO, o el
+        # mes de la ventana.
         claves = [f[0] for f in bloques["SC"][0] if not _vacio(f[0])]
         clave = None
         if claves:
@@ -482,8 +670,31 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
 
         filas_id = bloques["SC"][0] + bloques["CO"][0]
         filas_pro = bloques["SC"][1] + bloques["CO"][1]
+        filas_suma = bloques["SC"][2] + bloques["CO"][2]
         if not filas_id:
             raise RuntimeError("No quedó ninguna fila para escribir.")
+
+        # Un solo mes por hoja: dos Clave Año_Mes distintas es un archivo
+        # equivocado (el SC de un mes con el CO de otro).
+        meses = sorted({str(_entero_si_se_puede(f[0])).strip()
+                        for f in filas_id if not _vacio(f[0])})
+        if len(meses) > 1:
+            av = (f"Hay más de una Clave Año_Mes en la hoja: {', '.join(meses)}. "
+                  "¿El SC y el CO son del mismo mes?")
+            avisos_todos.append(av)
+            log(f"  OJO: {av}")
+
+        # Control AI del libro: la misma Tipo + Unidad + Clave_Bloque dos veces.
+        vistas, repetidas = set(), 0
+        for f in filas_id:
+            k = (normalizar(f[1]), clave_central(f[2]), f[3])
+            if f[3] is not None and k in vistas:
+                repetidas += 1
+            vistas.add(k)
+        if repetidas:
+            av = f"{repetidas} fila(s) con Tipo + Unidad + Clave_Bloque repetidos."
+            avisos_todos.append(av)
+            log(f"  OJO: {av}")
 
         # ---- limpiar y escribir -------------------------------------------
         progreso(50, 100, "Escribiendo...")
@@ -491,13 +702,15 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
         log("Escribiendo en el destino")
         c_id1, c_id2 = (col_num(x) for x in COLS_ID)
         c_p1, c_p2 = (col_num(x) for x in COLS_PRO)
+        c_s1, c_s2 = (col_num(x) for x in COLS_SUMA)
         bloques_f = [(col_num(a), col_num(b)) for a, b in BLOQUES_FORMULA]
+        avisos_todos += controlar_formulas(sh_d, log)
 
         # Se limpia hasta la ultima fila con algo en cualquiera de los tres
         # bloques: el mes anterior pudo ser mas largo, y lo que sobre abajo
         # ensucia los totales.
         previa = 0
-        cols_mirar = [c_id1, c_id2, c_p1, c_p2] + [a for a, _ in bloques_f]
+        cols_mirar = [c_id1, c_id2, c_p1, c_p2, c_s1, c_s2] + [a for a, _ in bloques_f]
         for c in cols_mirar:
             previa = max(previa, ultima_fila(sh_d, col_letra(c), FILA_DESTINO))
         n = len(filas_id)
@@ -507,10 +720,11 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
                 f"({previa - FILA_DESTINO + 1} del mes anterior)")
             sh_d.range((FILA_DESTINO, c_id1), (previa, c_id2)).clear_contents()
             sh_d.range((FILA_DESTINO, c_p1), (previa, c_p2)).clear_contents()
+            sh_d.range((FILA_DESTINO, c_s1), (previa, c_s2)).clear_contents()
             if previa > ultima:
                 # Las formulas que sobran se borran; las que quedan se estiran
                 # mas abajo con AutoFill. Se borra bloque por bloque para no
-                # tocar la AC.
+                # tocar AE ni AH.
                 for (a, b), (la, lb) in zip(bloques_f, BLOQUES_FORMULA):
                     sh_d.range((ultima + 1, a), (previa, b)).clear_contents()
                 log(f"    {' y '.join(f'{a}:{b}' for a, b in BLOQUES_FORMULA)}: "
@@ -520,8 +734,10 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
 
         sh_d.range((FILA_DESTINO, c_id1)).value = filas_id
         sh_d.range((FILA_DESTINO, c_p1)).value = filas_pro
-        log(f"    {COLS_ID[0]}{FILA_DESTINO}:{COLS_ID[1]}{ultima}  y  "
-            f"{COLS_PRO[0]}{FILA_DESTINO}:{COLS_PRO[1]}{ultima}   "
+        sh_d.range((FILA_DESTINO, c_s1)).value = filas_suma
+        log(f"    {COLS_ID[0]}{FILA_DESTINO}:{COLS_ID[1]}{ultima},  "
+            f"{COLS_PRO[0]}{FILA_DESTINO}:{COLS_PRO[1]}{ultima}  y  "
+            f"{COLS_SUMA[0]}{FILA_DESTINO}:{COLS_SUMA[1]}{ultima}   "
             f"({len(bloques['SC'][0])} SC + {len(bloques['CO'][0])} CO = {n} filas)")
 
         # ---- estirar las formulas -----------------------------------------
@@ -531,7 +747,7 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
                 destino = sh_d.range((FILA_DESTINO, a), (ultima, b))
                 origen.api.AutoFill(destino.api, 0)     # xlFillDefault
         log(f"    {' y '.join(f'{a}:{b}' for a, b in BLOQUES_FORMULA)} "
-            f"estirado hasta la fila {ultima}   (la AC no se toca)")
+            f"estirado hasta la fila {ultima}   (AE y AH no se tocan)")
 
         progreso(85, 100, "Recalculando...")
         wb_d.app.calculation = "automatic"
@@ -673,7 +889,7 @@ def main():
     tk.Label(fm, text="Mes (AAMM):", font=("Segoe UI", 9)).pack(side="left")
     tk.Entry(fm, textvariable=var_aamm, width=8,
              font=("Consolas", 10)).pack(side="left", padx=6)
-    tk.Label(fm, text="solo se usa si no hay filas SC de donde copiar la clave",
+    tk.Label(fm, text="solo se usa si a los CO les falta la Clave Año_Mes",
              font=("Segoe UI", 8), fg="#555555").pack(side="left")
 
     fc = tk.LabelFrame(cont, text="Carpeta 02 CASO RELIQUIDACION", padx=10, pady=6)
@@ -750,7 +966,7 @@ def main():
             var_dest.set(d.get("p5") or "[el Revisor no mandó p5]")
             var_sc.set(d.get("calculo_sscc_maestro")
                        or "[el Revisor no mandó calculo_sscc_maestro]")
-            var_co.set(d.get("calculo_co") or "[el Revisor no mandó calculo_co]")
+            var_co.set(d.get("reporte_cra") or "[el Revisor no mandó reporte_cra]")
             pintar()
             return
         base = var_carpeta.get()
@@ -766,12 +982,12 @@ def main():
                     return p
             return None
 
-        def arch(carpeta, pref):
+        def arch(carpeta, pref, ext=(".xlsm", ".xlsx")):
             if carpeta is None:
                 return None
             cand = [p for p in carpeta.glob("*")
                     if p.is_file() and normalizar(p.name).startswith(pref)
-                    and p.suffix.lower() in (".xlsm", ".xlsx")
+                    and p.suffix.lower() in ext
                     and not p.name.startswith("~$")]
             return max(cand, key=lambda p: p.stat().st_mtime) if cand else None
 
@@ -781,10 +997,11 @@ def main():
         co_dir = carp("02 Costo de Oportunidad", ent) if ent else None
         d = arch(p9, "5_remuneracion_cra")
         s = arch(sob, "calculo_sobrecostossscc")
-        c = arch(co_dir, "calculo_co")
+        # El Reporte_CRA reemplaza al Calculo_CO y va en la misma carpeta.
+        c = arch(co_dir, "reporte_cra", (".csv",))
         var_dest.set(str(d) if d else "[5_REMUNERACIÓN_CRA no encontrado]")
         var_sc.set(str(s) if s else "[Calculo_SobrecostosSSCC no encontrado]")
-        var_co.set(str(c) if c else "[Calculo_CO no encontrado]")
+        var_co.set(str(c) if c else "[Reporte_CRA_15min (.csv) no encontrado]")
         pintar()
 
     def sel_carpeta():
@@ -843,7 +1060,8 @@ def main():
                 "Confirmar",
                 f"Sobre {p.name}, hoja «{HOJA_DESTINO}»:\n\n"
                 f"  • traer {' y '.join(hacer)} de los embalses\n"
-                f"  • se REEMPLAZA todo desde la fila {FILA_DESTINO}\n"
+                f"  • se REEMPLAZA {COLS_ID[0]}:{COLS_ID[1]} y {COLS_PRO[0]}:{COLS_SUMA[1]} "
+                f"desde la fila {FILA_DESTINO}\n"
                 f"  • se ajustan las fórmulas de "
                 + " y ".join(f"{a}:{b}" for a, b in BLOQUES_FORMULA)
                 + extra + "\n\n¿Seguir?"):

@@ -425,6 +425,33 @@ y el paquete `revisor/`, salvo lo indicado).
 - **Pendiente** (ver `BITACORA.md`): qué reemplaza el "Traer Consolidado", el
   `Prorratear` y las comprobaciones contra los `.mdb`.
 
+### `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py` — hoja "SC y CO" en 15 min
+
+- **Metodología:** la del CRA de `Balance_SSCC` (trazabilidad v5, §6.6),
+  confirmada por la usuaria el 2026-10-23. SC arriba, CO abajo, desde la fila
+  9, solo embalses.
+- **SC** — `Cálculo_SobrecostosSSCC`, hoja `SOBRECOSTOS`, fila 7: `S,T,U → C,D,E`;
+  `F = DIA(A) & "#" & (R − (DIA(A)−1)×96)` (Clave_Bloque); `W → G`;
+  **`AW:BN → I:Z`** (las 18 prorratas ID / Pmax / Real, tal cual) y en
+  **`AA:AC` la suma calculada** CPF/CSF/CTF. Cada grupo de 6 viene en el orden
+  CPF+, CPF−, CSF+, **CTF+**, CSF−, CTF−, así que CPF = I,J,O,P,U,V,
+  CSF = K,M,Q,S,W,Y y CTF = L,N,R,T,X,Z (igual que las fórmulas del libro).
+- **CO** — **`Reporte_CRA_15min_AAMM.csv`** (ya no `Calculo_CO`), en
+  `00 Entregables/02 Costo de Oportunidad/`, fila 2: `A,B,H → C,D,E`;
+  `F = DIA(C) & "#" & E`; `I → G`; `I:Z` vacío; `AA:AC` = `J+K`, `L+M`, `N+O`.
+  Se lee con `__comun__/csv_columnas.py`.
+- **Fórmulas que se estiran:** `AD`, `AF:AG`, `AI` (`BLOQUES_FORMULA`). AE y AH
+  no llevan fórmula y la tabla `dict_SCCO` (AT:AV) no se toca. Antes de
+  escribir avisa si la fila 9 no calza con esa partición. V10 usa la misma.
+- **Avisos:** más de una Clave Año_Mes, Tipo + Unidad + Clave_Bloque repetidos
+  (control AI del libro), y bloques de SC fuera de 1..96 (mes con cambio de
+  hora: el 96 es el del Excel y se copia tal cual).
+- **Revisor 15 min:** el nodo `a_calc_co` pasó a **`a_reporte_cra`** (clave de
+  traspaso `reporte_cra`). V10 compara el CO contra el CSV, revisa que
+  `AA:AC` sume 1 por fila y que `AD`, `AF:AG`, `AI` cubran las filas.
+  `revisor/lectores.leer_columnas_rapido` despacha los `.csv` a
+  `__comun__/csv_columnas.py`.
+
 ### `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,
@@ -578,6 +605,16 @@ código.** Corregir el documento cuando haya oportunidad:
   XML, sin abrir Excel; ante un fallo devuelve `None` para conservar el fallback.
 - **Lo usan:** Revisor y `Actualiza_Data_Access.py`, mediante aliases históricos.
 - **Pruebas:** `__comun__/test_excel_xml.py`, con un OOXML sintético.
+
+### `__comun__/csv_columnas.py` — **hecho** (2026-10-23)
+
+- **Qué hace:** lee un `.csv` como `{COL: {fila: valor}}`, igual que
+  `excel_xml.leer_columnas_rapido`, con la fila contada como en Excel.
+  Separador `;`, `,` o tabulador; coma decimal con `;`; UTF-8 o cp1252.
+- **Lo usan:** el `Actualiza_SC_CO.py` y el Revisor de la versión 15 minutos
+  (CO desde `Reporte_CRA_15min`).
+- **Pruebas:** `__comun__/test_csv_columnas.py`, con las filas reales del
+  Reporte_CRA de diciembre 2025.
 
 ### `__comun__/texto.py` y `__comun__/archivos.py` — **hecho**
 

@@ -10,6 +10,7 @@ import re
 import sys
 
 from __comun__ import excel_xml as _excel_xml
+from __comun__ import csv_columnas as _csv
 from __comun__.texto import suave_textual as normalizar
 from revisor.archivos import mtime
 
@@ -490,7 +491,15 @@ def es_significativo(v):
     return True
 
 
-leer_columnas_rapido = _excel_xml.leer_columnas_rapido
+def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log):
+    """``{COL: {fila: valor}}`` sin abrir Excel. Un ``.csv`` (el
+    Reporte_CRA_15min del CO, modo 15 minutos) se lee con
+    ``__comun__/csv_columnas.py`` y la hoja no aplica; todo lo demas va al
+    lector OOXML de siempre, que ante un formato que no entiende devuelve None
+    para que el llamador caiga a xlwings."""
+    if str(ruta).lower().endswith(".csv"):
+        return _csv.leer_columnas_csv(ruta, columnas, fila_inicio, log)
+    return _excel_xml.leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)
 
 
 

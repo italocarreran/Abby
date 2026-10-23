@@ -66,6 +66,50 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-23 — Claude — "SC y CO" de la planilla 5 en 15 minutos
+
+La usuaria pidió adaptar el botón de SC y CO a la metodología que usa el CRA en
+`italocarreran/Balance_SSCC` (`Script/cra/hojas_entrada.py`, trazabilidad v5
+§6.6). Se revisó ese repositorio y la usuaria confirmó:
+- el CO sale de **`Reporte_CRA_15min_AAMM.csv`**, en la misma carpeta donde
+  estaba el `Calculo_CO` (`00 Entregables/02 Costo de Oportunidad/`); el
+  `Calculo_CO` ya no se usa;
+- SC: las 18 prorratas `AW:BN` van en `I:Z` y en `AA:AC` se pega la suma;
+- CO: en `AA:AC` se pega la suma CPF, CSF, CTF.
+Y mandó una imagen de los encabezados de `SOBRECOSTOS AW:BN`: cada grupo de 6
+(ID, Pmax, Real) viene en el orden CPF+, CPF−, CSF+, **CTF+**, CSF−, CTF−.
+
+**Qué se hizo** (solo en `Revisor_Relq_15min/`, la horaria no se tocó):
+- `Actualiza_SC_CO.py`: C:G con la Clave_Bloque en F (`DIA & "#" & bloque`;
+  para SC con el `*96` del Excel), I:Z y AA:AC según lo de arriba; sumas con
+  las mismas columnas que las fórmulas AA:AC del libro; fórmulas a estirar
+  `AD`, `AF:AG`, `AI`, con un control que avisa si la fila 9 no calza. Avisos
+  de mes mezclado, duplicados (control AI) y bloques fuera de 1..96.
+- Nuevo `__comun__/csv_columnas.py` (+ prueba): lector de CSV por letra/fila.
+- Revisor 15 min: nodo `a_calc_co` → `a_reporte_cra` (`.csv`), traspaso
+  `reporte_cra`, V10 contra el CSV, `suma_fila` sobre `AA:AC`,
+  `formulas_cubren` sobre `AD`, `AF:AG`, `AI`; V14 depende del CSV en vez del
+  `Calculo_CO`. Como cambió la definición, V10 y V14 se descartan solas y hay
+  que volver a verificarlas.
+
+**Para Balance_SSCC (no se tocó, no tenemos escritura):** su
+`SUMAS_SOBRECOSTOS` en `Script/cra/parametros.py` suma CSF(−) = AZ+BF+BL y
+CTF(+) = BA+BG+BM, pero según los encabezados AZ/BF/BL son **CTF(+)** y
+BA/BG/BM son **CSF(−)**: ahí CSF(−) y CTF(+) están cruzados. El CPF da igual;
+en el CRA del Balance el CSF y el CTF por fila salen intercambiados en esa
+parte. Avisarle a la usuaria para que lo corrija en ese repositorio.
+
+**Verificación:** con el `Reporte_CRA_15min_2512.csv` real (copiado del
+Balance): 5.686 filas de embalse y las mismas 13 centrales sin filas que
+reporta el Balance; V10 (bloque CO y centrales del origen) en OK contra un
+destino simulado. SC probado con una hoja simulada: sumas 45/60/66 con 1..18
+en I:Z, Clave_Bloque `1#38` y `2#5`. `scripts/verificar.sh` en `TODO OK`.
+**No probado con Excel real** (xlwings: escritura, AutoFill, control de fórmulas).
+
+Pendiente: probarlo en Windows; el cambio de hora en la Clave_Bloque del SC.
+
+---
+
 ## 2026-10-23 — Claude — prorrata 15 min: la hoja de origen es "Prorrata 15min"
 
 La usuaria confirmó el formato del Prorrata_Retiros de 15 minutos: lo único
