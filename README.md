@@ -69,7 +69,7 @@ Revisor_Relq/                   ← CARPETA DEL REVISOR
 Revisor_Relq_15min/             ← VERSIÓN 15 MINUTOS (misma idea, hermana)
 ├── Revisor_Reliquidacion_15min.py   es el que se abre para un mes de 15 min
 ├── actualizadores/            Actualiza_datos, Actualiza_Cuadro0,
-│                              Actualiza_SC_CO, Carga_Retiros
+│                              Actualiza_SC_CO
 └── Reemplazos REUC/
 ```
 

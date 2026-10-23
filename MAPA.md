@@ -42,7 +42,7 @@ Revisor_Relq_15min/                la versión 15 minutos (ver su sección, al f
 ├── Revisor_Reliquidacion_15min.py
 ├── revisor/
 ├── actualizadores/                Actualiza_datos, Actualiza_Cuadro0,
-│                                  Actualiza_SC_CO, Carga_Retiros
+│                                  Actualiza_SC_CO
 └── Reemplazos REUC/
 ```
 
@@ -404,7 +404,7 @@ para Excel y demás resultados entregables.
 
 Nació como copia de `Revisor_Relq/` (2026-10-22) y se adapta de a poco, a
 medida que la usuaria necesita cada actualizador. **Lo que no se describe acá
-es igual que en la horaria** (Cuadro0, SC_CO, Carga_Retiros, ActualizaRemplazos
+es igual que en la horaria** (Cuadro0, ActualizaRemplazos
 y el paquete `revisor/`, salvo lo indicado).
 
 - **Lo que no existe en 15 minutos y se sacó:** detalles diarios, CCA, 02
@@ -412,7 +412,7 @@ y el paquete `revisor/`, salvo lo indicado).
   verificaciones V4, V5, V6, V12 y V17, y los actualizadores
   `Actualiza_Data_Access`, `Actualiza_Energia`, `Actualiza_Access_P9` y
   `Prorratear`.
-- **Config propio:** los seis scripts de esta versión leen y escriben
+- **Config propio:** los cinco scripts de esta versión leen y escriben
   `config.json` y `reemplazos_reuc.json` **solo dentro de la clave
   `"modo_15min"`**, con la misma forma que el archivo entero. Lo de afuera es
   de la horaria. Está en los envoltorios de cada script (`SECCION_CONFIG`), no
@@ -422,6 +422,10 @@ y el paquete `revisor/`, salvo lo indicado).
   porque un mes es de un solo modo.
 - **Comparadores:** siguen siendo de la horaria y buscan
   `Revisor_Reliquidacion.py`, o sea `Revisor_Relq/`.
+- **Tampoco se usan en 15 min** (usuaria, 2026-10-23): la carpeta `01.a
+  Sobrecostos de Energia` (Consolidado_AAMM y Pago_Sobrecostos, con su V7),
+  `00 Entregables/02 Costo de Oportunidad` y el `Retiros_h.parquet` (con
+  `Carga_Retiros.py`, que se borró). El árbol queda en 20 nodos.
 - **Pendiente** (ver `BITACORA.md`): qué reemplaza el "Traer Consolidado", el
   `Prorratear` y las comprobaciones contra los `.mdb`.
 
@@ -437,7 +441,7 @@ y el paquete `revisor/`, salvo lo indicado).
   CPF+, CPF−, CSF+, **CTF+**, CSF−, CTF−, así que CPF = I,J,O,P,U,V,
   CSF = K,M,Q,S,W,Y y CTF = L,N,R,T,X,Z (igual que las fórmulas del libro).
 - **CO** — **`Reporte_CRA_15min_AAMM.csv`** (ya no `Calculo_CO`), en
-  `00 Entregables/02 Costo de Oportunidad/`, fila 2: `A,B,H → C,D,E`;
+  **`04 Planilla 9/`**, fila 2: `A,B,H → C,D,E`;
   `F = DIA(C) & "#" & E`; `I → G`; `I:Z` vacío; `AA:AC` = `J+K`, `L+M`, `N+O`.
   Se lee con `__comun__/csv_columnas.py`.
 - **Fórmulas que se estiran:** `AD`, `AF:AG`, `AI` (`BLOQUES_FORMULA`). AE y AH
@@ -456,7 +460,7 @@ y el paquete `revisor/`, salvo lo indicado).
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,
   verifica por fecha de modificación (copias contra sus maestros) y por valores
-  (V7…V16, con cadena de dependencias entre verificaciones), y desde cada fila lanza
+  (V8…V16, con cadena de dependencias entre verificaciones), y desde cada fila lanza
   el actualizador que corresponde.
 - **Consume:** el árbol de `02 CASO RELIQUIDACION` + `FD/` (solo Excel y el
   parquet de retiros; ya no hay `.mdb`), `config.json` (`carpeta_base`,
@@ -471,7 +475,7 @@ y el paquete `revisor/`, salvo lo indicado).
   del ejecutor; `cache_directorios()` como context manager; `CENTRALES_EMBALSE`
   (27); `UMBRAL_DESCUADRE_CPRT` (**1000.0**, no 500) y `UMBRAL_PAR_SEGURO`
   (100.0); `TOLERANCIA` (1.0), `TOL_PAGO_EMPRESA` (150.0), `TOL_MTIME` (2 s);
-  `NODOS` (**25**) y `VERIFICADORES` (**9**: V7, V8, V9, V10, V11, V13, V14,
+  `NODOS` (**20**) y `VERIFICADORES` (**8**: V8, V9, V10, V11, V13, V14,
   V15, V16).
 - **Depende de:** los 5 scripts que lanza, pero solo por línea de comandos — no
   los importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**

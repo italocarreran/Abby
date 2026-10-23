@@ -23,9 +23,9 @@
       por actualizador; no adelantarse. Falta saber: (a) de dónde sale la hoja
       `SOBRECOSTOS` de `Cálculo_SobrecostosSSCC` (antes "Traer Consolidado");
       (b) qué arma `Pago_Retiro_reporte_tabla` sin `Prorratear.py`, y si
-      `Carga_Retiros.py` sigue haciendo falta; (c) si `Consolidado_AAMM` y
-      `Pago_Sobrecostos` siguen existiendo (quedaron en el árbol sin
-      actualizador); (d) si la L6 de la planilla 4 se cuadra contra algo.
+      `Carga_Retiros.py` sigue haciendo falta (resuelto 2026-10-23: no, se
+      sacó); (c) `Consolidado_AAMM` y `Pago_Sobrecostos`: resuelto
+      2026-10-23, la carpeta 01.a ya no se usa; (d) si la L6 de la planilla 4 se cuadra contra algo.
 - [ ] **Prorrata 15 min de las planillas 3, 5 y 6 — probar con Excel real**
       (2026-10-22). Formato confirmado el 2026-10-23 (hoja `Prorrata 15min`,
       mismas columnas). Falta correrlo con Excel y que las fórmulas de las
@@ -64,6 +64,26 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+---
+
+## 2026-10-23 — Claude — 15 min: fuera 01.a, 02 Costo de Oportunidad y Retiros_h
+
+La usuaria: en 15 minutos ya no se usan la carpeta `01.a Sobrecostos de
+Energia`, el `Retiros_h` ni la carpeta `00 Entregables/02 Costo de
+Oportunidad`. El `Reporte_CRA_15min_AAMM.csv` va en **`04 Planilla 9`** (no
+donde estaba el `Calculo_CO`, como se había supuesto en la entrada anterior).
+
+En `Revisor_Relq_15min/` (la horaria no se tocó):
+- Revisor: fuera los nodos `c_sobe`, `a_consolidado`, `a_pago`, `c_ent_co` y
+  `a_retiros_parq`; fuera **V7** (era `Pago_Sobrecostos!M5 = 0`) y su valor
+  `PAGO_M5`; el nodo `a_reporte_cra` pasa a `04 Planilla 9`. Sin botón ni
+  clave de traspaso para lo quitado. Quedan 20 nodos y 8 verificaciones.
+- `Actualiza_SC_CO.py`: busca el CSV en `04 Planilla 9`.
+- Se borró `actualizadores/Carga_Retiros.py` (con la usuaria) y se sacó de
+  `revisor/test_seccion_config.py`.
+
+`scripts/verificar.sh` en `TODO OK`; referencias del Revisor coherentes.
+
 ---
 
 ## 2026-10-23 — Claude — "SC y CO" de la planilla 5 en 15 minutos

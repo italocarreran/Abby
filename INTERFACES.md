@@ -49,11 +49,10 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2093 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3377 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3346 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 1029 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1124 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1348 líneas
-- [`Revisor_Relq_15min/actualizadores/Carga_Retiros.py`](#revisor_relq_15minactualizadorescarga_retirospy) — 875 líneas — Carga Retiros_h.parquet a SQL Server
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 239 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
@@ -2610,13 +2609,13 @@ manteniendo el formato de las celdas.
 | `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
 | `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
 | `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
-| `VALORES` | `dict de 38 claves: 'PAGO_M5', 'SSCC_H1', 'DESCUADRE_CPRT', …` |  |
-| `VERIFICADORES` | `dict de 9 claves: 'V8', 'V9', 'V10', …` |  |
+| `VALORES` | `dict de 37 claves: 'SSCC_H1', 'DESCUADRE_CPRT', 'P3_RES_D7', …` |  |
+| `VERIFICADORES` | `dict de 8 claves: 'V8', 'V9', 'V10', …` |  |
 | `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
-| `NODOS` | `lista de 25 elementos: dict(id='c_fd', tipo='carpeta', pref='', texto='../FD/          « ORIGEN — fuera de 02 CASO RELIQUIDACION »'), dict(id='a_sscc_desempeno', tipo='archivo', pref='    └── ', texto='SSCC_Desempeno*.xlsx\|xlsm   (origen de las hojas FD)', carpeta=['FD'], sube=True, solo_info=True, patron='^sscc_desempeno', ext=XL, espejo=None), dict(id='c_ent', tipo='carpeta', pref='├── ', texto='00 Entregables/'), …` |  |
+| `NODOS` | `lista de 20 elementos: dict(id='c_fd', tipo='carpeta', pref='', texto='../FD/          « ORIGEN — fuera de 02 CASO RELIQUIDACION »'), dict(id='a_sscc_desempeno', tipo='archivo', pref='    └── ', texto='SSCC_Desempeno*.xlsx\|xlsm   (origen de las hojas FD)', carpeta=['FD'], sube=True, solo_info=True, patron='^sscc_desempeno', ext=XL, espejo=None), dict(id='c_ent', tipo='carpeta', pref='├── ', texto='00 Entregables/'), …` |  |
 | `NODO_POR_ID` | `{n['id']: n for n in NODOS}` |  |
-| `ACTUALIZADORES` | `dict de 6 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_retiros_parq', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita. |
-| `CLAVES_TRASPASO` | `dict de 11 claves: 'a_sscc_desempeno', 'a_prorrata', 'a_calc_sscc_01', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
+| `ACTUALIZADORES` | `dict de 5 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_5_p9', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita. |
+| `CLAVES_TRASPASO` | `dict de 9 claves: 'a_sscc_desempeno', 'a_prorrata', 'a_calc_sscc_01', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
 | `ARCHIVO_TRASPASO` | `'_traspaso_actualizador.json'` |  |
 | `TRASPASO_VERSION` | `_traspaso.VERSION_ACTUAL` |  |
 | `ACCIONES_INTERNAS` | `{'a_0_cuadros': [('Exportar CPRT', '_exportar_cprt')]}` | Acciones que corren DENTRO del revisor, sin lanzar otro proceso. |
@@ -3181,112 +3180,6 @@ rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
 Retorna (ok, lista_rutas_modificadas)
 
 **— Ventana —**
-
-#### `def main()`
-
-
----
-
-## `Revisor_Relq_15min/actualizadores/Carga_Retiros.py`
-
-> Carga Retiros_h.parquet a SQL Server
-> Version con ventana del script original. Lo que hace es lo mismo:
->     1. lee el parquet
->     2. BORRA del servidor los periodos que trae el parquet (o la tabla entera)
->     3. carga por trozos
->     4. verifica que la cuenta cuadre
->
-> ESTO ESCRIBE EN UNA BASE DE DATOS Y BORRA FILAS. Por eso:
->   - antes de borrar muestra exactamente que va a borrar y pide confirmacion
->   - hay un modo SOLO MIRAR que hace los conteos y no toca nada
->   - todo queda en el log con las cuentas antes y despues
->
-> SI FALLA A MITAD DE LA CARGA: el borrado ya se hizo y quedan filas a medias.
-> No es grave: volver a correrlo borra ese periodo otra vez y recarga. Lo que NO
-> hay que hacer es dejarlo asi, porque la tabla queda con datos incompletos.
->
-> *(el encabezado sigue arriba de todo en el archivo)*
-
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
-
-### Constantes
-
-| Nombre | Valor | |
-|---|---|---|
-| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
-| `CONFIG_PATH` | `DIR_SCRIPT.parent.parent / '__config__' / 'config.json'` | config.json es compartido con el Revisor y el resto de los actualizadores, y ahora vive en __config__, junto a Revisor_Relq. |
-| `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
-| **— Configuracion —** | | |
-| `NOMBRE_PARQUET` | `'Retiros_h.parquet'` |  |
-| `CARPETA_PARQUET` | `'04 Planilla 9'` |  |
-| `TABLA` | `'Retiros'` |  |
-| `SERVER` | `'SRV-DTE'` |  |
-| `DRIVER` | `'ODBC Driver 17 for SQL Server'` |  |
-| `BASES` | `['02_RETIROS', '14_RETIROS_RELIQUIDACION']` | Las bases entre las que se puede elegir. |
-| `CHUNK` | `50000` |  |
-| `LARGO_TEXTO` | `255` | Largo de las columnas de texto SI HAY QUE CREAR la tabla. |
-| `COL_PERIODO` | `'Clave Año_Mes'` | Los nombres de columna NO se escriben igual en todos lados: el parquet a veces trae "Clave Año_Mes" (con espacio y ñ) y a veces "Clave_Anio_Mes" o "Clave_anio_mes", y la tabla de SQL Server tiene el… |
-| `COL_SUMINISTRADOR` | `'Suministrador'` |  |
-| `COL_HORA` | `'Hora Mensual'` |  |
-| `HORA_CAMBIO_POR_OMISION` | `145` | El mes del cambio de hora de primavera tiene una hora MENOS: esa hora no existe. |
-| `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
-| **— TRASPASO DESDE EL REVISOR —** | | |
-| `TRASPASO_ORIGEN` | `_traspaso.ORIGEN` |  |
-| `TRASPASO_VERSION_MAX` | `_traspaso.VERSION_ACTUAL` |  |
-
-### Funciones
-
-#### `def resolver_columna(columnas, objetivo)`
-
-El nombre REAL de la columna, o None. Primero exacto, despues normalizado.
-
-#### `def leer_config()`
-
-#### `def guardar_config(data)`
-
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
-#### `def leer_traspaso(argv)`
-
-#### `def fmt_tiempo(seg)`
-
-#### `def fmt_n(n)`
-
-12345 -> '12.345'  (separador de miles chileno).
-
-#### `def buscar_parquet(carpeta_reliq)`
-
-El Retiros_h.parquet dentro de '04 Planilla 9'.
-
-#### `def aplicar_cambio_hora(df, col_hora, hora_cambio, log)`
-
-Empuja una hora hacia arriba todo lo que este DESDE hora_cambio.
-
-En el mes del cambio de primavera la hora `hora_cambio` no existe. Si el
-archivo viene corrido (1..719), lo que esta guardado como 145 es en realidad
-la 146, lo que esta como 146 es la 147, y asi. Sumando 1 desde ahi queda
-1..144 y 146..720, con la 145 ausente, que es lo correcto.
-
-Devuelve (df, aplicado, motivo).
-
-COMO SE DETECTA SI YA VIENE APLICADO: mirando si la hora del cambio EXISTE
-en los datos.
-  - si existe  -> todavia no se aplico, hay que empujar
-  - si no esta -> ya se aplico (o no hay retiros a esa hora), no se toca
-Es la comprobacion correcta porque el desplazamiento es justamente lo que
-deja ese hueco: no se puede aplicar dos veces sin que se note.
-
-#### `def ejecutar(ruta_parquet, base_datos, hora_cambio, log, progreso)`
-
-Carga el parquet en la tabla, vaciandola antes.
-
-hora_cambio: None, o la hora mensual del cambio de horario de primavera.
-Si viene, se empuja una hora todo lo que este desde ahi (ver
-aplicar_cambio_hora). El parquet NO se toca.
-
-Devuelve (ok, resumen).
-
-**— VENTANA —**
 
 #### `def main()`
 
@@ -4266,13 +4159,13 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `CLAVE_JSON_PROPIA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COLORES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `COLUMNAS_VISTA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
-| `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `COL_HORA` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Comparadores/Comparador_Etapas.py` |
+| `CONFIG_PATH` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `CONFIG_RAIZ` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_CONFIG` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py` |
 | `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
+| `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py` |
 | `ETAPAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA_SLOT` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
@@ -4289,14 +4182,14 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `PAT_SSCC` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `REQUISITOS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `SALIDAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `SECCION_CONFIG` | `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
+| `SECCION_CONFIG` | `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py` |
 | `SERVER` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `SLOTS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `TRAMOS_DEF` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
-| `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
+| `TRASPASO_ORIGEN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py` |
+| `TRASPASO_VERSION_MAX` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py` |
 | `_CACHE_DIR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_CACHE_DIRECTORIOS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `_NECESITA` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |
-| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`, `Revisor_Relq_15min/actualizadores/Carga_Retiros.py` |
+| `_RAIZ_COMUN` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_datos.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_datos.py` |
 | `_TIENE` | `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py` |

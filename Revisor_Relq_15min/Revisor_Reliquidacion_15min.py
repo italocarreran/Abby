@@ -146,10 +146,6 @@ VALORES = {
     #   o contra los Access, que en el modo 15 minutos no existen)
 
     # --- celdas puntuales --------------------------------------------------
-    "PAGO_M5": {
-        "tipo": "excel", "archivo": "a_pago", "hoja": "VERIFICADORES", "celda": "M5",
-        "etiqueta": "Pago_Sobrecostos  VERIFICADORES!M5",
-    },
     "SSCC_H1": {
         "tipo": "excel", "archivo": "a_calc_sscc_01",
         "hoja": "SOBRECOSTOS TOTAL", "celda": "H1",
@@ -460,15 +456,6 @@ VERIFICADORES = {
 
         ],
     },
-    "V7": {
-        "archivo": "a_pago",
-        "titulo": "Pago_Sobrecostos: VERIFICADORES!M5 = 0",
-        "depende": [],
-        "verif_previas": [],
-        "comprobaciones": [
-            {"tipo": "cero", "desc": "VERIFICADORES!M5 = 0", "claves": ["PAGO_M5"]},
-        ],
-    },
     "V13": {
         "archivo": "a_9_pagos",
         "titulo": "Planilla 9: total general (A/B) = total general (D/E)",
@@ -683,6 +670,9 @@ VERIFICADORES = {
 # Consolidado_Tabulado ni las bases Access (03b ENTRADA_SOB_SSCC, 03b
 # ENTRADA_SOB y Ocupar_este_para_Reliquidacion). Sus nodos se sacaron del arbol
 # junto con las verificaciones y los actualizadores que colgaban de ellos.
+# Tampoco se usan (usuaria, 2026-10-23) la carpeta 01.a Sobrecostos de Energia
+# (Consolidado_AAMM y Pago_Sobrecostos, con su V7), 00 Entregables/02 Costo de
+# Oportunidad, ni el Retiros_h.parquet (con su Carga_Retiros.py).
 
 XL = (".xlsm", ".xlsx", ".xlsb")
 
@@ -706,14 +696,6 @@ NODOS = [
          carpeta=["00 Entregables", "01 Sobrecostos"],
          patron=r"^calculo_sobrecostossscc_", ext=XL, espejo="a_calc_sscc_01"),
 
-    dict(id="c_ent_co", tipo="carpeta", pref="│   ├── ", texto="02 Costo de Oportunidad/"),
-    # 15 minutos: el CO sale del Reporte_CRA_15min_AAMM.csv, que reemplaza al
-    # Calculo_CO en la misma carpeta (confirmado por la usuaria, 2026-10-23).
-    dict(id="a_reporte_cra", tipo="archivo", pref="│   │   └── ",
-         texto="Reporte_CRA_15min_AAMM.csv   (origen del CO de «SC y CO»)",
-         carpeta=["00 Entregables", "02 Costo de Oportunidad"],
-         patron=r"^reporte_cra", ext=(".csv",), espejo=None),
-
     dict(id="a_0_cuadros", tipo="archivo", pref="│   ├── ", texto="0_CUADROS_RELIQUIDACIÓN SSCC_AAMM_*.xlsm",
          carpeta=["00 Entregables"], patron=r"^0_cuadros", ext=XL, espejo=None),
     dict(id="a_1_cuadros", tipo="archivo", pref="│   ├── ", texto="1_CUADROS_PAGO_SSCC_AAMM_*.xlsm",
@@ -733,12 +715,6 @@ NODOS = [
     dict(id="a_calc_sscc_01", tipo="archivo", pref="│   └── ", texto="Cálculo_SobrecostosSSCC_AAMM_*.xlsm  (maestro)",
          carpeta=["01 Sobrecostos"], patron=r"^calculo_sobrecostossscc_", ext=XL, espejo=None),
 
-    dict(id="c_sobe", tipo="carpeta", pref="├── ", texto="01.a Sobrecostos de Energia/"),
-    dict(id="a_consolidado", tipo="archivo", pref="│   ├── ", texto="Consolidado_AAMM_*.xlsm",
-         carpeta=["01.a Sobrecostos de Energia"], patron=r"^consolidado_", ext=XL, espejo=None),
-    dict(id="a_pago", tipo="archivo", pref="│   └── ", texto="Pago_Sobrecostos_AAMM_*.xlsx",
-         carpeta=["01.a Sobrecostos de Energia"], patron=r"^pago_sobrecostos", ext=XL, espejo=None),
-
     dict(id="c_p9", tipo="carpeta", pref="└── ", texto="04 Planilla 9/          « MAESTRO de 3_ / 5_ / 6_ »"),
     dict(id="a_3_p9", tipo="archivo", pref="    ├── ", texto="3_REMUNERACIÓN_SUBASTAS_E_ID_AAMM_*.xlsm  (maestro)",
          carpeta=["04 Planilla 9"], patron=r"^3_remuneracion_subastas", ext=XL, espejo=None),
@@ -748,14 +724,12 @@ NODOS = [
          carpeta=["04 Planilla 9"], patron=r"^6_remuneracion_rea", ext=XL, espejo=None),
     dict(id="a_prorrata", tipo="archivo", pref="    ├── ", texto="Prorrata_Retiros_AAMM_*.xlsx",
          carpeta=["04 Planilla 9"], patron=r"^prorrata_retiros", ext=XL, espejo=None),
-    # Origen de la carga a SQL Server. No se verifica su contenido: es un parquet,
-    # no un Excel. Solo se muestra el nombre y la fecha, y desde aca se lanza la
-    # carga. Lo que valida la carga es el propio script, contra el servidor.
-    dict(id="a_retiros_parq", tipo="archivo", pref="    └── ",
-         texto="Retiros_h.parquet   (se carga a SQL Server)",
-         carpeta=["04 Planilla 9"], patron=r"^retiros", ext=(".parquet",),
-         espejo=None, solo_info=True,
-         estado_info="origen de la carga a SQL"),
+    # 15 minutos: el CO de «SC y CO» sale de este csv, que reemplaza al
+    # Calculo_CO (la carpeta 02 Costo de Oportunidad ya no se usa). Va en
+    # 04 Planilla 9 (confirmado por la usuaria, 2026-10-23).
+    dict(id="a_reporte_cra", tipo="archivo", pref="    └── ",
+         texto="Reporte_CRA_15min_AAMM.csv   (origen del CO de «SC y CO»)",
+         carpeta=["04 Planilla 9"], patron=r"^reporte_cra", ext=(".csv",), espejo=None),
 ]
 
 NODO_POR_ID = {n["id"]: n for n in NODOS}
@@ -792,9 +766,6 @@ def _texto_carpeta(nodo):
 ACTUALIZADORES = {
     "a_calc_sscc_01": [dict(script="actualizadores/Actualiza_datos.py", planilla="sc")],
     "a_3_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p3")],
-    # Escribe en SQL Server, no en un Excel. Va como actualizador igual: abre su
-    # ventana, recibe la ruta por el JSON y el revisor no queda dueno del proceso.
-    "a_retiros_parq": [dict(script="actualizadores/Carga_Retiros.py", texto="Cargar retiros")],
 
     "a_5_p9": [
         dict(script="actualizadores/Actualiza_datos.py", planilla="p5"),
@@ -822,10 +793,8 @@ CLAVES_TRASPASO = {
     "a_3_p9":           "p3",
     "a_5_p9":           "p5",
     "a_6_p9":           "p6",
-    "a_consolidado":    "consolidado_energia",
     "a_0_cuadros":      "cuadro_0",
     "a_1_cuadros":      "cuadro_1",
-    "a_retiros_parq":   "retiros_parquet",
 }
 
 ARCHIVO_TRASPASO = "_traspaso_actualizador.json"

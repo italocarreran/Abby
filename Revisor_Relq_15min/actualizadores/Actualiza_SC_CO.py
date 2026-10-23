@@ -21,7 +21,8 @@
 #      AA:AC  CPF, CSF y CTF: la SUMA de esas 18, calculada aca y pegada como
 #             valor (AA = I,J,O,P,U,V · AB = K,M,Q,S,W,Y · AC = L,N,R,T,X,Z)
 #
-#  CO — Reporte_CRA_15min_AAMM.csv, desde la fila 2 (ya NO Calculo_CO):
+#  CO — Reporte_CRA_15min_AAMM.csv, en 04 Planilla 9, desde la fila 2
+#       (ya NO Calculo_CO):
 #      A -> C   Clave Año_Mes
 #      B -> D   tipo (CO)
 #      H -> E   central                       <- por aca se filtra
@@ -993,12 +994,11 @@ def main():
 
         p9 = carp("04 Planilla 9")
         sob = carp("01 Sobrecostos")
-        ent = carp("00 Entregables")
-        co_dir = carp("02 Costo de Oportunidad", ent) if ent else None
         d = arch(p9, "5_remuneracion_cra")
         s = arch(sob, "calculo_sobrecostossscc")
-        # El Reporte_CRA reemplaza al Calculo_CO y va en la misma carpeta.
-        c = arch(co_dir, "reporte_cra", (".csv",))
+        # El Reporte_CRA reemplaza al Calculo_CO y va en 04 Planilla 9 (la
+        # carpeta 00 Entregables/02 Costo de Oportunidad ya no se usa).
+        c = arch(p9, "reporte_cra", (".csv",))
         var_dest.set(str(d) if d else "[5_REMUNERACIÓN_CRA no encontrado]")
         var_sc.set(str(s) if s else "[Calculo_SobrecostosSSCC no encontrado]")
         var_co.set(str(c) if c else "[Reporte_CRA_15min (.csv) no encontrado]")

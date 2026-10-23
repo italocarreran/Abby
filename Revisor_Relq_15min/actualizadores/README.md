@@ -1,9 +1,12 @@
-# `actualizadores/` — los 4 que el Revisor lanza por botón
+# `actualizadores/` — los 3 que el Revisor lanza por botón
 
 ```
 Actualiza_datos.py           Actualiza_Cuadro0.py
-Actualiza_SC_CO.py           Carga_Retiros.py
+Actualiza_SC_CO.py
 ```
+
+`Carga_Retiros.py` se sacó el 2026-10-23: el `Retiros_h.parquet` ya no se usa
+en 15 minutos.
 
 Modo 15 minutos: `Actualiza_Data_Access.py` (el motor de los Access),
 `Actualiza_Energia.py`, `Actualiza_Access_P9.py` y `Prorratear.py` se sacaron,
