@@ -580,8 +580,9 @@ def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func
             progreso_func(idx, total, f"Hoja {m['hoja_destino']} OK")
 
 # ── Configuración Prorrata (pivot tabla→matriz) ──────────────────────────────
-# Origen: hoja PRORRATA_HORARIA_TABULAR, fila 2 en adelante
-#   Col A: Hora Mensual | Col B: Suministrador | Col C: Prorrata_horaria
+# Origen: hoja "Prorrata 15min" (en el modo horario era PRORRATA_HORARIA_TABULAR),
+#   fila 2 en adelante. Mismas columnas que la horaria:
+#   Col A: bloque de 15 min del mes | Col B: Suministrador | Col C: Prorrata
 # Destino: hoja PRORRATA_RETIROS, matriz desde B8
 #   B8='Hora' | C8,D8...=suministradores alfabético | B9,B10...=horas | resto=valores (0 si falta)
 #
@@ -595,7 +596,7 @@ BLOQUES_POR_HORA = 4
 MAX_FILAS_PRORRATA = 31 * 24 * BLOQUES_POR_HORA + BLOQUES_POR_HORA   # 2980
 
 PRORRATA_CONFIG = {
-    "hoja_origen":   "PRORRATA_HORARIA_TABULAR",
+    "hoja_origen":   "Prorrata 15min",
     "fila_ini_origen": 2,
     "col_hora":      "A",
     "col_suministrador": "B",
@@ -612,22 +613,21 @@ PRORRATA_CONFIG = {
 
 
 def _hoja_prorrata_origen(wb_o, nombre, log_func):
-    """La hoja tabular del Prorrata_Retiros. Primero por su nombre exacto; si no
-    esta, la unica hoja cuyo nombre tenga PRORRATA y TABULAR (el archivo de 15
-    minutos podria no llamarla "HORARIA"). Si hay mas de una candidata no se
-    adivina: se corta."""
+    """La hoja tabular del Prorrata_Retiros. Primero por su nombre exacto; si no,
+    comparando normalizado (sin tildes, espacios ni guiones bajos, sin importar
+    mayusculas), para que "PRORRATA_15MIN" o "prorrata 15 min" tambien sirvan.
+    Si no calza ninguna se corta diciendo que hojas hay."""
     nombres = [sh.name for sh in wb_o.sheets]
     if nombre in nombres:
         return wb_o.sheets[nombre]
-    cand = [n for n in nombres
-            if "PRORRATA" in normalizar(n).upper() and "TABULAR" in normalizar(n).upper()]
+    cand = [n for n in nombres if _texto.clave(n) == _texto.clave(nombre)]
     if len(cand) == 1:
-        log_func(f"  OJO: no está la hoja {nombre}; se usa «{cand[0]}».")
+        log_func(f"  OJO: no está la hoja «{nombre}» tal cual; se usa «{cand[0]}».")
         return wb_o.sheets[cand[0]]
     raise ValueError(
-        f"No se encontró la hoja {nombre} en el Prorrata_Retiros"
-        + (f" (hay varias candidatas: {', '.join(cand)})" if cand else "")
-        + f". Hojas del archivo: {', '.join(nombres)}")
+        f"No se encontró la hoja «{nombre}» en el Prorrata_Retiros. "
+        f"Hojas del archivo: {', '.join(nombres)}")
+
 
 def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_func=None):
     """Transforma tabla larga (Hora,Suministrador,Valor) a matriz pivote en destino."""

@@ -536,7 +536,8 @@ def comprobar(self, c, valores, L):
     if tipo == "prorrata_al_dia":
         # La hoja PRORRATA_RETIROS de las planillas 3, 5 y 6 es el pivote de
         # la tabla larga del Prorrata_Retiros: mismos numeros, otra forma.
-        #     origen  (PRORRATA_HORARIA_TABULAR, desde la fila 2):
+        #     origen  ("Prorrata 15min", desde la fila 2; en el modo horario
+        #             era PRORRATA_HORARIA_TABULAR):
         #             A Hora | B Suministrador | C Prorrata_horaria
         #     destino (PRORRATA_RETIROS): B8="Hora", C8.. suministradores,
         #             B9.. las horas, el resto los valores (0 si falta)

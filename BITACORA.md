@@ -27,8 +27,8 @@
       `Pago_Sobrecostos` siguen existiendo (quedaron en el árbol sin
       actualizador); (d) si la L6 de la planilla 4 se cuadra contra algo.
 - [ ] **Prorrata 15 min de las planillas 3, 5 y 6 — probar con Excel real**
-      (2026-10-22). Confirmar el formato del Prorrata_Retiros de 15 minutos
-      (nombre de hoja, columna A = bloque único) y que las fórmulas de las
+      (2026-10-22). Formato confirmado el 2026-10-23 (hoja `Prorrata 15min`,
+      mismas columnas). Falta correrlo con Excel y que las fórmulas de las
       planillas lleguen a ~2984 filas.
 - [ ] **Comparador de etapas: se cerró solo al consolidar un mes** (2026-10-01).
       Causa desconocida, probablemente una caída nativa. Pedir a la usuaria el
@@ -64,6 +64,31 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+---
+
+## 2026-10-23 — Claude — prorrata 15 min: la hoja de origen es "Prorrata 15min"
+
+La usuaria confirmó el formato del Prorrata_Retiros de 15 minutos: lo único
+que cambia respecto del horario es el **nombre de la hoja de origen**
+(`Prorrata 15min`, antes `PRORRATA_HORARIA_TABULAR`) y el largo. Las columnas
+siguen siendo A bloque / B suministrador / C prorrata, desde la fila 2.
+
+- `Actualiza_datos.py` (15 min): `PRORRATA_CONFIG["hoja_origen"] =
+  "Prorrata 15min"`. `_hoja_prorrata_origen` busca el nombre exacto y, si no,
+  comparando con `_texto.clave` (sin tildes, espacios ni guiones bajos, sin
+  mayúsculas). Se sacó el respaldo especulativo "PRORRATA + TABULAR", que no
+  habría encontrado esta hoja.
+- Revisor 15 min: V9, V10 y V11 (`prorrata_al_dia`) leen el origen de
+  `Prorrata 15min`. Al cambiar la definición, sus resultados guardados se
+  descartan solos y hay que volver a verificarlas.
+- Probado con libro simulado: `Prorrata 15min`, `PRORRATA_15MIN` y
+  `prorrata 15 min` se encuentran; un archivo horario (`PRORRATA_HORARIA_TABULAR`)
+  corta con un mensaje que lista las hojas. 2976 bloques pegados, borrado
+  `B8:EC2984`. **No probado con Excel real.**
+
+Con esto se cierra la duda de formato del pendiente de la prorrata; falta la
+prueba real.
+
 ---
 
 ## 2026-10-22 — Claude — FD de las planillas 5 y 6 (15 min): sin cambios

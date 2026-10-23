@@ -498,9 +498,10 @@ y el paquete `revisor/`, salvo lo indicado).
   la matriz vieja (columna B corrida) y la nueva — ya no hasta la 756 fija. Las
   columnas siguen siendo `B:EC` porque a la derecha las planillas 5 y 6 tienen
   bloques de montos. Si el origen trae 745 filas o menos avisa que parece
-  horario; si trae más de 2980, corta. Si no está la hoja
-  `PRORRATA_HORARIA_TABULAR` usa la única que tenga PRORRATA y TABULAR en el
-  nombre. Los `.xlsm` destino tienen que estar cerrados.
+  horario; si trae más de 2980, corta. La hoja de origen es
+  **`Prorrata 15min`** (antes `PRORRATA_HORARIA_TABULAR`), con las mismas
+  columnas A/B/C desde la fila 2; se acepta también con otras mayúsculas,
+  espacios o guiones bajos. V9/V10/V11 del Revisor 15 min leen la misma hoja. Los `.xlsm` destino tienen que estar cerrados.
   El motor `aplicar_mapeo` todavía acepta `filtro_col`, `detectar_fin_primera_vacia`
   y `ajustar_formulas`, que hoy no usa ningún mapeo (los usaba el del tabulado).
 
