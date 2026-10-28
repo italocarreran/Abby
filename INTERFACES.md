@@ -49,10 +49,10 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2093 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3346 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3345 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 1029 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1124 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
-- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1348 líneas
+- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1142 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1438 líneas
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 239 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
@@ -3082,6 +3082,20 @@ particion BLOQUES_FORMULA no calza con el libro: una columna de la particion
 sin formula (se estiraria vacia) o una formula fuera de la particion (no se
 estiraria). No cambia nada: solo avisa.
 
+#### `def actualizar_en_libro(app, wb_d, rutas, hacer, aamm_respaldo, log, progreso)`
+
+El trabajo de verdad, sobre un libro YA ABIERTO: lee los origenes, limpia
+y escribe la hoja "SC y CO" y estira las formulas. No cambia el modo de
+calculo, no recalcula ni guarda: eso es de quien abrio el libro.
+
+Lo usan ejecutar() (la ventana de este script) y Actualiza_datos.py, que en
+15 minutos tiene SC y CO como casillas de la planilla 5 junto con FD y
+prorrata, sobre el mismo libro abierto.
+
+rutas: {"SC": Calculo_SobrecostosSSCC, "CO": Reporte_CRA (.csv)}; solo hacen
+       falta las de lo que se pide en `hacer`.
+Devuelve (hoja, n_sc, n_co, avisos). Ante un problema lanza la excepcion.
+
 #### `def ejecutar(rutas, hacer, aamm_respaldo, log, progreso)`
 
 hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
@@ -3136,6 +3150,10 @@ FD está un nivel arriba de 02 CASO RELIQUIDACION.
 
 #### `def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None`
 
+#### `def buscar_reporte_cra(carpeta_reliq: Path) -> Path | None`
+
+04 Planilla 9/Reporte_CRA_15min_AAMM.csv — origen del CO de "SC y CO".
+
 #### `def buscar_prorrata(carpeta_reliq: Path) -> Path | None`
 
 04 Planilla 9/Prorrata_Retiros_AAMM…
@@ -3168,10 +3186,13 @@ Aplica una lista de mapeos entre wb_o (origen) y wb_d (destino).
 
 Transforma tabla larga (Hora,Suministrador,Valor) a matriz pivote en destino.
 
-#### `def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str, hacer_fd: bool, hacer_otro: bool, log_func=print, progreso_func=None, rutas: dict | None=None) -> tuple[bool, list]`
+#### `def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str, hacer_fd: bool, hacer_otro: bool, log_func=print, progreso_func=None, rutas: dict | None=None, hacer_sc_co: list | None=None) -> tuple[bool, list]`
 
 planilla: 'sc' | 'p3' | 'p5' | 'p6'
 hacer_fd: actualizar FD
+hacer_sc_co: solo p5, subconjunto de ["SC", "CO"]: la hoja "SC y CO", con el
+       motor de Actualiza_SC_CO.py (actualizar_en_libro) sobre el mismo
+       libro abierto. Va despues de FD y prorrata.
 hacer_otro: p3/p5/p6=Prorrata. En sc no hace nada: el "Traer Consolidado"
             del modo horario se saco junto con el tabulado.
 rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal

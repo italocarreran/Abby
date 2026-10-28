@@ -596,6 +596,155 @@ def controlar_formulas(sh, log):
 # =============================================================================
 #  PROCESO
 # =============================================================================
+def actualizar_en_libro(app, wb_d, rutas, hacer, aamm_respaldo, log, progreso):
+    """El trabajo de verdad, sobre un libro YA ABIERTO: lee los origenes, limpia
+    y escribe la hoja "SC y CO" y estira las formulas. No cambia el modo de
+    calculo, no recalcula ni guarda: eso es de quien abrio el libro.
+
+    Lo usan ejecutar() (la ventana de este script) y Actualiza_datos.py, que en
+    15 minutos tiene SC y CO como casillas de la planilla 5 junto con FD y
+    prorrata, sobre el mismo libro abierto.
+
+    rutas: {"SC": Calculo_SobrecostosSSCC, "CO": Reporte_CRA (.csv)}; solo hacen
+           falta las de lo que se pide en `hacer`.
+    Devuelve (hoja, n_sc, n_co, avisos). Ante un problema lanza la excepcion.
+    """
+    avisos_todos = []
+    sh_d = buscar_hoja(wb_d, HOJA_DESTINO)
+    if sh_d is None:
+        raise RuntimeError(f"No está la hoja '{HOJA_DESTINO}' en el destino.")
+    log(f"    hoja destino: {sh_d.name}")
+
+    # ---- juntar los dos bloques, se actualicen o no --------------------
+    bloques = {}
+    for cual in ORDEN:
+        log("=" * 70)
+        if cual in hacer:
+            log(f"{cual}: leyendo del origen")
+            if cual == "SC":
+                fid, fpro, fsum, av = leer_sc(app, rutas[cual], FUENTES[cual], log)
+            else:
+                fid, fpro, fsum, av = leer_co(rutas[cual], FUENTES[cual], log)
+            avisos_todos += [f"{cual}: {a}" for a in av]
+        else:
+            log(f"{cual}: NO se actualiza, se conserva lo que ya está")
+            tipo = TIPO_SC if cual == "SC" else TIPO_CO
+            fid, fpro, fsum = leer_bloque_destino(sh_d, tipo, log)
+        bloques[cual] = (fid, fpro, fsum)
+
+    # ---- la Clave Año_Mes ----------------------------------------------
+    # En 15 minutos el Reporte_CRA ya la trae. Si a algun CO le faltara, se
+    # completa como antes: con la de los SC, o la que tenian los CO, o el
+    # mes de la ventana.
+    claves = [f[0] for f in bloques["SC"][0] if not _vacio(f[0])]
+    clave = None
+    if claves:
+        distintas = {str(c).strip() for c in claves}
+        clave = claves[0]
+        if len(distintas) > 1:
+            log(f"  OJO: los SC traen más de una Clave Año_Mes: "
+                f"{sorted(distintas)}. Se usa {clave!r} para los CO.")
+    else:
+        # Sin SC no hay de dónde copiarla: se usa la que ya tenían los CO, y
+        # si tampoco hay, el mes de la ventana.
+        previas = [f[0] for f in bloques["CO"][0] if not _vacio(f[0])]
+        clave = previas[0] if previas else (aamm_respaldo or None)
+        log(f"  Sin filas SC: la Clave Año_Mes de los CO queda en {clave!r}")
+    if clave is None:
+        raise RuntimeError(
+            "No se pudo determinar la Clave Año_Mes para los CO: no hay filas "
+            "SC, el destino no tenía CO y no se indicó el mes.")
+    n_completadas = 0
+    for f in bloques["CO"][0]:
+        if _vacio(f[0]):
+            f[0] = clave
+            n_completadas += 1
+    if n_completadas:
+        log(f"  Clave Año_Mes {clave!r} puesta en {n_completadas} fila(s) de CO")
+
+    filas_id = bloques["SC"][0] + bloques["CO"][0]
+    filas_pro = bloques["SC"][1] + bloques["CO"][1]
+    filas_suma = bloques["SC"][2] + bloques["CO"][2]
+    if not filas_id:
+        raise RuntimeError("No quedó ninguna fila para escribir.")
+
+    # Un solo mes por hoja: dos Clave Año_Mes distintas es un archivo
+    # equivocado (el SC de un mes con el CO de otro).
+    meses = sorted({str(_entero_si_se_puede(f[0])).strip()
+                    for f in filas_id if not _vacio(f[0])})
+    if len(meses) > 1:
+        av = (f"Hay más de una Clave Año_Mes en la hoja: {', '.join(meses)}. "
+              "¿El SC y el CO son del mismo mes?")
+        avisos_todos.append(av)
+        log(f"  OJO: {av}")
+
+    # Control AI del libro: la misma Tipo + Unidad + Clave_Bloque dos veces.
+    vistas, repetidas = set(), 0
+    for f in filas_id:
+        k = (normalizar(f[1]), clave_central(f[2]), f[3])
+        if f[3] is not None and k in vistas:
+            repetidas += 1
+        vistas.add(k)
+    if repetidas:
+        av = f"{repetidas} fila(s) con Tipo + Unidad + Clave_Bloque repetidos."
+        avisos_todos.append(av)
+        log(f"  OJO: {av}")
+
+    # ---- limpiar y escribir -------------------------------------------
+    progreso(50, 100, "Escribiendo...")
+    log("=" * 70)
+    log("Escribiendo en el destino")
+    c_id1, c_id2 = (col_num(x) for x in COLS_ID)
+    c_p1, c_p2 = (col_num(x) for x in COLS_PRO)
+    c_s1, c_s2 = (col_num(x) for x in COLS_SUMA)
+    bloques_f = [(col_num(a), col_num(b)) for a, b in BLOQUES_FORMULA]
+    avisos_todos += controlar_formulas(sh_d, log)
+
+    # Se limpia hasta la ultima fila con algo en cualquiera de los tres
+    # bloques: el mes anterior pudo ser mas largo, y lo que sobre abajo
+    # ensucia los totales.
+    previa = 0
+    cols_mirar = [c_id1, c_id2, c_p1, c_p2, c_s1, c_s2] + [a for a, _ in bloques_f]
+    for c in cols_mirar:
+        previa = max(previa, ultima_fila(sh_d, col_letra(c), FILA_DESTINO))
+    n = len(filas_id)
+    ultima = FILA_DESTINO + n - 1
+    if previa >= FILA_DESTINO:
+        log(f"    limpiando filas {FILA_DESTINO} a {previa}  "
+            f"({previa - FILA_DESTINO + 1} del mes anterior)")
+        sh_d.range((FILA_DESTINO, c_id1), (previa, c_id2)).clear_contents()
+        sh_d.range((FILA_DESTINO, c_p1), (previa, c_p2)).clear_contents()
+        sh_d.range((FILA_DESTINO, c_s1), (previa, c_s2)).clear_contents()
+        if previa > ultima:
+            # Las formulas que sobran se borran; las que quedan se estiran
+            # mas abajo con AutoFill. Se borra bloque por bloque para no
+            # tocar AE ni AH.
+            for (a, b), (la, lb) in zip(bloques_f, BLOQUES_FORMULA):
+                sh_d.range((ultima + 1, a), (previa, b)).clear_contents()
+            log(f"    {' y '.join(f'{a}:{b}' for a, b in BLOQUES_FORMULA)}: "
+                f"cortado, sobraban {previa - ultima} fila(s)")
+    else:
+        log("    el destino estaba vacío")
+
+    sh_d.range((FILA_DESTINO, c_id1)).value = filas_id
+    sh_d.range((FILA_DESTINO, c_p1)).value = filas_pro
+    sh_d.range((FILA_DESTINO, c_s1)).value = filas_suma
+    log(f"    {COLS_ID[0]}{FILA_DESTINO}:{COLS_ID[1]}{ultima},  "
+        f"{COLS_PRO[0]}{FILA_DESTINO}:{COLS_PRO[1]}{ultima}  y  "
+        f"{COLS_SUMA[0]}{FILA_DESTINO}:{COLS_SUMA[1]}{ultima}   "
+        f"({len(bloques['SC'][0])} SC + {len(bloques['CO'][0])} CO = {n} filas)")
+
+    # ---- estirar las formulas -----------------------------------------
+    if n > 1:
+        for a, b in bloques_f:
+            origen = sh_d.range((FILA_DESTINO, a), (FILA_DESTINO, b))
+            destino = sh_d.range((FILA_DESTINO, a), (ultima, b))
+            origen.api.AutoFill(destino.api, 0)     # xlFillDefault
+    log(f"    {' y '.join(f'{a}:{b}' for a, b in BLOQUES_FORMULA)} "
+        f"estirado hasta la fila {ultima}   (AE y AH no se tocan)")
+    return sh_d, len(bloques["SC"][0]), len(bloques["CO"][0]), avisos_todos
+
+
 def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
     """hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen)."""
     try:
@@ -608,7 +757,6 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
     pythoncom.CoInitialize()
     app = None
     wb_d = None
-    avisos_todos = []
     try:
         app = xw.App(visible=False, add_book=False)
         app.display_alerts = False
@@ -616,139 +764,10 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
 
         log(f"  Abriendo destino: {Path(rutas['destino']).name}")
         wb_d = app.books.open(str(rutas["destino"]), update_links=False)
-        sh_d = buscar_hoja(wb_d, HOJA_DESTINO)
-        if sh_d is None:
-            raise RuntimeError(f"No está la hoja '{HOJA_DESTINO}' en el destino.")
-        log(f"    hoja destino: {sh_d.name}")
         wb_d.app.calculation = "manual"
-
-        # ---- juntar los dos bloques, se actualicen o no --------------------
-        bloques = {}
-        for cual in ORDEN:
-            log("=" * 70)
-            if cual in hacer:
-                log(f"{cual}: leyendo del origen")
-                if cual == "SC":
-                    fid, fpro, fsum, av = leer_sc(app, rutas[cual], FUENTES[cual], log)
-                else:
-                    fid, fpro, fsum, av = leer_co(rutas[cual], FUENTES[cual], log)
-                avisos_todos += [f"{cual}: {a}" for a in av]
-            else:
-                log(f"{cual}: NO se actualiza, se conserva lo que ya está")
-                tipo = TIPO_SC if cual == "SC" else TIPO_CO
-                fid, fpro, fsum = leer_bloque_destino(sh_d, tipo, log)
-            bloques[cual] = (fid, fpro, fsum)
-
-        # ---- la Clave Año_Mes ----------------------------------------------
-        # En 15 minutos el Reporte_CRA ya la trae. Si a algun CO le faltara, se
-        # completa como antes: con la de los SC, o la que tenian los CO, o el
-        # mes de la ventana.
-        claves = [f[0] for f in bloques["SC"][0] if not _vacio(f[0])]
-        clave = None
-        if claves:
-            distintas = {str(c).strip() for c in claves}
-            clave = claves[0]
-            if len(distintas) > 1:
-                log(f"  OJO: los SC traen más de una Clave Año_Mes: "
-                    f"{sorted(distintas)}. Se usa {clave!r} para los CO.")
-        else:
-            # Sin SC no hay de dónde copiarla: se usa la que ya tenían los CO, y
-            # si tampoco hay, el mes de la ventana.
-            previas = [f[0] for f in bloques["CO"][0] if not _vacio(f[0])]
-            clave = previas[0] if previas else (aamm_respaldo or None)
-            log(f"  Sin filas SC: la Clave Año_Mes de los CO queda en {clave!r}")
-        if clave is None:
-            raise RuntimeError(
-                "No se pudo determinar la Clave Año_Mes para los CO: no hay filas "
-                "SC, el destino no tenía CO y no se indicó el mes.")
-        n_completadas = 0
-        for f in bloques["CO"][0]:
-            if _vacio(f[0]):
-                f[0] = clave
-                n_completadas += 1
-        if n_completadas:
-            log(f"  Clave Año_Mes {clave!r} puesta en {n_completadas} fila(s) de CO")
-
-        filas_id = bloques["SC"][0] + bloques["CO"][0]
-        filas_pro = bloques["SC"][1] + bloques["CO"][1]
-        filas_suma = bloques["SC"][2] + bloques["CO"][2]
-        if not filas_id:
-            raise RuntimeError("No quedó ninguna fila para escribir.")
-
-        # Un solo mes por hoja: dos Clave Año_Mes distintas es un archivo
-        # equivocado (el SC de un mes con el CO de otro).
-        meses = sorted({str(_entero_si_se_puede(f[0])).strip()
-                        for f in filas_id if not _vacio(f[0])})
-        if len(meses) > 1:
-            av = (f"Hay más de una Clave Año_Mes en la hoja: {', '.join(meses)}. "
-                  "¿El SC y el CO son del mismo mes?")
-            avisos_todos.append(av)
-            log(f"  OJO: {av}")
-
-        # Control AI del libro: la misma Tipo + Unidad + Clave_Bloque dos veces.
-        vistas, repetidas = set(), 0
-        for f in filas_id:
-            k = (normalizar(f[1]), clave_central(f[2]), f[3])
-            if f[3] is not None and k in vistas:
-                repetidas += 1
-            vistas.add(k)
-        if repetidas:
-            av = f"{repetidas} fila(s) con Tipo + Unidad + Clave_Bloque repetidos."
-            avisos_todos.append(av)
-            log(f"  OJO: {av}")
-
-        # ---- limpiar y escribir -------------------------------------------
-        progreso(50, 100, "Escribiendo...")
-        log("=" * 70)
-        log("Escribiendo en el destino")
-        c_id1, c_id2 = (col_num(x) for x in COLS_ID)
-        c_p1, c_p2 = (col_num(x) for x in COLS_PRO)
-        c_s1, c_s2 = (col_num(x) for x in COLS_SUMA)
-        bloques_f = [(col_num(a), col_num(b)) for a, b in BLOQUES_FORMULA]
-        avisos_todos += controlar_formulas(sh_d, log)
-
-        # Se limpia hasta la ultima fila con algo en cualquiera de los tres
-        # bloques: el mes anterior pudo ser mas largo, y lo que sobre abajo
-        # ensucia los totales.
-        previa = 0
-        cols_mirar = [c_id1, c_id2, c_p1, c_p2, c_s1, c_s2] + [a for a, _ in bloques_f]
-        for c in cols_mirar:
-            previa = max(previa, ultima_fila(sh_d, col_letra(c), FILA_DESTINO))
-        n = len(filas_id)
-        ultima = FILA_DESTINO + n - 1
-        if previa >= FILA_DESTINO:
-            log(f"    limpiando filas {FILA_DESTINO} a {previa}  "
-                f"({previa - FILA_DESTINO + 1} del mes anterior)")
-            sh_d.range((FILA_DESTINO, c_id1), (previa, c_id2)).clear_contents()
-            sh_d.range((FILA_DESTINO, c_p1), (previa, c_p2)).clear_contents()
-            sh_d.range((FILA_DESTINO, c_s1), (previa, c_s2)).clear_contents()
-            if previa > ultima:
-                # Las formulas que sobran se borran; las que quedan se estiran
-                # mas abajo con AutoFill. Se borra bloque por bloque para no
-                # tocar AE ni AH.
-                for (a, b), (la, lb) in zip(bloques_f, BLOQUES_FORMULA):
-                    sh_d.range((ultima + 1, a), (previa, b)).clear_contents()
-                log(f"    {' y '.join(f'{a}:{b}' for a, b in BLOQUES_FORMULA)}: "
-                    f"cortado, sobraban {previa - ultima} fila(s)")
-        else:
-            log("    el destino estaba vacío")
-
-        sh_d.range((FILA_DESTINO, c_id1)).value = filas_id
-        sh_d.range((FILA_DESTINO, c_p1)).value = filas_pro
-        sh_d.range((FILA_DESTINO, c_s1)).value = filas_suma
-        log(f"    {COLS_ID[0]}{FILA_DESTINO}:{COLS_ID[1]}{ultima},  "
-            f"{COLS_PRO[0]}{FILA_DESTINO}:{COLS_PRO[1]}{ultima}  y  "
-            f"{COLS_SUMA[0]}{FILA_DESTINO}:{COLS_SUMA[1]}{ultima}   "
-            f"({len(bloques['SC'][0])} SC + {len(bloques['CO'][0])} CO = {n} filas)")
-
-        # ---- estirar las formulas -----------------------------------------
-        if n > 1:
-            for a, b in bloques_f:
-                origen = sh_d.range((FILA_DESTINO, a), (FILA_DESTINO, b))
-                destino = sh_d.range((FILA_DESTINO, a), (ultima, b))
-                origen.api.AutoFill(destino.api, 0)     # xlFillDefault
-        log(f"    {' y '.join(f'{a}:{b}' for a, b in BLOQUES_FORMULA)} "
-            f"estirado hasta la fila {ultima}   (AE y AH no se tocan)")
+        sh_d, n_sc, n_co, avisos_todos = actualizar_en_libro(
+            app, wb_d, rutas, hacer, aamm_respaldo, log, progreso)
+        n = n_sc + n_co
 
         progreso(85, 100, "Recalculando...")
         wb_d.app.calculation = "automatic"
@@ -769,8 +788,7 @@ def ejecutar(rutas, hacer, aamm_respaldo, log, progreso):
         app = None
 
         progreso(100, 100, "Listo")
-        resumen = (f"{len(bloques['SC'][0])} SC + {len(bloques['CO'][0])} CO "
-                   f"= {n} filas")
+        resumen = f"{n_sc} SC + {n_co} CO = {n} filas"
         if avisos_todos:
             resumen += f" | {len(avisos_todos)} aviso(s)"
         return True, resumen

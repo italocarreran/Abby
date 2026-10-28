@@ -1,9 +1,14 @@
-# `actualizadores/` — los 3 que el Revisor lanza por botón
+# `actualizadores/` — los que el Revisor lanza por botón
 
 ```
 Actualiza_datos.py           Actualiza_Cuadro0.py
-Actualiza_SC_CO.py
+Actualiza_SC_CO.py           (sin botón propio: lo usa Actualiza_datos)
 ```
+
+La hoja "SC y CO" de la planilla 5 se actualiza desde la ventana de
+`Actualiza_datos.py` (casillas «Actualizar SC» / «Actualizar CO»), que importa
+el motor de `Actualiza_SC_CO.py`: **los dos tienen que quedar en esta misma
+carpeta.** `Actualiza_SC_CO.py` se puede seguir abriendo solo.
 
 `Carga_Retiros.py` se sacó el 2026-10-23: el `Retiros_h.parquet` ya no se usa
 en 15 minutos.

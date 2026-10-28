@@ -431,6 +431,16 @@ y el paquete `revisor/`, salvo lo indicado).
 
 ### `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py` — hoja "SC y CO" en 15 min
 
+- **Cómo se usa (2026-10-28):** ya **no es un botón aparte** del Revisor. Es
+  una casilla más de la planilla 5 en la ventana de `Actualiza_datos.py`
+  («Actualizar SC» y «Actualizar CO», junto con FD y prorrata), que importa
+  este archivo y llama a **`actualizar_en_libro(app, wb_d, rutas, hacer,
+  aamm_respaldo, log, progreso)`** sobre el mismo libro abierto, después de FD
+  y prorrata. Esa función no cambia el modo de cálculo, no recalcula ni
+  guarda. `ejecutar()` y la ventana propia siguen funcionando solos (abren,
+  llaman a `actualizar_en_libro`, recalculan y guardan). **Los dos `.py`
+  tienen que estar en la misma carpeta.**
+
 - **Metodología:** la del CRA de `Balance_SSCC` (trazabilidad v5, §6.6),
   confirmada por la usuaria el 2026-10-23. SC arriba, CO abajo, desde la fila
   9, solo embalses.
@@ -521,6 +531,12 @@ y el paquete `revisor/`, salvo lo indicado).
   tiene que traerlas hasta donde lleguen los datos. Las planillas 5 y 6
   siguen con los mapeos de siempre (confirmado por la usuaria); el Cálculo
   SSCC todavía no se revisó.
+- **Planilla 5, hoja "SC y CO" (2026-10-28):** casillas «Actualizar SC» y
+  «Actualizar CO» con sus orígenes (`Cálculo_SobrecostosSSCC` maestro y
+  `04 Planilla 9/Reporte_CRA_15min*.csv`, `buscar_reporte_cra`; con traspaso,
+  `calculo_sscc_maestro` y `reporte_cra`). `ejecutar_actualizacion(...,
+  hacer_sc_co=["SC", "CO"])` corre el motor de `Actualiza_SC_CO.py` después
+  de FD y prorrata, sobre el mismo libro, y guarda una sola vez.
 - **Detalles que importan:** la prorrata se transforma de tabla larga a matriz
   pivote y se pega desde `B8`; suministradores ordenados alfabéticamente,
   faltantes en 0. **Modo 15 minutos:** la columna A del origen es el bloque de

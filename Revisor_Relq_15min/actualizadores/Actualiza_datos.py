@@ -342,6 +342,23 @@ def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None:
     candidatos.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return candidatos[0]
 
+def buscar_reporte_cra(carpeta_reliq: Path) -> Path | None:
+    """04 Planilla 9/Reporte_CRA_15min_AAMM.csv — origen del CO de "SC y CO"."""
+    p9 = None
+    for sub in carpeta_reliq.iterdir():
+        if sub.is_dir() and "planilla 9" in normalizar(sub.name):
+            p9 = sub
+            break
+    if p9 is None:
+        return None
+    candidatos = [f for f in p9.iterdir()
+                  if f.is_file() and f.suffix.lower() == ".csv"
+                  and normalizar(f.name).startswith("reporte_cra")]
+    if not candidatos:
+        return None
+    candidatos.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidatos[0]
+
 def buscar_prorrata(carpeta_reliq: Path) -> Path | None:
     """04 Planilla 9/Prorrata_Retiros_AAMM…"""
     p9 = None
@@ -750,10 +767,14 @@ def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_fun
 def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str,
                             hacer_fd: bool, hacer_otro: bool,
                             log_func=print, progreso_func=None,
-                            rutas: dict | None = None) -> tuple[bool, list]:
+                            rutas: dict | None = None,
+                            hacer_sc_co: list | None = None) -> tuple[bool, list]:
     """
     planilla: 'sc' | 'p3' | 'p5' | 'p6'
     hacer_fd: actualizar FD
+    hacer_sc_co: solo p5, subconjunto de ["SC", "CO"]: la hoja "SC y CO", con el
+           motor de Actualiza_SC_CO.py (actualizar_en_libro) sobre el mismo
+           libro abierto. Va despues de FD y prorrata.
     hacer_otro: p3/p5/p6=Prorrata. En sc no hace nada: el "Traer Consolidado"
                 del modo horario se saco junto con el tabulado.
     rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
@@ -868,6 +889,44 @@ def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str,
 
             log_func("── Actualizando Prorrata ──")
             aplicar_prorrata(app_xw, libros["prorrata"], wb_d, PRORRATA_CONFIG, log_func, progreso_func)
+            if ruta_destino not in rutas_ok:
+                rutas_ok.append(ruta_destino)
+
+        # ── SC y CO (solo p5) ────────────────────────────────────────────────
+        # Antes era un boton aparte en el Revisor (Actualiza_SC_CO.py). Ahora es
+        # una casilla mas de la planilla 5, pero el motor sigue siendo UNO solo:
+        # se importa de Actualiza_SC_CO.py, que vive en esta misma carpeta.
+        if hacer_sc_co and planilla == "p5":
+            try:
+                import Actualiza_SC_CO as _scco
+            except ImportError as e:
+                log_func("ERROR: no se pudo cargar Actualiza_SC_CO.py, que tiene "
+                         "que estar en la misma carpeta que este script.")
+                raise RuntimeError(f"Falta Actualiza_SC_CO.py: {e}")
+            rutas_scco = {}
+            if "SC" in hacer_sc_co:
+                rutas_scco["SC"] = _resolver(
+                    "calculo_sscc_maestro",
+                    lambda: buscar_sobrecostos_xlsm(carpeta_reliq),
+                    "Cálculo_SobrecostosSSCC (origen SC)")
+            if "CO" in hacer_sc_co:
+                rutas_scco["CO"] = _resolver(
+                    "reporte_cra", lambda: buscar_reporte_cra(carpeta_reliq),
+                    "Reporte_CRA_15min (origen CO)")
+            for cual, r in rutas_scco.items():
+                if r is None or not Path(r).exists():
+                    log_func(f"ERROR: no se encontró el origen de {cual}.")
+                    raise FileNotFoundError(f"Origen de {cual} no encontrado")
+
+            def _prog(a, t=100, m=None):
+                if progreso_func:
+                    progreso_func(a, t, m or "SC y CO")
+
+            log_func("── Actualizando SC y CO ──")
+            _, n_sc, n_co, avisos = _scco.actualizar_en_libro(
+                app_xw, wb_d, rutas_scco, list(hacer_sc_co), None, log_func, _prog)
+            log_func(f"  SC y CO: {n_sc} SC + {n_co} CO = {n_sc + n_co} filas"
+                     + (f" | {len(avisos)} aviso(s), ver arriba" if avisos else ""))
             if ruta_destino not in rutas_ok:
                 rutas_ok.append(ruta_destino)
 
@@ -994,11 +1053,16 @@ def main():
         k: {"fd": tk.BooleanVar(value=fd_ini), "otro": tk.BooleanVar(value=False)}
         for k in ("sc", "p3", "p5", "p6")
     }
+    # Planilla 5: la hoja "SC y CO", con SC y CO por separado (como en la
+    # ventana de Actualiza_SC_CO.py). Arrancan en blanco siempre.
+    opciones["p5"]["sc"] = tk.BooleanVar(value=False)
+    opciones["p5"]["co"] = tk.BooleanVar(value=False)
 
     paths_detectados = {
         "sc":    {"destino": tk.StringVar(), "sscc": tk.StringVar()},
         "p3":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
-        "p5":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
+        "p5":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar(),
+                  "sc_origen": tk.StringVar(), "co_origen": tk.StringVar()},
         "p6":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
     }
 
@@ -1009,7 +1073,8 @@ def main():
     MAPA_TRASPASO = {
         "sc": {"destino": "calculo_sscc_maestro", "sscc": "sscc_desempeno"},
         "p3": {"destino": "p3", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros"},
-        "p5": {"destino": "p5", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros"},
+        "p5": {"destino": "p5", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros",
+               "sc_origen": "calculo_sscc_maestro", "co_origen": "reporte_cra"},
         "p6": {"destino": "p6", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros"},
     }
 
@@ -1041,6 +1106,10 @@ def main():
 
         sc = buscar_sobrecostos_xlsm(reliq)
         paths_detectados["sc"]["destino"].set(str(sc) if sc else "[Cálculo_SobrecostosSSCC no encontrado]")
+        # Origenes de "SC y CO" (planilla 5)
+        paths_detectados["p5"]["sc_origen"].set(str(sc) if sc else "[Cálculo_SobrecostosSSCC no encontrado]")
+        rcra = buscar_reporte_cra(reliq)
+        paths_detectados["p5"]["co_origen"].set(str(rcra) if rcra else "[Reporte_CRA_15min (.csv) no encontrado]")
 
         p3 = buscar_planilla9(reliq, "3_remuneracion_subastas")
         paths_detectados["p3"]["destino"].set(str(p3) if p3 else "[3_REMUNERACIÓN_SUBASTAS no encontrado]")
@@ -1183,6 +1252,23 @@ def main():
             tk.Label(fr, text="Origen Prorrata_Retiros:", font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14)
             hacer_lbl_archivo(fr, paths_detectados[key]["prorrata"], key, "prorrata")
 
+        # Hoja "SC y CO" (solo p5): SC y CO por separado. Los dos bloques se
+        # reescriben siempre (el CO va debajo del SC); el que no se marca se
+        # conserva tal como estaba. Ver Actualiza_SC_CO.py.
+        if key == "p5":
+            tk.Label(fr, text='Hoja "SC y CO" (solo embalses; SC arriba, CO abajo):',
+                     font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14, pady=(6, 0))
+            tk.Checkbutton(fr, text="Actualizar SC", variable=opciones["p5"]["sc"],
+                           font=("Segoe UI", 9)).pack(anchor="w", padx=20)
+            tk.Label(fr, text="Origen SC — Cálculo_SobrecostosSSCC (maestro), hoja SOBRECOSTOS:",
+                     font=("Segoe UI", 8)).pack(anchor="w", padx=30)
+            hacer_lbl_archivo(fr, paths_detectados["p5"]["sc_origen"], "p5", "sc_origen")
+            tk.Checkbutton(fr, text="Actualizar CO", variable=opciones["p5"]["co"],
+                           font=("Segoe UI", 9)).pack(anchor="w", padx=20)
+            tk.Label(fr, text="Origen CO — Reporte_CRA_15min (.csv):",
+                     font=("Segoe UI", 8)).pack(anchor="w", padx=30)
+            hacer_lbl_archivo(fr, paths_detectados["p5"]["co_origen"], "p5", "co_origen")
+
     hacer_fila_planilla(frame_plan, "sc",
                         "Cálculo_SobrecostosSSCC",
                         "Actualizar FD",
@@ -1265,9 +1351,11 @@ def main():
         plan = var_planilla.get()
         hacer_fd   = opciones[plan]["fd"].get()
         hacer_otro = opciones[plan]["otro"].get()
+        hacer_sc_co = [c for c, k in (("SC", "sc"), ("CO", "co"))
+                       if k in opciones[plan] and opciones[plan][k].get()]
 
-        if not hacer_fd and not hacer_otro:
-            messagebox.showwarning("Aviso", "Marca al menos una opción (FD o la otra).")
+        if not hacer_fd and not hacer_otro and not hacer_sc_co:
+            messagebox.showwarning("Aviso", "Marca al menos una opción.")
             return
 
         btn_ejecutar.config(state="disabled", bg="#aaaaaa")
@@ -1280,7 +1368,8 @@ def main():
         root.update_idletasks()
 
         txt_log.delete("1.0", "end")
-        log(f"Planilla: {plan} | FD: {hacer_fd} | Otro: {hacer_otro}")
+        log(f"Planilla: {plan} | FD: {hacer_fd} | Otro: {hacer_otro}"
+            + (f" | SC y CO: {'+'.join(hacer_sc_co)}" if hacer_sc_co else ""))
         if modo["traspaso"]:
             log(f"Rutas enviadas por el Revisor — mes {traspaso.get('aamm') or '?'}")
         log("─" * 50)
@@ -1288,7 +1377,8 @@ def main():
         ok, rutas = ejecutar_actualizacion(
             Path(ruta) if ruta else Path("."), plan, hacer_fd, hacer_otro,
             log_func=log, progreso_func=callback_progreso,
-            rutas=traspaso.get("rutas") if modo["traspaso"] else None
+            rutas=traspaso.get("rutas") if modo["traspaso"] else None,
+            hacer_sc_co=hacer_sc_co,
         )
 
         timer_state["running"] = False

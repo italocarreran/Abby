@@ -767,11 +767,10 @@ ACTUALIZADORES = {
     "a_calc_sscc_01": [dict(script="actualizadores/Actualiza_datos.py", planilla="sc")],
     "a_3_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p3")],
 
-    "a_5_p9": [
-        dict(script="actualizadores/Actualiza_datos.py", planilla="p5"),
-        # La hoja "SC y CO" no la toca Actualiza_datos.py: va aparte.
-        dict(script="actualizadores/Actualiza_SC_CO.py", texto='Actualizar "SC y CO"'),
-    ],
+    # 15 minutos: la hoja "SC y CO" es una casilla mas de la planilla 5 dentro
+    # de Actualiza_datos.py (junto con FD y prorrata), no un boton aparte. El
+    # motor sigue en Actualiza_SC_CO.py, que Actualiza_datos importa.
+    "a_5_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p5")],
     "a_6_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p6")],
     "a_0_cuadros": [
         # Reemplazos REUC vive en su propia subcarpeta y tiene su propio

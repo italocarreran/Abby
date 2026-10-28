@@ -66,6 +66,32 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-28 — Claude — 15 min: "SC y CO" dentro de «Actualizar data» de la planilla 5
+
+La usuaria no quiere el botón aparte de «Actualizar "SC y CO"»: quiere que, al
+elegir la planilla 5 en la ventana de `Actualiza_datos.py`, junto con FD y
+prorrata estén las opciones de SC y de CO, por separado como hasta ahora.
+
+- `Actualiza_SC_CO.py` (15 min): el trabajo se separó en
+  `actualizar_en_libro(app, wb_d, ...)`, que opera sobre un libro ya abierto
+  y no recalcula ni guarda. `ejecutar()` (su ventana propia) la llama y sigue
+  igual. **No se copió el motor**: hay uno solo.
+- `Actualiza_datos.py` (15 min): casillas «Actualizar SC» y «Actualizar CO»
+  en la planilla 5, con sus orígenes a la vista; `buscar_reporte_cra()`;
+  `ejecutar_actualizacion(..., hacer_sc_co=...)` importa `Actualiza_SC_CO`
+  (guardado, con mensaje si falta el archivo) y corre el paso después de FD y
+  prorrata, sobre el mismo libro, con un solo guardado al final.
+- Revisor 15 min: la fila de la planilla 5 queda con un solo botón
+  («Actualizar data»).
+
+**Probado** con un Excel simulado (xlwings falso): planilla 5 con SC + CO
+desde rutas de traspaso (2 SC + 5.686 CO del Reporte_CRA real, AA:AC, fórmulas
+AD/AF:AG/AI estiradas hasta la última fila, AT intacta, un solo guardado), y
+con solo CO (las 2 filas SC del destino se conservan). **No probado con Excel
+real.** `scripts/verificar.sh` en `TODO OK`.
+
+---
+
 ## 2026-10-23 — Claude — 15 min: fuera 01.a, 02 Costo de Oportunidad y Retiros_h
 
 La usuaria: en 15 minutos ya no se usan la carpeta `01.a Sobrecostos de
