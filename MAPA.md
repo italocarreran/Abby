@@ -495,6 +495,13 @@ y el paquete `revisor/`, salvo lo indicado).
   existe, pero con el botón «Actualizar data» activo, que es el que lo crea.
   `revisor/lanzamiento.py` deja lanzar sin destino cuando el nodo es
   `crea_salida`.
+- **Verificador V12** (botones «Verificar» y «detalle» en la fila del csv):
+  cada fuente del csv contra el total de su RESUMEN — Subastas (los seis
+  CPF/CSF/CTF ±) = planilla 3 `U7`, CRA = planilla 5 `D7`, CO_ERNC =
+  planilla 6 `L7`, REA = planilla 6 `E7` (los mismos totales con que el V12
+  horario cuadraba el `Ocupar_este.mdb`). Previas V9, V10, V11. Las sumas son
+  `excel_col` sobre el csv (`PV_*`, hoja `(csv)`), que
+  `lectores.leer_columna_excel` lee con `__comun__/csv_columnas.py`.
 - **Validado** contra el `pagos_varios_2609.csv` de la usuaria (planillas
   sintéticas con esos datos): mismas 40.248 filas, orden, centrales, tipos,
   bloques y totales por tipo. Pruebas: `actualizadores/test_pagos_varios.py`.
@@ -518,7 +525,7 @@ y el paquete `revisor/`, salvo lo indicado).
   del ejecutor; `cache_directorios()` como context manager; `CENTRALES_EMBALSE`
   (27); `UMBRAL_DESCUADRE_CPRT` (**1000.0**, no 500) y `UMBRAL_PAR_SEGURO`
   (100.0); `TOLERANCIA` (1.0), `TOL_PAGO_EMPRESA` (150.0), `TOL_MTIME` (2 s);
-  `NODOS` (**20**) y `VERIFICADORES` (**8**: V8, V9, V10, V11, V13, V14,
+  `NODOS` (**21**) y `VERIFICADORES` (**9**: V8, V9, V10, V11, V12, V13, V14,
   V15, V16).
 - **Depende de:** los 5 scripts que lanza, pero solo por línea de comandos — no
   los importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**

@@ -90,6 +90,16 @@ def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_fil
         CACHE_COLUMNAS[ck] = bruto
         return desde_desglose(bruto)
 
+    # --- csv (pagos_varios, modo 15 minutos): sin Excel ni openpyxl ---------
+    if str(ruta).lower().endswith(".csv"):
+        cols = [columna] + ([col_filtro] if col_filtro else [])
+        d = _csv.leer_columnas_csv(ruta, cols, fila_inicio, log)
+        if d is None:
+            return None, 0, {}
+        dm = d.get(columna.upper(), {})
+        dt = d.get(col_filtro.upper(), {}) if col_filtro else {}
+        return acumular((dm.get(f), dt.get(f)) for f in sorted(dm))
+
     # --- openpyxl (valores cacheados) --------------------------------------
     try:
         import openpyxl

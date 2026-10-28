@@ -142,8 +142,38 @@ VALORES = {
     #   columna      : letra de la columna de montos
     #   fila_inicio  : primera fila CON DATOS (la del encabezado + 1)
     #   columna_filtro / valores_filtro : para sumar solo ciertos tipos
-    #   (hoy no queda ninguno: los que habia comparaban contra el tabulado
-    #   o contra los Access, que en el modo 15 minutos no existen)
+    #   (los que habia comparaban contra el tabulado o contra los Access, que
+    #   en el modo 15 minutos no existen)
+
+    # pagos_varios_AAMM.csv (04 Planilla 9): la suma de Pago (D) por fuente,
+    # filtrando por Tipo_pago (E). Es lo que reemplaza al Ocupar_este.mdb.
+    # Un csv no tiene hojas: "(csv)" solo llena el campo (los chequeos de
+    # "valor sin configurar" piden una hoja) y el lector de csv lo ignora.
+    "PV_SUBASTAS": {
+        "tipo": "excel_col", "archivo": "a_pagos_varios",
+        "hoja": "(csv)", "columna": "D", "fila_inicio": 2,
+        "columna_filtro": "E",
+        "valores_filtro": ["CPF(+)", "CPF(-)", "CSF(+)", "CSF(-)", "CTF(+)", "CTF(-)"],
+        "etiqueta": "pagos_varios: Subastas (CPF, CSF y CTF, + y -)",
+    },
+    "PV_CRA": {
+        "tipo": "excel_col", "archivo": "a_pagos_varios",
+        "hoja": "(csv)", "columna": "D", "fila_inicio": 2,
+        "columna_filtro": "E", "valores_filtro": ["CRA"],
+        "etiqueta": "pagos_varios: CRA",
+    },
+    "PV_CO_ERNC": {
+        "tipo": "excel_col", "archivo": "a_pagos_varios",
+        "hoja": "(csv)", "columna": "D", "fila_inicio": 2,
+        "columna_filtro": "E", "valores_filtro": ["CO_ERNC"],
+        "etiqueta": "pagos_varios: CO_ERNC",
+    },
+    "PV_REA": {
+        "tipo": "excel_col", "archivo": "a_pagos_varios",
+        "hoja": "(csv)", "columna": "D", "fila_inicio": 2,
+        "columna_filtro": "E", "valores_filtro": ["REA"],
+        "etiqueta": "pagos_varios: REA",
+    },
 
     # --- celdas puntuales --------------------------------------------------
     "SSCC_H1": {
@@ -454,6 +484,32 @@ VERIFICADORES = {
                         "col_valor": "C"},
              "tolerancia": TOL_PRORRATA_SUMA},
 
+        ],
+    },
+    # -------------------------------------------------------------------------
+    # V12 - pagos_varios_AAMM.csv. En el modo horario V12 era el Access
+    # Ocupar_este_para_Reliquidacion contra los mismos cuatro totales; en 15
+    # minutos ese Access es este csv. Cada fuente se compara por separado con
+    # el total de SU resumen, para saber cual volver a armar.
+    # -------------------------------------------------------------------------
+    "V12": {
+        "archivo": "a_pagos_varios",
+        "titulo": "pagos_varios: Subastas, CRA, CO_ERNC y REA = RESUMEN de las planillas 3, 5 y 6",
+        "depende": ["a_3_p9", "a_5_p9", "a_6_p9"],
+        "verif_previas": ["V9", "V10", "V11"],
+        "comprobaciones": [
+            {"tipo": "igualdad",
+             "desc": "Subastas del csv = planilla 3 RESUMEN!U7 (total Subastas)",
+             "izq": ["PV_SUBASTAS"], "der": ["P3_RES_U7"]},
+            {"tipo": "igualdad",
+             "desc": "CRA del csv = planilla 5 RESUMEN!D7 (total CRA)",
+             "izq": ["PV_CRA"], "der": ["P5_D7"]},
+            {"tipo": "igualdad",
+             "desc": "CO_ERNC del csv = planilla 6 RESUMEN!L7 (total CO-ERNC)",
+             "izq": ["PV_CO_ERNC"], "der": ["P6_L7"]},
+            {"tipo": "igualdad",
+             "desc": "REA del csv = planilla 6 RESUMEN!E7 (total REA)",
+             "izq": ["PV_REA"], "der": ["P6_E7"]},
         ],
     },
     "V13": {

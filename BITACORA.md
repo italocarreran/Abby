@@ -66,6 +66,31 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-28 — Claude — pagos_varios: verificador V12 y botón de detalle
+
+La usuaria pidió que la fila del pagos_varios tenga su verificador y su
+detalle: la suma de cada cosa igual a lo que hay en el resumen de cada cosa.
+
+- Revisor 15 min: **V12** sobre `a_pagos_varios` (el id del V12 horario, que
+  hacía lo mismo contra el `Ocupar_este.mdb`). Cuatro igualdades: Subastas
+  (CPF/CSF/CTF ±) = P3 `RESUMEN!U7`; CRA = P5 `RESUMEN!D7`; CO_ERNC = P6
+  `RESUMEN!L7`; REA = P6 `RESUMEN!E7`. Depende de las planillas 3, 5 y 6;
+  previas V9, V10, V11. Los botones «Verificar» y «detalle» salen solos al
+  tener verificador.
+- Valores `PV_SUBASTAS`, `PV_CRA`, `PV_CO_ERNC`, `PV_REA`: `excel_col` sobre
+  el csv (columna D filtrada por E, hoja de relleno `(csv)`).
+- `revisor/lectores.leer_columna_excel`: un `.csv` se suma con
+  `__comun__/csv_columnas.py` (antes iba a openpyxl y después a Excel).
+
+Probado: las cuatro sumas sobre el pagos_varios generado con los datos de
+referencia, y V12 en OK / NO CUADRA según el resumen. Sin Excel real.
+
+**Corrección de la entrada anterior** (la bitácora no se edita): la suma de
+Subastas del pagos_varios_2609 de referencia es **671.162.121,70**, no
+671.161.321,70 (error de suma a mano; este es el que da el Revisor).
+
+---
+
 ## 2026-10-28 — Claude — pagos_varios: Subastas sin ×4 (resuelto)
 
 La usuaria confirmó que las Subastas son horarias pero la prorrata es de 15
