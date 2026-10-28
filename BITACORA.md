@@ -17,10 +17,6 @@
 
 ## Pendientes abiertos ahora mismo
 
-- [ ] **pagos_varios (15 min): ¿Subastas ×4?** (2026-10-28). En el
-      pagos_varios de referencia cada hora de Subastas se repite en sus 4
-      bloques con el mismo pago. Confirmar contra el total de la planilla 3
-      (RESUMEN U7) si eso es correcto o si el pago tiene que ir /4.
 - [ ] **Versión 15 minutos — definir qué reemplaza lo quitado** (2026-10-22).
       En `Revisor_Relq_15min/` se sacaron detalles diarios, CCA, 02
       Consolidado_Tabulado y los Access. La usuaria va de a poco, actualizador
@@ -68,6 +64,19 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+---
+
+## 2026-10-28 — Claude — pagos_varios: Subastas sin ×4 (resuelto)
+
+La usuaria confirmó que las Subastas son horarias pero la prorrata es de 15
+minutos, así que en la planilla 3 cada hora ya se reparte en sus 4 bloques
+(BH = pago de la hora / 4): por eso los 4 bloques de una hora tienen el mismo
+pago. El total de Subastas del pagos_varios es igual al del RESUMEN. No hay
+nada que corregir; el script copia BH tal cual. Se saca el pendiente.
+
+(Corrección de un número dicho en la conversación, no en esta bitácora: la
+suma de Subastas del pagos_varios_2609 de referencia es 671.161.321,70.)
+
 ---
 
 ## 2026-10-28 — Claude — 15 min: pagos_varios_AAMM.csv en vez del Access de la planilla 9
