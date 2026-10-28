@@ -466,6 +466,39 @@ y el paquete `revisor/`, salvo lo indicado).
   `revisor/lectores.leer_columnas_rapido` despacha los `.csv` a
   `__comun__/csv_columnas.py`.
 
+### `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py` — pagos_varios (2026-10-28)
+
+- **Qué hace:** reemplaza, en 15 minutos, a `Actualiza_Access_P9.py`: los mismos
+  cuatro bloques de las planillas 3, 5 y 6 ya no van al Access
+  `Ocupar_este...`, sino a **`04 Planilla 9/pagos_varios_AAMM.csv`**
+  (`Fecha_Hora,CONFIGURACION,Central,Pago,Tipo_pago,Bloque_15min`). Sin
+  Central_Empresa.
+- **Consume** (columnas dadas por la usuaria; el encabezado se busca en las 20
+  primeras filas por un "Pago" y los datos empiezan en la siguiente):
+
+  | Fuente | Hoja | Fecha | Central | Pago | Tipo | Bloque |
+  |---|---|---|---|---|---|---|
+  | Subastas (3) | `DB` | — | BF | BH | BE | BI |
+  | CRA (5) | `CÁLCULO_CRA` | AV | AX | AY | AZ | BA |
+  | CO_ERNC (6) | `ENERGIA_Y_CALCULO_CO_ERNC` | BB | BD | BE | BF | BG |
+  | REA (6) | `CALCULO_REA_CENTRAL` | AT | AV | AW | AX | AY |
+
+  La planilla 3 no trae fecha (BG es la hora mensual): se arma con el bloque y
+  el mes (AAMM del nombre de los archivos o de la ventana).
+- **Reglas:** Fecha_Hora siempre `DD/MM/AAAA HH:MM`; CONFIGURACION vacía; fuera
+  los pagos 0 y las centrales vacías; orden Subastas, CRA, CO_ERNC, REA; coma,
+  punto decimal, UTF-8 sin BOM, CRLF; escritura `.tmp` + `os.replace`. Avisa si
+  un bloque no calza con su fecha (`(día−1)×96 + hora×4 + min/15 + 1`: cambio
+  de hora) o si una fecha no es del mes. Solo lee: ZIP/XML, con xlwings de
+  respaldo.
+- **Revisor 15 min:** nodo `a_pagos_varios` (`crea_salida=True`): en rojo si no
+  existe, pero con el botón «Actualizar data» activo, que es el que lo crea.
+  `revisor/lanzamiento.py` deja lanzar sin destino cuando el nodo es
+  `crea_salida`.
+- **Validado** contra el `pagos_varios_2609.csv` de la usuaria (planillas
+  sintéticas con esos datos): mismas 40.248 filas, orden, centrales, tipos,
+  bloques y totales por tipo. Pruebas: `actualizadores/test_pagos_varios.py`.
+
 ### `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,

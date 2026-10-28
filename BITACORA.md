@@ -17,6 +17,10 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **pagos_varios (15 min): ¿Subastas ×4?** (2026-10-28). En el
+      pagos_varios de referencia cada hora de Subastas se repite en sus 4
+      bloques con el mismo pago. Confirmar contra el total de la planilla 3
+      (RESUMEN U7) si eso es correcto o si el pago tiene que ir /4.
 - [ ] **Versión 15 minutos — definir qué reemplaza lo quitado** (2026-10-22).
       En `Revisor_Relq_15min/` se sacaron detalles diarios, CCA, 02
       Consolidado_Tabulado y los Access. La usuaria va de a poco, actualizador
@@ -64,6 +68,36 @@
 - [ ] Confirmar si el `1_CUADROS_PAGO` que busca `ActualizaRemplazos.py` en
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
+---
+
+## 2026-10-28 — Claude — 15 min: pagos_varios_AAMM.csv en vez del Access de la planilla 9
+
+La usuaria: lo que `Actualiza_Access_P9.py` consolidaba de las planillas 3, 5 y
+6 en el Access ahora tiene que salir en un CSV con la estructura de su
+`pagos_varios_2609.csv` (adjunto en la conversación, no versionado). Dio las
+columnas de cada bloque en 15 min (ver MAPA), sin Central_Empresa, fecha en
+una sola forma `DD/MM/AAAA` (el de referencia mezcla dos), salida en
+`04 Planilla 9`, roja si no existe pero creable desde su botón.
+
+- Nuevo `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py` (+ su
+  prueba stdlib `test_pagos_varios.py`, y sumado a `test_seccion_config.py`).
+- Revisor 15 min: nodo `a_pagos_varios` con `crea_salida`; `_releer` deja el
+  botón activo y `lanzamiento.lanzar_actualizador` acepta destino `None` en
+  ese caso. Clave de traspaso `pagos_varios`.
+
+**Validación:** con planillas armadas desde el CSV de referencia (más filas con
+pago 0 que se descartan): 40.248 filas, mismos totales por tipo, fecha,
+central, tipo y bloque idénticos. Las únicas diferencias estaban en el texto
+del pago y eran del Excel de prueba (openpyxl redondea a 15 dígitos al
+escribir); el script copia el número tal cual está en el archivo.
+**No probado con las planillas reales.**
+
+**Para mirar con la usuaria:** en el de referencia, cada hora de Subastas
+aparece en sus 4 bloques con el MISMO pago (8.084 de 8.084 horas). Si el pago
+de la planilla 3 es horario, el CSV lleva 4 veces el total de Subastas. El
+script copia lo que haya en la columna BH, fila por fila: si eso está mal, se
+corrige en la planilla o hay que decidir dividir. Pendiente de confirmar.
+
 ---
 
 ## 2026-10-28 — Claude — 15 min: "SC y CO" dentro de «Actualizar data» de la planilla 5

@@ -131,7 +131,7 @@ def lanzar_actualizador(self, nid, indice=0):
         return
     destino = self.rutas.get(nid)
 
-    if destino is None:
+    if destino is None and not nodo.get("crea_salida"):
         messagebox.showwarning(
             "Falta el archivo",
             f"No se encontró el archivo de esta fila.\n\n{nodo['texto']}\n\n"
@@ -150,7 +150,9 @@ def lanzar_actualizador(self, nid, indice=0):
     # xlwings necesita poder guardarlo. Se prueba la escritura de verdad; el
     # "~$" solo sirve como pista de quien lo tiene, porque queda huerfano
     # cuando Excel se cae. Un .mdb no tiene "~$", asi que no aplica.
-    destino_es_excel = destino.suffix.lower() in XL
+    # destino None: un "crea_salida" que todavia no existe; no hay nada que
+    # pueda estar abierto.
+    destino_es_excel = destino is not None and destino.suffix.lower() in XL
     if destino_es_excel:
         lock = self._lock_excel(destino)
         if self._bloqueado_para_escritura(destino):

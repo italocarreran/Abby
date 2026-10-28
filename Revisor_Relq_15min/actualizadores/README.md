@@ -2,6 +2,7 @@
 
 ```
 Actualiza_datos.py           Actualiza_Cuadro0.py
+Actualiza_Pagos_Varios.py    (arma 04 Planilla 9/pagos_varios_AAMM.csv)
 Actualiza_SC_CO.py           (sin botón propio: lo usa Actualiza_datos)
 ```
 

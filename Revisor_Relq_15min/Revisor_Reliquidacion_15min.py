@@ -727,9 +727,17 @@ NODOS = [
     # 15 minutos: el CO de «SC y CO» sale de este csv, que reemplaza al
     # Calculo_CO (la carpeta 02 Costo de Oportunidad ya no se usa). Va en
     # 04 Planilla 9 (confirmado por la usuaria, 2026-10-23).
-    dict(id="a_reporte_cra", tipo="archivo", pref="    └── ",
+    dict(id="a_reporte_cra", tipo="archivo", pref="    ├── ",
          texto="Reporte_CRA_15min_AAMM.csv   (origen del CO de «SC y CO»)",
          carpeta=["04 Planilla 9"], patron=r"^reporte_cra", ext=(".csv",), espejo=None),
+    # 15 minutos: reemplaza al Access Ocupar_este_para_Reliquidacion. Lo arma
+    # Actualiza_Pagos_Varios.py desde las planillas 3, 5 y 6. "crea_salida": si
+    # no existe se pinta en rojo, pero el boton queda activo, porque es
+    # justamente el que lo crea.
+    dict(id="a_pagos_varios", tipo="archivo", pref="    └── ",
+         texto="pagos_varios_AAMM.csv   (Subastas + CRA + CO_ERNC + REA)",
+         carpeta=["04 Planilla 9"], patron=r"^pagos_varios", ext=(".csv",),
+         espejo=None, crea_salida=True),
 ]
 
 NODO_POR_ID = {n["id"]: n for n in NODOS}
@@ -771,6 +779,9 @@ ACTUALIZADORES = {
     # de Actualiza_datos.py (junto con FD y prorrata), no un boton aparte. El
     # motor sigue en Actualiza_SC_CO.py, que Actualiza_datos importa.
     "a_5_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p5")],
+    # Antes, el Access de la planilla 9 (Actualiza_Access_P9.py). En 15 minutos
+    # es un csv que se arma desde las planillas 3, 5 y 6.
+    "a_pagos_varios": [dict(script="actualizadores/Actualiza_Pagos_Varios.py")],
     "a_6_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p6")],
     "a_0_cuadros": [
         # Reemplazos REUC vive en su propia subcarpeta y tiene su propio
@@ -789,6 +800,7 @@ CLAVES_TRASPASO = {
     "a_prorrata":       "prorrata_retiros",
     "a_calc_sscc_01":   "calculo_sscc_maestro",
     "a_reporte_cra":    "reporte_cra",
+    "a_pagos_varios":   "pagos_varios",
     "a_3_p9":           "p3",
     "a_5_p9":           "p5",
     "a_6_p9":           "p6",
@@ -2207,8 +2219,14 @@ class Revisor:
                 w["estado"].config(text="FALTA EL ARCHIVO", fg=C_FALTA)
                 self.log(f"  FALTA  {nodo['texto']}  ({_texto_carpeta(nodo)})")
                 faltantes += 1
+                # Un archivo que arma su propio actualizador ("crea_salida")
+                # falta y se pinta en rojo, pero el boton queda activo: es el
+                # que lo crea.
+                if nodo.get("crea_salida"):
+                    w["estado"].config(text="NO EXISTE: se crea con el botón",
+                                       fg=C_FALTA)
                 for b in w.get("btn_act_data", []):
-                    b.config(state="disabled")
+                    b.config(state="normal" if nodo.get("crea_salida") else "disabled")
                 continue
 
             for b in w.get("btn_act_data", []):
