@@ -397,7 +397,14 @@ def leer_zona(ruta, hoja, col_ini, col_fin, fila_fin, log):
     """{COL: {fila: valor}} de col_ini:col_fin, filas 1..fila_fin (para buscar
     encabezados). Sin Excel si se puede; si no, con xlwings."""
     cols = [_col_letra(i) for i in range(_col_num(col_ini), _col_num(col_fin) + 1)]
-    d = _excel_xml.leer_columnas_rapido(ruta, hoja, cols, 1, log, fila_fin=fila_fin)
+    try:
+        d = _excel_xml.leer_columnas_rapido(ruta, hoja, cols, 1, log, fila_fin=fila_fin)
+    except TypeError:
+        # __comun__/excel_xml.py anterior al 2026-10-29 (sin fila_fin): se lee
+        # la hoja entera y se queda con las filas de arriba. Mas lento, igual.
+        d = _excel_xml.leer_columnas_rapido(ruta, hoja, cols, 1, log)
+        if d is not None:
+            d = {c: {f: v for f, v in fs.items() if f <= fila_fin} for c, fs in d.items()}
     if d is not None:
         return d
     import xlwings as xw

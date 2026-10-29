@@ -67,6 +67,15 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — pagos_varios funciona con un `__comun__` sin `fila_fin`
+
+En el NAS, la usuaria tenía `Revisor_Relq_15min/` actualizado pero
+`__comun__/excel_xml.py` viejo, y pagos_varios cayó con «unexpected keyword
+argument 'fila_fin'». Ahora `leer_zona` toma ese `TypeError` y lee la hoja
+entera, quedándose con las primeras filas. Probado con la firma vieja
+simulada. Hay que copiar también `__comun__/` al NAS: los demás cambios del
+día no lo necesitan, pero así la búsqueda de encabezados es más rápida.
+
 ## 2026-10-29 — Claude — 15 min: SC_CfrecSinFD por encabezado (estructura de marzo)
 
 El `SC_CfrecSinFD_2603.csv` trae una columna menos antes de `Fecha` (y
