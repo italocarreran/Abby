@@ -67,6 +67,16 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: SOBRECOSTOS extiende y recorta las fórmulas de S:EH
+
+La usuaria pidió que, al pegar el csv para Coyailen en A7:R, las fórmulas de
+S:EH queden del mismo largo. Ahora `ajustar_formulas_al_largo` lee la fila 7
+de S:EH. A cada columna que tiene fórmula ahí le asigna esa fórmula hasta la
+última fila pegada (Excel corre las referencias relativas) y borra lo que
+tenga debajo, hasta donde llegaba antes. Las columnas vacías o con un valor
+fijo en la fila 7 no se tocan; la usuaria preguntó por las vacías del medio.
+5 pruebas en `test_sobrecostos_coyailen.py`, en verde. Falta en Excel.
+
 ## 2026-10-29 — Claude — 15 min: SOBRECOSTOS se llena con el csv para Coyailen
 
 La usuaria pidió que Cálculo_SobrecostosSSCC tenga una opción para

@@ -656,6 +656,9 @@ y el paquete `revisor/`, salvo lo indicado).
   los datos. Borra en A:R lo que sobre de la pegada anterior. Los números y
   las fechas van convertidos (`valor_csv`), no como texto. Clave de traspaso
   `sc_cfrec_coyailen`. Reemplaza al «Traer Consolidado» horario.
+  Después extiende o recorta al mismo largo las fórmulas de **S:EH**
+  (`ajustar_formulas_al_largo`, con la fila 7 de modelo). Las columnas sin
+  fórmula en la fila 7 no se tocan.
 - **Filtros en el destino (2026-10-29):** antes de pegar en cada hoja destino
   (FD_*, PRORRATA_RETIROS, «SC y CO») se limpia cualquier filtro aplicado,
   en la hoja o en sus tablas (`quitar_filtros`, en `Actualiza_SC_CO.py`; las

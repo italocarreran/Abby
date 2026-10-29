@@ -54,7 +54,7 @@ Convenciones de esta página:
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 736 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1174 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
-- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1574 líneas
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1612 líneas
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 552 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
@@ -3384,7 +3384,7 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 | `MAPEO_P3_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CPF_FD', 'cols_destino': [('F', 'N')], 'fila_ini_destino': 9, 'fila_det_destino': 'F', 'cols_formulas': [('A', 'E'), ('P', 'R')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CSF_FD', 'cols_destino': [('F', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'F', 'cols_formulas': [('A', 'E'), ('N', 'O'), ('Q', 'Y')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CTF_FD', 'cols_destino': [('F', 'M')], 'fila_ini_destino': 9, 'fila_det_destino': 'F', 'cols_formulas': [('A', 'E'), ('O', 'Q'), ('S', 'Z')]}, …` | Planilla 3, modo 15 minutos: en las tres hojas el bloque que se pega empieza en la F (antes D / E / E). |
 | `MAPEO_P5_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('B', 'J')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CTF', 'cols_destino': [('B', 'I')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, …` |  |
 | `MAPEO_P6_FD` | `lista de 1 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('B', 'B'), ('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': []}, …` |  |
-| `SOBRECOSTOS_COYAILEN` | `{'hoja_destino': 'SOBRECOSTOS', 'fila_ini': 7, 'col_ini': 'A', 'col_fin': 'R'}` | ── SOBRECOSTOS desde SC sin FD (para Coyailen) ───────────────────────────── Modo 15 minutos (usuaria, 2026-10-29): la hoja SOBRECOSTOS de Cálculo_SobrecostosSSCC se llena con la salida de Reorganiza… |
+| `SOBRECOSTOS_COYAILEN` | `dict de 6 claves: 'hoja_destino', 'fila_ini', 'col_ini', …` | ── SOBRECOSTOS desde SC sin FD (para Coyailen) ───────────────────────────── Modo 15 minutos (usuaria, 2026-10-29): la hoja SOBRECOSTOS de Cálculo_SobrecostosSSCC se llena con la salida de Reorganiza… |
 | `_RE_FECHA` | `re.compile('^(\\d{1,2})[-/](\\d{1,2})[-/](\\d{4})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?…` |  |
 | `_RE_FECHA_ISO` | `re.compile('^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?$')` |  |
 | `BLOQUES_POR_HORA` | `4` | ── Configuración Prorrata (pivot tabla→matriz) ────────────────────────────── Origen: hoja "Prorrata 15min" (en el modo horario era PRORRATA_HORARIA_TABULAR), fila 2 en adelante. |
@@ -3463,7 +3463,17 @@ con n_cols columnas cada una. Sin filas vacias.
 #### `def pegar_sobrecostos_coyailen(wb_d, ruta_csv: Path, cfg: dict=SOBRECOSTOS_COYAILEN, log_func=print) -> int`
 
 Pega el csv para Coyailen en la hoja SOBRECOSTOS desde A7 y borra en A:R
-lo que sobre de la pegada anterior. Devuelve cuantas filas pego.
+lo que sobre de la pegada anterior. Las formulas de S:EH quedan del mismo
+largo que lo pegado (ver ajustar_formulas_al_largo). Devuelve cuantas
+filas pego.
+
+#### `def ajustar_formulas_al_largo(sh, f_modelo, nuevo_fin, viejo_fin, col_desde, col_hasta, log_func=print)`
+
+Deja cada columna de col_desde:col_hasta que tenga formula en la fila
+f_modelo con esa formula hasta nuevo_fin (Excel corre las referencias
+relativas, como al arrastrar) y borra lo que tenga debajo hasta viejo_fin.
+Las columnas sin formula en la fila modelo no se tocan. Devuelve cuantas
+columnas ajusto.
 
 #### `def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_func=None)`
 

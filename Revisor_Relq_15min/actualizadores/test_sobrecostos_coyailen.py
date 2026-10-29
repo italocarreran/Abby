@@ -39,6 +39,21 @@ class Rango:
             for j, v in enumerate(f):
                 self.hoja.celdas[(r0 + i, c0 + j)] = v
 
+    @property
+    def formula(self):
+        (r0, c0), (r1, c1) = self.a, self.b
+        return tuple(tuple(self.hoja.celdas.get((r, c), "") for c in range(c0, c1 + 1))
+                     for r in range(r0, r1 + 1))
+
+    @formula.setter
+    def formula(self, f):
+        # Como Excel con una sola formula para un rango: la "arrastra", aca
+        # marcando la fila para poder comprobarlo.
+        (r0, c0), (r1, c1) = self.a, self.b
+        for r in range(r0, r1 + 1):
+            for c in range(c0, c1 + 1):
+                self.hoja.celdas[(r, c)] = f"{f}@{r}"
+
     def clear_contents(self):
         (r0, c0), (r1, c1) = self.a, self.b
         for k in list(self.hoja.celdas):
@@ -90,7 +105,8 @@ class SobrecostosCoyailen(unittest.TestCase):
         for r in range(7, 20):                      # pegada anterior, mas larga
             for c in range(1, 19):
                 viejas[(r, c)] = "viejo"
-            viejas[(r, 30)] = "fuera de A:R"
+            viejas[(r, 30)] = "=A7*2" if r == 7 else f"=A7*2@{r}"   # AD: formula
+            viejas[(r, 25)] = "fijo"                                 # Y: valor fijo
         sh = Hoja("SOBRECOSTOS", viejas)
         sh.api.FilterMode = True
         sh.api.ShowAllData = lambda: setattr(sh.api, "FilterMode", False)
@@ -107,7 +123,21 @@ class SobrecostosCoyailen(unittest.TestCase):
         self.assertEqual(sh.celdas[(9, 18)], 2.0)           # R = bloque
         self.assertIsNone(sh.celdas[(7, 12)])               # bandera vacia: celda vacia
         self.assertFalse(any(r >= 10 and c <= 18 for r, c in sh.celdas))
-        self.assertEqual(sh.celdas[(19, 30)], "fuera de A:R")
+        # AD (formula) queda hasta la 9 y se borra abajo; Y (valor fijo) no se toca;
+        # la columna vacia entre medio sigue vacia.
+        self.assertEqual([sh.celdas.get((r, 30)) for r in (7, 8, 9, 10)],
+                         ["=A7*2@7", "=A7*2@8", "=A7*2@9", None])
+        self.assertEqual(sh.celdas[(19, 25)], "fijo")
+        self.assertFalse(any(c == 20 for _, c in sh.celdas))
+        self.assertEqual(sh.celdas[(6, 30)], "encabezado AD")
+
+    def test_extiende_si_la_pegada_nueva_es_mas_larga(self):
+        sh = Hoja("SOBRECOSTOS", {(6, 1): "Fecha", (7, 1): "viejo", (7, 19): "=E7+1",
+                                  (7, 20): ""})
+        n = ad.ajustar_formulas_al_largo(sh, 7, 12, 7, "S", "EH", lambda *_: None)
+        self.assertEqual(n, 1)
+        self.assertEqual(sh.celdas[(12, 19)], "=E7+1@12")
+        self.assertNotIn((8, 20), sh.celdas)
 
     def test_busca_la_salida_en_01_sobrecostos(self):
         self.assertEqual(ad.buscar_sc_cfrec_coyailen(self.caso_dir), self.csv)

@@ -628,11 +628,16 @@ def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func
 # solo los datos (sin el encabezado del csv) desde A7, y se borra en A:R lo que
 # quede abajo de la pegada anterior. Es lo que antes hacia "Traer Consolidado"
 # desde el tabulado.
+# Las formulas de S:EH se extienden o se recortan al largo de lo pegado,
+# tomando como modelo la fila 7. Las columnas que en la fila 7 no tienen
+# formula (vacias o con un valor fijo) no se tocan.
 SOBRECOSTOS_COYAILEN = {
     "hoja_destino": "SOBRECOSTOS",
     "fila_ini": 7,
     "col_ini": "A",
     "col_fin": "R",
+    "formulas_desde": "S",
+    "formulas_hasta": "EH",
 }
 
 _RE_FECHA = re.compile(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$")
@@ -685,7 +690,9 @@ def leer_csv_coyailen(ruta: Path, n_cols: int = 18) -> list:
 def pegar_sobrecostos_coyailen(wb_d, ruta_csv: Path, cfg: dict = SOBRECOSTOS_COYAILEN,
                                log_func=print) -> int:
     """Pega el csv para Coyailen en la hoja SOBRECOSTOS desde A7 y borra en A:R
-    lo que sobre de la pegada anterior. Devuelve cuantas filas pego."""
+    lo que sobre de la pegada anterior. Las formulas de S:EH quedan del mismo
+    largo que lo pegado (ver ajustar_formulas_al_largo). Devuelve cuantas
+    filas pego."""
     t_ini = time.time()
     hoja = cfg["hoja_destino"]
     sh_d = next((sh for sh in wb_d.sheets if normalizar(sh.name) == normalizar(hoja)), None)
@@ -705,9 +712,40 @@ def pegar_sobrecostos_coyailen(wb_d, ruta_csv: Path, cfg: dict = SOBRECOSTOS_COY
     if viejo_fin > nuevo_fin:
         sh_d.range((nuevo_fin + 1, c_ini), (viejo_fin, c_fin)).clear_contents()
         log_func(f"     borrado {cfg['col_ini']}{nuevo_fin + 1}:{cfg['col_fin']}{viejo_fin}")
+    if cfg.get("formulas_desde"):
+        ajustar_formulas_al_largo(sh_d, f_ini, nuevo_fin, viejo_fin,
+                                  cfg["formulas_desde"], cfg["formulas_hasta"], log_func)
     log_func(f"     {hoja}!{cfg['col_ini']}{f_ini}:{cfg['col_fin']}{nuevo_fin} pegado "
              f"| {fmt_tiempo(time.time() - t_ini)}")
     return len(filas)
+
+def ajustar_formulas_al_largo(sh, f_modelo, nuevo_fin, viejo_fin, col_desde, col_hasta,
+                              log_func=print):
+    """Deja cada columna de col_desde:col_hasta que tenga formula en la fila
+    f_modelo con esa formula hasta nuevo_fin (Excel corre las referencias
+    relativas, como al arrastrar) y borra lo que tenga debajo hasta viejo_fin.
+    Las columnas sin formula en la fila modelo no se tocan. Devuelve cuantas
+    columnas ajusto."""
+    c0, c1 = col_letra_a_num(col_desde), col_letra_a_num(col_hasta)
+    fila = sh.range((f_modelo, c0), (f_modelo, c1)).formula
+    if not isinstance(fila, (list, tuple)):
+        fila = [fila]
+    elif fila and isinstance(fila[0], (list, tuple)):
+        fila = fila[0]
+    n = 0
+    for i, f in enumerate(fila):
+        if not (isinstance(f, str) and f.startswith("=")):
+            continue
+        c = c0 + i
+        if nuevo_fin > f_modelo:
+            sh.range((f_modelo, c), (nuevo_fin, c)).formula = f
+        if viejo_fin > nuevo_fin:
+            sh.range((nuevo_fin + 1, c), (viejo_fin, c)).clear_contents()
+        n += 1
+    log_func(f"     fórmulas {col_desde}:{col_hasta}: {n} columna(s) llevadas a la fila "
+             f"{nuevo_fin}" + (f", borradas de {nuevo_fin + 1} a {viejo_fin}"
+                               if viejo_fin > nuevo_fin else ""))
+    return n
 
 # ── Configuración Prorrata (pivot tabla→matriz) ──────────────────────────────
 # Origen: hoja "Prorrata 15min" (en el modo horario era PRORRATA_HORARIA_TABULAR),
