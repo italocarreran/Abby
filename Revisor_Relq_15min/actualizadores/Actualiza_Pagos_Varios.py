@@ -15,12 +15,16 @@
 #   | SUBASTAS | 3_      | DB                         |  (*)  |   BF    |  BH  |  BE  |   BG   |
 #   | CRA      | 5_      | CÁLCULO_CRA                |  AV   |   AX    |  AY  |  AZ  |   BA   |
 #   | CO_ERNC  | 6_      | ENERGIA_Y_CALCULO_CO_ERNC  |  BB   |   BE    |  BF  |  BG  |   BD   |
-#   | REA      | 6_      | CALCULO_REA_CENTRAL        |  (*)  |   AV    |  AX  |  AU  |   AW   |
+#   | REA      | 6_      | CALCULO_REA_CENTRAL        |  matriz (ver abajo)                    |
 #
 #  Son las columnas de abril 2026 (la 5, las de septiembre) y solo se usan si
 #  no se encuentran los encabezados (ver abajo).
-#  (*) Sin fecha (traen "Clave Año_Mes"): la Fecha_Hora se arma con el bloque
+#  (*) Sin fecha (trae "Clave Año_Mes"): la Fecha_Hora se arma con el bloque
 #      ("Hora Mensual") y el mes del archivo.
+#  REA (2026-10-29): matriz. Centrales en D11 hacia la derecha hasta la primera
+#      vacia; dia en B13:B, bloque diario 1-96 en C13:C, monto en el cruce.
+#      Tipo fijo "REA"; Fecha_Hora = dia + (bloque-1)*15 min; Bloque_15min =
+#      (dia-1)*96 + bloque.
 #
 #  LAS COLUMNAS SE BUSCAN POR ENCABEZADO (2026-10-29): en abril las tablas se
 #  corrieron de columna en la 3 y en la 6. En las 20 filas de arriba, columnas
@@ -124,9 +128,14 @@ FUENTES = [
     {"nombre": "CO_ERNC", "planilla": "p6", "hoja": "ENERGIA_Y_CALCULO_CO_ERNC",
      "fila_datos": 9,
      "fecha": "BB", "central": "BE", "pago": "BF", "tipo": "BG", "bloque": "BD"},
+    # REA (usuaria, 2026-10-29): ya no es una tabla sino una MATRIZ en la misma
+    # hoja. Centrales en la fila 11 desde la D hasta la primera celda vacia a
+    # la derecha; dia en B y bloque diario (1-96) en C desde la fila 13; los
+    # montos en el cruce. El tipo es fijo "REA". Ver leer_matriz.
     {"nombre": "REA", "planilla": "p6", "hoja": "CALCULO_REA_CENTRAL",
-     "fila_datos": 10,
-     "fecha": None, "central": "AV", "pago": "AX", "tipo": "AU", "bloque": "AW"},
+     "matriz": {"fila_centrales": 11, "col_ini": "D", "col_max": "IV",
+                "fila_datos": 13, "col_dia": "B", "col_bloque": "C",
+                "tipo": "REA"}},
 ]
 
 # Encabezados aceptados por campo, en orden de preferencia (se comparan sin
@@ -469,8 +478,101 @@ def ubicar_encabezado(zona, respaldo=None, encabezados=ENCABEZADOS,
     return f, {campo: _col_letra(c) for campo, c in mapa.items()}, len(candidatos)
 
 
+def _dia_de(v, anio_mes):
+    """La celda del dia -> date. Una fecha (serie de Excel o datetime) o el
+    numero de dia del mes (1-31, con anio_mes)."""
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and 1 <= v <= 31:
+        if anio_mes is None:
+            return None
+        try:
+            return datetime(anio_mes[0], anio_mes[1], int(v))
+        except ValueError:
+            return None
+    f = fecha_de(v)
+    return datetime(f.year, f.month, f.day) if f else None
+
+
+def leer_matriz(ruta, fte, anio_mes, log):
+    """REA como matriz: una fila del CSV por central (columna) y bloque (fila)
+    con monto distinto de 0. Orden: central por central, como la tabla de antes.
+    Si B viene solo en la primera fila de cada dia (celdas combinadas), se
+    arrastra hacia abajo."""
+    mz = fte["matriz"]
+    log(f"  {fte['nombre']}: {Path(ruta).name}, hoja {fte['hoja']} (matriz)")
+    avisos = []
+    fila_c = mz["fila_centrales"]
+    zona = leer_zona(ruta, fte["hoja"], mz["col_ini"], mz["col_max"], fila_c, log)
+    if zona is None:
+        raise RuntimeError(f"No se pudo leer la hoja '{fte['hoja']}' de "
+                           f"{Path(ruta).name}")
+    centrales = []                      # [(COL, nombre)] hasta la primera vacia
+    for n in range(_col_num(mz["col_ini"]), _col_num(mz["col_max"]) + 1):
+        v = zona.get(_col_letra(n), {}).get(fila_c)
+        if _vacio(v):
+            break
+        centrales.append((_col_letra(n), str(v).strip()))
+    if not centrales:
+        raise RuntimeError(f"{fte['nombre']}: no hay centrales en "
+                           f"{mz['col_ini']}{fila_c} hacia la derecha.")
+    log(f"    {len(centrales)} central(es) en {centrales[0][0]}{fila_c}:"
+        f"{centrales[-1][0]}{fila_c}")
+
+    cols = [mz["col_dia"], mz["col_bloque"]] + [c for c, _ in centrales]
+    d = leer_columnas(ruta, fte["hoja"], cols, log)
+    if d is None:
+        raise RuntimeError(f"No se pudo leer la hoja '{fte['hoja']}' de "
+                           f"{Path(ruta).name}")
+    g = lambda col, f: d.get(col.upper(), {}).get(f)
+    filas_n = sorted({f for c in cols for f in d.get(c.upper(), {})
+                      if f >= mz["fila_datos"]})
+
+    # dia y bloque de cada fila
+    tiempos, dia, malas = {}, None, 0
+    for f in filas_n:
+        vd = g(mz["col_dia"], f)
+        if not _vacio(vd):
+            dia = _dia_de(vd, anio_mes)
+            if dia is None:
+                malas += 1
+                log(f"    OJO: fila {f}: día que no se entiende en {mz['col_dia']}: "
+                    f"{vd!r} (se omite)")
+                continue
+        b = _numero(g(mz["col_bloque"], f))
+        if b is None:
+            continue                     # fila sin bloque (total, vacia, ...)
+        if dia is None or not 1 <= b <= BLOQUES_POR_DIA or not float(b).is_integer():
+            malas += 1
+            log(f"    OJO: fila {f}: bloque {b!r} o día faltante (se omite)")
+            continue
+        if anio_mes and (dia.year, dia.month) != anio_mes:
+            malas += 1
+            log(f"    OJO: fila {f}: {dia:%d/%m/%Y} no es del mes {anio_mes[1]:02d}/"
+                f"{anio_mes[0]} (se omite)")
+            continue
+        b = int(b)
+        tiempos[f] = (dia + timedelta(minutes=15 * (b - 1)),
+                      (dia.day - 1) * BLOQUES_POR_DIA + b)
+    log(f"    {len(tiempos)} bloque(s) desde la fila {mz['fila_datos']}")
+
+    salida, ceros = [], 0
+    for col, central in centrales:
+        for f, (fecha, bloque) in tiempos.items():
+            pago = _numero(g(col, f))
+            if pago is None or abs(pago) <= EPS_CERO:
+                ceros += 1
+                continue
+            salida.append([fecha.strftime(FORMATO_FECHA), "", central, pago,
+                           mz["tipo"], bloque])
+    log(f"    {len(salida)} fila(s) con pago; descartadas {ceros} celdas en 0 o vacías")
+    if malas:
+        avisos.append(f"{fte['nombre']}: {malas} fila(s) omitidas (ver el log)")
+    return salida, avisos
+
+
 def leer_fuente(ruta, fte, anio_mes, log):
     """Las filas de una fuente, ya en el formato del CSV, y los avisos."""
+    if fte.get("matriz"):
+        return leer_matriz(ruta, fte, anio_mes, log)
     log(f"  {fte['nombre']}: {Path(ruta).name}, hoja {fte['hoja']}")
     avisos = []
 

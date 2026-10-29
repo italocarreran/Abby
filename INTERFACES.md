@@ -52,7 +52,7 @@ Convenciones de esta página:
 - [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3436 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 859 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 961 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1174 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1612 líneas
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 594 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
@@ -3136,7 +3136,7 @@ Abre la planilla 1, actualiza, recalcula y guarda. (ok, resumen).
 >  | SUBASTAS | 3_      | DB                         |  (*)  |   BF    |  BH  |  BE  |   BG   |
 >  | CRA      | 5_      | CÁLCULO_CRA                |  AV   |   AX    |  AY  |  AZ  |   BA   |
 >  | CO_ERNC  | 6_      | ENERGIA_Y_CALCULO_CO_ERNC  |  BB   |   BE    |  BF  |  BG  |   BD   |
->  | REA      | 6_      | CALCULO_REA_CENTRAL        |  (*)  |   AV    |  AX  |  AU  |   AW   |
+>  | REA      | 6_      | CALCULO_REA_CENTRAL        |  matriz (ver abajo)                    |
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
@@ -3229,6 +3229,13 @@ encabezados). Sin Excel si se puede; si no, con xlwings.
 Busca la tabla por sus encabezados. Devuelve (fila, {campo: COL}, n_tablas)
 o None. respaldo: {campo: COL} de la tabla esperada, para elegir si hay mas
 de una que calce (la mas cercana a su "pago").
+
+#### `def leer_matriz(ruta, fte, anio_mes, log)`
+
+REA como matriz: una fila del CSV por central (columna) y bloque (fila)
+con monto distinto de 0. Orden: central por central, como la tabla de antes.
+Si B viene solo en la primera fila de cada dia (celdas combinadas), se
+arrastra hacia abajo.
 
 #### `def leer_fuente(ruta, fte, anio_mes, log)`
 

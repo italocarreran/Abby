@@ -67,6 +67,19 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: la REA de pagos_varios sale de una matriz
+
+La usuaria cambió el origen de la REA: ahora es una matriz en
+`CALCULO_REA_CENTRAL`. Las centrales están en D11 hacia la derecha («detectar
+la primera vacía», porque puede crecer), el día en B13:B, el bloque diario
+1–96 en C13:C y el monto en el cruce. El tipo es fijo REA. Quedó en
+`leer_matriz` (`FUENTES` REA con la clave `matriz`). Lee hasta la columna IV.
+El día puede venir como fecha o como número de día, y si está solo en la
+primera fila del día se arrastra. El orden es central por central. 6 pruebas
+de pagos_varios en verde. **Supuestos:** que la fila 12 no trae datos (es
+encabezado o vacía) y que el V12 sigue cuadrando la REA contra `E7` de la
+planilla 6. Falta correrlo con la planilla real.
+
 ## 2026-10-29 — Claude — pagos_varios funciona con un `__comun__` sin `fila_fin`
 
 En el NAS, la usuaria tenía `Revisor_Relq_15min/` actualizado pero

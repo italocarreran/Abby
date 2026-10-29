@@ -512,10 +512,16 @@ y el paquete `revisor/`, salvo lo indicado).
   | Subastas (3) | `DB` | — | BF | BH | BE | BG («Hora Mensual») |
   | CRA (5) | `CÁLCULO_CRA` | AV | AX | AY | AZ | BA |
   | CO_ERNC (6) | `ENERGIA_Y_CALCULO_CO_ERNC` | BB | BE | BF | BG | BD («Periodo») |
-  | REA (6) | `CALCULO_REA_CENTRAL` | — | AV | AX | AU | AW («Hora Mensual») |
+  | REA (6) | `CALCULO_REA_CENTRAL` | **matriz**, ver abajo | | | | |
 
-  Cuando la tabla trae «Clave Año_Mes» en vez de fecha (3 y REA), la fecha se
+  Cuando la tabla trae «Clave Año_Mes» en vez de fecha (la 3), la fecha se
   arma con el bloque y el mes (AAMM del nombre de los archivos o de la ventana).
+  **REA como matriz (2026-10-29, `leer_matriz`):** las centrales van en la fila
+  11, desde la D hasta la primera celda vacía a la derecha. El día va en B13:B
+  (fecha o número de día; si viene solo en la primera fila del día, se arrastra)
+  y el bloque diario (1–96) en C13:C. Cada monto ≠ 0 es una fila con
+  Fecha_Hora = día + (bloque−1)×15 min, Bloque_15min = (día−1)×96 + bloque y
+  Tipo_pago fijo `REA`. Las filas sin bloque numérico (totales) se ignoran.
 - **Reglas:** Fecha_Hora siempre `DD/MM/AAAA HH:MM`; CONFIGURACION vacía; fuera
   los pagos 0 y las centrales vacías; orden Subastas, CRA, CO_ERNC, REA; coma,
   punto decimal, UTF-8 sin BOM, CRLF; escritura `.tmp` + `os.replace`. Avisa si

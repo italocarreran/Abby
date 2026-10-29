@@ -86,6 +86,30 @@ def bloque(cols, fila_enc, filas, titulos=TITULOS):
     return c
 
 
+def matriz_rea(centrales=("PFV EL ROMERO", "PE SAN GABRIEL"), dia_como_numero=False):
+    """CALCULO_REA_CENTRAL como matriz: centrales en D11 hacia la derecha (con
+    una celda vacia y algo despues, que no se tiene que leer), dia en B y
+    bloque diario en C desde la fila 13."""
+    c = {(11, "B"): "Día", (11, "C"): "Bloque"}
+    letras = ["D", "E", "F", "G"]
+    for l, nombre in zip(letras, centrales):
+        c[(11, l)] = nombre
+    c[(11, "G")] = "NO ES CENTRAL"            # despues de la F vacia
+    # dia 1 bloque 73 (18:00) y 74 (18:15); dia 2 bloque 1 (00:00). B solo en
+    # la primera fila de cada dia (combinada).
+    c[(13, "B")] = 1.0 if dia_como_numero else SERIE_0109
+    c[(13, "C")], c[(14, "C")] = 73, 74
+    c[(15, "B")] = 2.0 if dia_como_numero else SERIE_0109 + 1
+    c[(15, "C")] = 1
+    c[(13, "D")], c[(14, "D")], c[(15, "D")] = 1000.0, 0.0, 2.5
+    c[(13, "E")], c[(15, "E")] = 3.0, 0.0
+    c[(13, "G")] = 999.0                      # fuera de la matriz
+    c[(17, "C")], c[(17, "D")] = "Total", 1002.5
+    return c
+
+
+# 2026-09-01 00:00 -> serie Excel 46266
+SERIE_0109 = 46266.0
 # 2026-09-01 18:00 -> serie Excel 46266.75 ; bloque (1-1)*96 + 18*4 + 0 + 1 = 73
 SERIE_0109_1800 = 46266.75
 
@@ -123,13 +147,7 @@ class PagosVarios(unittest.TestCase):
             {"fecha": SERIE_0109_1800, "central": "PFV CEME 2", "pago": 1.5,
              "tipo": "CO_ERNC", "periodo": 74},                                 # no calza
         ])
-        # REA (abril), corrida 3 columnas a la derecha de AS:AX: se encuentra
-        # igual por los encabezados.
-        rea = bloque({"aux": "AV", "clave": "AW", "tipo": "AX", "central": "AY",
-                      "hora": "AZ", "pago": "BA"}, 9, [
-            {"aux": 0, "clave": SERIE_0109_1800, "central": "PFV EL ROMERO",
-             "pago": 1000.0, "tipo": "REA", "hora": 74},
-        ])
+        rea = matriz_rea()
         self.rutas = {
             "p3": self.tmp / "3_REMUNERACION_SUBASTAS_E_ID_2609_R01D.xlsm",
             "p5": self.tmp / "5_REMUNERACION_CRA_2609_R01D.xlsx",
@@ -146,7 +164,7 @@ class PagosVarios(unittest.TestCase):
         filas, resumen, avisos = pv.generar(self.rutas, "2609", salida, log.append)
         crudo = salida.read_bytes()
         self.assertFalse(crudo.startswith(b"\xef\xbb\xbf"))
-        self.assertEqual(crudo.count(b"\r\n"), 7)
+        self.assertEqual(crudo.count(b"\r\n"), 9)
         leido = list(csv.reader(crudo.decode("utf-8").splitlines()))
         self.assertEqual(leido[0], pv.ENCABEZADO_CSV)
         self.assertEqual(leido[1:], [
@@ -155,33 +173,38 @@ class PagosVarios(unittest.TestCase):
             ["01/09/2026 18:00", "", "RALCO_U1", "185.02", "CRA", "73"],
             ["01/09/2026 18:00", "", "PFV CEME 1", "9929.683898156996", "CO_ERNC", "73"],
             ["01/09/2026 18:00", "", "PFV CEME 2", "1.5", "CO_ERNC", "74"],
-            ["01/09/2026 18:15", "", "PFV EL ROMERO", "1000", "REA", "74"],
+            ["01/09/2026 18:00", "", "PFV EL ROMERO", "1000", "REA", "73"],
+            ["02/09/2026 00:00", "", "PFV EL ROMERO", "2.5", "REA", "97"],
+            ["01/09/2026 18:00", "", "PE SAN GABRIEL", "3", "REA", "73"],
         ])
         self.assertEqual(resumen["CPF(+)"][0], 1)
         # Un bloque que no calza con su fecha: se avisa, no se toca.
         self.assertTrue(any("CO_ERNC" in a and "no calza" in a for a in avisos))
         self.assertFalse(any("no se encontraron" in a for a in avisos))
         self.assertTrue(any("calzaron 2 tablas" in l for l in log))
-        rea = next(l for l in log if "encabezado en la fila 9" in l)
-        self.assertIn("central AY", rea)
-        self.assertIn("pago BA", rea)
-        self.assertIn("bloque AZ", rea)
-        self.assertIn("fecha desde el bloque", rea)
+        self.assertTrue(any("2 central(es) en D11:E11" in l for l in log))
 
     def test_sin_encabezados_usa_las_columnas_fijas(self):
-        rea = bloque({"tipo": "AU", "central": "AV", "hora": "AW", "pago": "AX"}, 9, [
-            {"central": "PFV EL ROMERO", "pago": 7.0, "tipo": "REA", "hora": 1}],
-            titulos=None)
         co = bloque({"fecha": "BB", "periodo": "BD", "central": "BE", "pago": "BF",
-                     "tipo": "BG"}, 8, [
+                     "tipo": "BG"}, 9, [
             {"fecha": SERIE_0109_1800, "central": "C", "pago": 2.0, "tipo": "CO_ERNC",
-             "periodo": 73}])
+             "periodo": 73}], titulos=None)
         escribir_xlsx(self.rutas["p6"], {"ENERGIA_Y_CALCULO_CO_ERNC": co,
-                                         "CALCULO_REA_CENTRAL": rea})
+                                         "CALCULO_REA_CENTRAL": matriz_rea()})
         filas, _, avisos = pv.generar(self.rutas, "2609", self.tmp / "x.csv",
                                       lambda *_: None)
-        self.assertIn(["01/09/2026 00:00", "", "PFV EL ROMERO", 7.0, "REA", 1], filas)
-        self.assertTrue(any("REA" in a and "no se encontraron" in a for a in avisos))
+        self.assertIn(["01/09/2026 18:00", "", "C", 2.0, "CO_ERNC", 73], filas)
+        self.assertTrue(any("CO_ERNC" in a and "no se encontraron" in a for a in avisos))
+
+    def test_rea_con_dia_como_numero(self):
+        escribir_xlsx(self.rutas["p6"], {
+            "ENERGIA_Y_CALCULO_CO_ERNC": {(1, "A"): "x"},
+            "CALCULO_REA_CENTRAL": matriz_rea(("SOLA",), dia_como_numero=True)})
+        fte = pv.FUENTES_POR_NOMBRE["REA"]
+        filas, av = pv.leer_fuente(self.rutas["p6"], fte, (2026, 9), lambda *_: None)
+        self.assertEqual(filas, [["01/09/2026 18:00", "", "SOLA", 1000.0, "REA", 73],
+                                 ["02/09/2026 00:00", "", "SOLA", 2.5, "REA", 97]])
+        self.assertEqual(av, [])
 
     def test_ubicar_encabezado(self):
         zona = {"B": {3: "Pago"}, "C": {3: "Central"}, "D": {3: "Tipo_pago"},
