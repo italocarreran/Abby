@@ -66,6 +66,19 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: se quitan los filtros del destino antes de pegar
+
+La usuaria preguntó si un filtro aplicado afecta al pegar los FD en
+Cálculo_Sobrecostos. Respondí que no debería (los valores se escriben con
+`Range.Value`), y **me equivoqué**. Con un filtro puesto quedó una fila con
+`01-04-2026` en todas las columnas pegadas; sin el filtro salió bien. Ahora
+`quitar_filtros` (en `Actualiza_SC_CO.py`, usado también por
+`Actualiza_datos.py` en `aplicar_mapeo` y `aplicar_prorrata`) hace
+`ShowAllData` en la hoja destino y en sus ListObjects si tienen un filtro
+activo, y lo anota en el log. 3 pruebas en `test_quitar_filtros.py`, con hojas
+falsas. Falta verlo en Excel con un filtro puesto. No se tocó la horaria, que
+tiene el mismo riesgo.
+
 ## 2026-10-29 — Claude — 15 min: SC_CfrecSinFD para Coyailen integrado al Revisor
 
 La usuaria mandó `reorganizar_sc_cfrec.py` y pidió integrarlo, con la entrada

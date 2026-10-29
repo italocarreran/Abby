@@ -649,6 +649,12 @@ y el paquete `revisor/`, salvo lo indicado).
 
 ### `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
 
+- **Filtros en el destino (2026-10-29):** antes de pegar en cada hoja destino
+  (FD_*, PRORRATA_RETIROS, «SC y CO») se limpia cualquier filtro aplicado,
+  en la hoja o en sus tablas (`quitar_filtros`, en `Actualiza_SC_CO.py`; las
+  flechas quedan y se anota en el log). Con un filtro puesto, el pegado en
+  Cálculo_Sobrecostos dejó una fila con la fecha en todas las columnas.
+
 - **Qué hace:** trae las hojas FD desde `SSCC_Desempeno*` y la prorrata de
   retiros, a `Cálculo_SobrecostosSSCC` y a las planillas 3, 5 y 6. Dos opciones:
   "Actualizar FD" y "Actualizar Prorrata" (esta última solo en 3/5/6). El "Traer

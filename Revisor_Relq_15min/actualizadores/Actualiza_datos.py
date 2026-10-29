@@ -460,6 +460,16 @@ def fmt_tiempo(segundos):
     h, m = divmod(m, 60)
     return f"{h:02d}:{m:02d}:{s:02d}"
 
+def _quitar_filtros(sh, log_func):
+    """quitar_filtros vive en Actualiza_SC_CO.py (misma carpeta). Si no se puede
+    cargar, se avisa y se sigue: no es motivo para no pegar."""
+    try:
+        from Actualiza_SC_CO import quitar_filtros
+    except ImportError as e:
+        log_func(f"     (no se revisan filtros: no se pudo cargar Actualiza_SC_CO.py: {e})")
+        return 0
+    return quitar_filtros(sh, log_func)
+
 def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func=None):
     """Aplica una lista de mapeos entre wb_o (origen) y wb_d (destino)."""
     total = len(mapeo)
@@ -471,6 +481,8 @@ def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func
             progreso_func(idx - 1, total, f"Actualizando {m['hoja_destino']}")
         sh_o = wb_o.sheets[m["hoja_origen"]]
         sh_d = wb_d.sheets[m["hoja_destino"]]
+        # Con un filtro puesto en el destino el pegado se corre de fila.
+        _quitar_filtros(sh_d, log_func)
 
         fila_ini_o = m["fila_ini_origen"]
         fila_ini_d = m["fila_ini_destino"]
@@ -656,6 +668,7 @@ def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_fun
 
     sh_o = _hoja_prorrata_origen(wb_o, cfg["hoja_origen"], log_func)
     sh_d = wb_d.sheets[cfg["hoja_destino"]]
+    _quitar_filtros(sh_d, log_func)
 
     fila_ini_o = cfg["fila_ini_origen"]
     c_hora = col_letra_a_num(cfg["col_hora"])

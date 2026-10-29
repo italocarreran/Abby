@@ -279,6 +279,40 @@ normalizar = _texto.suave
 clave_central = _texto.clave_mayusculas
 
 
+def quitar_filtros(sh, log=print):
+    """Muestra todas las filas de una hoja que tiene un filtro aplicado.
+
+    Hay que hacerlo ANTES de pegar: con un filtro puesto en el destino, la
+    escritura de un bloque de valores no cae en las filas que corresponden
+    (en Cálculo_Sobrecostos quedó una fila con la fecha en todas las columnas;
+    sin el filtro salió bien, usuaria 2026-10-29). Se limpia solo el criterio:
+    las flechas del filtro quedan. Cubre el filtro de la hoja y el de las
+    tablas (ListObjects). Devuelve cuantos filtros se limpiaron.
+    """
+    n = 0
+    try:
+        api = sh.api
+    except Exception:
+        return 0
+    try:
+        if api.FilterMode:
+            api.ShowAllData()
+            n += 1
+    except Exception as e:
+        log(f"     (no se pudo quitar el filtro de {sh.name}: {e})")
+    try:
+        for lo in api.ListObjects:
+            af = lo.AutoFilter
+            if af is not None and af.FilterMode:
+                af.ShowAllData()
+                n += 1
+    except Exception:
+        pass
+    if n:
+        log(f"     filtro quitado en '{sh.name}' antes de pegar (las flechas quedan)")
+    return n
+
+
 def buscar_hoja(wb, nombre):
     objetivo = normalizar(nombre)
     for sh in wb.sheets:
@@ -614,6 +648,7 @@ def actualizar_en_libro(app, wb_d, rutas, hacer, aamm_respaldo, log, progreso):
     if sh_d is None:
         raise RuntimeError(f"No está la hoja '{HOJA_DESTINO}' en el destino.")
     log(f"    hoja destino: {sh_d.name}")
+    quitar_filtros(sh_d, log)
 
     # ---- juntar los dos bloques, se actualicen o no --------------------
     bloques = {}
