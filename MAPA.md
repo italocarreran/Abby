@@ -537,6 +537,14 @@ y el paquete `revisor/`, salvo lo indicado).
   archivos reales de 2601 que mandó la usuaria (no versionados), con la
   escritura simulada.
 
+### `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py` — sin correo (2026-10-30)
+
+- Igual que el horario, **sin el correo del REUC**: no hay campo en la ventana,
+  no se escribe solo en el login ni se recuerda en `reemplazos_reuc.json`
+  (la clave `correo_reuc` que ya esté ahí queda, nadie la lee).
+  `descargar_reuc(carpeta_destino, log, timeout_login_seg, espera_descarga_seg)`.
+  El login se hace a mano en el navegador.
+
 ### `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py` — sin tasa (2026-10-29)
 
 - Igual que el horario, salvo que **la tasa (O2) no se pide ni se escribe**:

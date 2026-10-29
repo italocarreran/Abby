@@ -66,6 +66,19 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-30 — Claude — 15 min: ActualizaRemplazos sin el correo del REUC
+
+La usuaria pidió sacar lo del mail del actualizador de reemplazos REUC. En
+`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py` se quitaron el
+campo «Correo REUC» de la ventana, el autollenado del login
+(`SELECTORES_CORREO`, `correo_valido`, `_campo_correo`, `_rellenar_correo`,
+`_correo_en_pantalla`), los argumentos `correo` / `al_detectar_correo` de
+`descargar_reuc` y el guardado en `reemplazos_reuc.json`. Se borraron sus
+pruebas (`CorreoTest` y los falsos de página); quedan las 7 de auxiliares, en
+verde. La horaria conserva el correo.
+
+---
+
 ## 2026-10-29 — Claude — 15 min: cuadro 0 sin tasa y ventanas sin barra de progreso
 
 La usuaria pidió sacar lo de la tasa de interés del actualizador del cuadro 0 y
