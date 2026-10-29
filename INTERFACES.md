@@ -48,13 +48,13 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2093 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3422 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 1029 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 713 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 738 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
-- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1142 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
-- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1438 líneas
+- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2092 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3421 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 736 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1139 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1434 líneas
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
@@ -2848,7 +2848,8 @@ lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
 > Actualiza Cuadro 0   (0_CUADROS_RELIQUIDACION SSCC)
 > ALCANCE: deja los DATOS y las FORMULAS al dia, nada mas.
 >     - pega la tabla del 1_CUADROS
->     - la tasa de O2, si se le da una
+>     - la tasa de O2 NO se toca (15 minutos, usuaria 2026-10-29): queda la que
+>       tenga el Excel y solo se anota su valor en el log
 >     - reescribe las listas de empresas (K de la hoja #3, I de 01.SSCC)
 >     - estira o corta las formulas de L:P, R:U, A:G y J:K
 > NO llama a Cuadro de pagos, NO llama a Actualiza Rango y NO refresca la tabla
@@ -2859,11 +2860,9 @@ lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
 > ES EL ARCHIVO QUE SE VA A PAGO, asi que cada paso queda escrito en el log con
 > lo que habia antes y lo que quedo despues.
 >
-> COMO ESTA ARMADO EL LIBRO  (lo que hay que entender antes de tocar nada)
->
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2900,15 +2899,6 @@ lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
 
 #### `def guardar_config(data)`
 
-#### `def leer_tasa_guardada(cfg, aamm)`
-
-(valor, fecha) de la tasa guardada para ese mes, o (None, None).
-
-Se guarda POR MES a proposito: la tasa es del periodo. Guardada suelta, el
-mes siguiente arrastraria la del anterior sin que se note.
-
-#### `def guardar_tasa(aamm, valor)`
-
 #### `def abrir_en_explorador(ruta, es_archivo=False)`
 
 #### `def leer_traspaso(argv)`
@@ -2944,8 +2934,6 @@ Se cronometra y queda en el log: si algun mes se pone lento, se ve donde.
 
 I9:K del cuadro 1 -> A5:C de la hoja #3. Solo valores.
 
-#### `def paso_tasa(sh3, valor, log)`
-
 #### `def paso_formula_desbordada(sh, celda, formula, col, fila, log, etiqueta)`
 
 Limpia la columna y escribe la formula. Devuelve la ultima fila ocupada.
@@ -2970,10 +2958,10 @@ pero conviene saber de antemano si va a fallar. Devuelve True si esta OK.
 
 #### `def ejecutar(rutas, op, log, progreso)`
 
-Corre la secuencia completa. Lo unico opcional es la tasa, porque puede
-llegar al final del mes, y guardar.
+Corre la secuencia completa. Lo unico opcional es guardar. La tasa (O2)
+no se toca: solo se anota en el log.
 
-op: {"tasa": float o None para no tocarla, "guardar": bool}
+op: {"guardar": bool}
 Devuelve (ok, resumen).
 
 **— VENTANA —**

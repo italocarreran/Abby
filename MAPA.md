@@ -537,6 +537,16 @@ y el paquete `revisor/`, salvo lo indicado).
   archivos reales de 2601 que mandó la usuaria (no versionados), con la
   escritura simulada.
 
+### `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py` — sin tasa (2026-10-29)
+
+- Igual que el horario, salvo que **la tasa (O2) no se pide ni se escribe**:
+  queda la del Excel y el log anota su valor. Fuera `leer_tasa_guardada`,
+  `guardar_tasa`, `paso_tasa`, el campo de la tasa y el del mes (que solo
+  servía para guardarla); `op` es `{"guardar": bool}`. La clave
+  `tasa_interes_por_mes` que ya esté en `config.json` queda, nadie la lee.
+- Todas las ventanas de la versión 15 min (Revisor y actualizadores) **no
+  tienen barra de progreso**: solo el tiempo y el estado.
+
 ### Revisor 15 min: planilla 9, V15 y «Traer maestro» (2026-10-29)
 
 - **Planilla 9** = `00 Entregables/9_Pagos_Retiros_AAMM_*.csv` (nodo

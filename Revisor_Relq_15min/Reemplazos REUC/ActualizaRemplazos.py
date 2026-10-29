@@ -1877,8 +1877,8 @@ def main():
     tk.Label(contenedor, textvariable=var_estado, anchor="w").pack(fill="x", padx=20)
     tk.Label(contenedor, textvariable=var_tiempo,
              font=("Consolas", 10, "bold"), fg="#2d7a2d").pack()
-    progress = ttk.Progressbar(contenedor, mode="determinate", length=400, maximum=100)
-    progress.pack(fill="x", padx=20, pady=(0, 6))
+    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
+    # es lo que dice que esta corriendo.
 
     txt_log = tk.Text(contenedor, height=14, font=("Consolas", 9))
     txt_log.pack(fill="both", expand=True, padx=20, pady=(0, 10))
@@ -2002,7 +2002,7 @@ def main():
                 if tipo == "log":
                     log(dato)
                 elif tipo == "progress":
-                    progress["value"] = dato
+                    pass        # sin barra de progreso: solo corre el tiempo
                 elif tipo == "estado":
                     var_estado.set(dato)
                 elif tipo == "carpeta_salida":
@@ -2044,7 +2044,6 @@ def main():
 
         btn.config(state="disabled", bg="#aaaaaa")
         txt_log.delete("1.0", "end")
-        progress["value"] = 0
         timer_state["running"] = True
         timer_state["t_ini"] = time.time()
         tick()

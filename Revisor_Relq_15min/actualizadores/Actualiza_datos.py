@@ -1308,8 +1308,8 @@ def main():
     tk.Label(frame_prog, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
              fg="#2d7a2d").pack(side="right", padx=8)
 
-    progress_bar = ttk.Progressbar(contenedor, mode="determinate", length=400)
-    progress_bar.pack(fill="x", padx=20, pady=(2, 4))
+    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
+    # es lo que dice que esta corriendo.
 
     frame_log = tk.LabelFrame(contenedor, text="Progreso detallado", padx=6, pady=4)
     frame_log.pack(fill="both", expand=True, padx=20, pady=4)
@@ -1336,8 +1336,6 @@ def main():
 
     def callback_progreso(actual, total, mensaje):
         var_estado.set(mensaje)
-        progress_bar["maximum"] = total
-        progress_bar["value"] = actual
         root.update_idletasks()
 
     def ejecutar():
@@ -1360,7 +1358,6 @@ def main():
 
         btn_ejecutar.config(state="disabled", bg="#aaaaaa")
         var_estado.set("Iniciando…")
-        progress_bar["value"] = 0
         var_tiempo.set("00:00:00")
         timer_state["running"] = True
         timer_state["t_ini"] = time.time()
@@ -1388,7 +1385,6 @@ def main():
 
         if ok and rutas:
             var_estado.set(f"✓ Completado en {tiempo_total}")
-            progress_bar["value"] = progress_bar["maximum"]
             log(f"✓ Proceso completado en {tiempo_total}")
             _mostrar_completado(rutas)
         elif not ok:

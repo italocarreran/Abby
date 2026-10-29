@@ -122,6 +122,8 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
   ajuste que el archivo entero. Solo se agregan o actualizan claves propias, nunca
   se borra nada ajeno.
 - **Log de progreso** con timer y barra, visible durante toda la corrida.
+  **En la versión 15 minutos, sin barra** (usuaria, 2026-10-29): solo el
+  tiempo corriendo y el texto de estado. Un script nuevo de 15 min no la pone.
 - **Colores fijos, sin opción de tema.** Hubo un piloto de tema claro/oscuro en
   los dos comparadores y **se sacó**: repintar recursivamente el árbol de widgets
   costaba más de lo que aportaba. Los colores de estado son los históricos y

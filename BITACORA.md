@@ -66,6 +66,27 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: cuadro 0 sin tasa y ventanas sin barra de progreso
+
+La usuaria pidió sacar lo de la tasa de interés del actualizador del cuadro 0 y
+las barras de progreso de las ventanas, dejando solo el tiempo.
+
+- `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`: la tasa (O2) ya no
+  se pide ni se escribe; el paso 2 solo anota en el log el valor que tiene.
+  Fuera el campo de tasa, el del mes y el guardado por mes en `config.json`.
+  Se corrigió de paso la confirmación, que decía que el script corría Cuadro
+  de pagos / Actualiza Rango / la dinámica (lo hace la usuaria a mano).
+- Sin `ttk.Progressbar` en: Revisor 15 min, `Actualiza_datos`, `Actualiza_SC_CO`,
+  `Actualiza_Pagos_Varios`, `Actualiza_Cuadro1`, `Actualiza_Cuadro0` y
+  `ActualizaRemplazos` (15 min). Los mensajes de progreso siguen llegando y
+  actualizan el texto de estado; el tiempo sigue corriendo. Convención anotada
+  en AGENTS §4. La horaria no se tocó.
+
+No probado con ventana (sin tkinter en el contenedor); `pyflakes` limpio y
+`scripts/verificar.sh` en `TODO OK`.
+
+---
+
 ## 2026-10-29 — Claude — 15 min: traer maestro, planilla 1 sin ceros con UNICOS, planilla 9 csv y V15
 
 Pedidos de la usuaria y lo hecho (solo `Revisor_Relq_15min/`):

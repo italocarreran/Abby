@@ -3,7 +3,8 @@
 # =============================================================================
 #  ALCANCE: deja los DATOS y las FORMULAS al dia, nada mas.
 #      - pega la tabla del 1_CUADROS
-#      - la tasa de O2, si se le da una
+#      - la tasa de O2 NO se toca (15 minutos, usuaria 2026-10-29): queda la que
+#        tenga el Excel y solo se anota su valor en el log
 #      - reescribe las listas de empresas (K de la hoja #3, I de 01.SSCC)
 #      - estira o corta las formulas de L:P, R:U, A:G y J:K
 #  NO llama a Cuadro de pagos, NO llama a Actualiza Rango y NO refresca la tabla
@@ -39,9 +40,9 @@
 #  OJO CON LA TASA: O5 = N5*$O$2 y P5 = N5+O5, y de ahi sale todo el cuadro de
 #  pago. Si la tasa esta mal, TODOS los montos estan mal, y el descuadre de
 #  CPRT!I3 igual sale chico porque la matriz reparte proporcionalmente. O sea
-#  que ninguna verificacion posterior salva una tasa equivocada. Por eso existe
-#  la opcion "no actualizar la tasa": es mejor dejar la del Excel que poner una
-#  a medias.
+#  que ninguna verificacion posterior salva una tasa equivocada. En 15 minutos
+#  el script ya no la pide ni la escribe: se ajusta a mano en el Excel, y el
+#  log deja escrito el valor que tenia O2 para poder revisarlo.
 #
 #  ORDEN DE LOS PASOS: no es arbitrario, es la cadena de dependencias.
 #      A:C -> K -> L:P y R:U -> A9:G de 01.SSCC -> C -> I -> J:K -> macros
@@ -61,7 +62,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
-from datetime import datetime
 import json, subprocess, sys, re, socket, os, traceback, unicodedata, time
 import threading, queue
 
@@ -205,34 +205,6 @@ def guardar_config(data):
 escribir_json = _cfg.escribir_json
 
 
-def leer_tasa_guardada(cfg, aamm):
-    """(valor, fecha) de la tasa guardada para ese mes, o (None, None).
-
-    Se guarda POR MES a proposito: la tasa es del periodo. Guardada suelta, el
-    mes siguiente arrastraria la del anterior sin que se note."""
-    if not aamm:
-        return None, None
-    d = (cfg.get("tasa_interes_por_mes") or {}).get(str(aamm))
-    if isinstance(d, dict):
-        try:
-            return float(d.get("valor")), d.get("fecha")
-        except (TypeError, ValueError):
-            return None, None
-    return None, None
-
-
-def guardar_tasa(aamm, valor):
-    if not aamm:
-        return False
-    marca = f"{datetime.now():%d-%m-%Y %H:%M}"
-
-    def mut(todo):
-        mio = todo.setdefault(get_usuario(), {})
-        porm = mio.setdefault("tasa_interes_por_mes", {})
-        porm[str(aamm)] = {"valor": float(valor), "fecha": marca}
-    return _modificar_config(mut)
-
-
 def abrir_en_explorador(ruta, es_archivo=False):
     if not ruta or str(ruta).startswith("["):
         return
@@ -353,14 +325,6 @@ def paso_pegar_tabla(sh1, sh3, log):
     return len(datos)
 
 
-def paso_tasa(sh3, valor, log):
-    anterior = sh3.range(CELDA_TASA).value
-    sh3.range(CELDA_TASA).value = float(valor)
-    log(f"    {CELDA_TASA}: {anterior!r}  ->  {float(valor)!r}")
-    log("    OJO: la tasa multiplica cada fila (O5=N5*$O$2). Si esta mal, todos")
-    log("         los montos quedan mal y el descuadre de CPRT!I3 igual sale chico.")
-
-
 def paso_formula_desbordada(sh, celda, formula, col, fila, log, etiqueta):
     """Limpia la columna y escribe la formula. Devuelve la ultima fila ocupada.
 
@@ -461,10 +425,10 @@ def paso_validar_signos(sh, log):
 
 
 def ejecutar(rutas, op, log, progreso):
-    """Corre la secuencia completa. Lo unico opcional es la tasa, porque puede
-    llegar al final del mes, y guardar.
+    """Corre la secuencia completa. Lo unico opcional es guardar. La tasa (O2)
+    no se toca: solo se anota en el log.
 
-    op: {"tasa": float o None para no tocarla, "guardar": bool}
+    op: {"guardar": bool}
     Devuelve (ok, resumen)."""
     try:
         import pythoncom
@@ -515,16 +479,10 @@ def ejecutar(rutas, op, log, progreso):
             f"({n} empresas -> hasta la fila {hasta_tabla})")
         paso_estirar(sh3, DESTINO_TABLA_FILA, BLOQUES_TABLA, hasta_tabla, log)
 
-        # ---- 2) la tasa ---------------------------------------------------
+        # ---- 2) la tasa: no se toca, solo se anota ------------------------
         log("=" * 70)
-        if op["tasa"] is None:
-            actual = sh3.range(CELDA_TASA).value
-            log(f"2) Tasa: NO se toca. Queda la del Excel ({actual!r}).")
-            resumen.append("tasa: sin cambios")
-        else:
-            log("2) Tasa de interes del periodo")
-            paso_tasa(sh3, op["tasa"], log)
-            resumen.append(f"tasa: {op['tasa']}")
+        actual = sh3.range(CELDA_TASA).value
+        log(f"2) Tasa ({CELDA_TASA}): no se toca, queda la del Excel ({actual!r}).")
 
         # ---- 3) las formulas ---------------------------------------------
         progreso(30, 100, "Reescribiendo las listas de empresas...")
@@ -680,15 +638,12 @@ def main():
 
     canvas.bind_all("<MouseWheel>", _rueda)
 
-    aamm_ini = (traspaso or {}).get("aamm") or cfg.get("ultimo_mes", "")
-
     if traspaso:
         fa = tk.Frame(cont, bg="#fff4c2", bd=1, relief="solid")
         fa.pack(fill="x", padx=20, pady=(10, 0))
         tk.Label(fa, text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
                  bg="#fff4c2", font=("Segoe UI", 11, "bold")).pack(pady=(6, 0))
-        tk.Label(fa, text="Las rutas las resolvió el Revisor.\n"
-                          "Lo único que hay que decidir es la tasa.",
+        tk.Label(fa, text="Las rutas las resolvió el Revisor.",
                  bg="#fff4c2", font=("Segoe UI", 8), fg="#444444",
                  justify="center").pack(pady=(0, 6))
 
@@ -702,7 +657,6 @@ def main():
     var_c1 = tk.StringVar(value="[pendiente]")
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
-    var_aamm = tk.StringVar(value=aamm_ini)
     labels = {}
 
     def fila(parent, titulo, var, clave):
@@ -729,55 +683,6 @@ def main():
                    variable=v_guardar,
                    font=("Segoe UI", 9)).pack(anchor="w", padx=24, pady=(6, 0))
 
-    # ---- tasa ----
-    ft = tk.LabelFrame(cont, text=f"Tasa de interés del periodo  (celda "
-                                  f"{CELDA_TASA} de la hoja #3)", padx=10, pady=6)
-    ft.pack(fill="x", padx=20, pady=4)
-    v_no_tasa = tk.BooleanVar(value=True)
-    v_tasa = tk.StringVar(value="")
-    var_tasa_info = tk.StringVar(value="")
-
-    fr_t = tk.Frame(ft)
-    fr_t.pack(fill="x")
-    tk.Label(fr_t, text="Tasa:", font=("Segoe UI", 9)).pack(side="left")
-    ent_tasa = tk.Entry(fr_t, textvariable=v_tasa, width=14, font=("Consolas", 10))
-    ent_tasa.pack(side="left", padx=6)
-    tk.Label(fr_t, textvariable=var_tasa_info, font=("Segoe UI", 8),
-             fg="#2d7a2d").pack(side="left", padx=8)
-    tk.Label(ft, text="Se escribe como fracción, igual que en el Excel: 0,168 va "
-                      "como 0.168",
-             font=("Segoe UI", 8), fg="#555555").pack(anchor="w")
-
-    def _toggle_tasa(*_):
-        ent_tasa.config(state="disabled" if v_no_tasa.get() else "normal")
-    tk.Checkbutton(ft, text="NO actualizar la tasa: dejar la que ya tiene el Excel",
-                   variable=v_no_tasa, font=("Segoe UI", 9),
-                   command=_toggle_tasa).pack(anchor="w", pady=(4, 0))
-    tk.Label(ft, text="La tasa multiplica cada fila del cuadro. Si te la dan al "
-                      "final, dejá esta casilla marcada:\nmejor la del Excel que "
-                      "una a medias, porque ninguna verificación posterior la caza.",
-             font=("Segoe UI", 8), fg="#a00000", justify="left").pack(anchor="w")
-
-    def refrescar_tasa(*_):
-        val, fecha = leer_tasa_guardada(cfg, var_aamm.get().strip())
-        if val is not None:
-            var_tasa_info.set(f"guardada para {var_aamm.get().strip()}: {val}"
-                              + (f"   ({fecha})" if fecha else ""))
-            if not v_tasa.get():
-                v_tasa.set(str(val))
-        else:
-            var_tasa_info.set("no hay tasa guardada para este mes")
-
-    # ---- mes ----
-    fm = tk.Frame(cont)
-    fm.pack(fill="x", padx=24, pady=(4, 0))
-    tk.Label(fm, text="Mes (AAMM):", font=("Segoe UI", 9)).pack(side="left")
-    ent_aamm = tk.Entry(fm, textvariable=var_aamm, width=8, font=("Consolas", 10))
-    ent_aamm.pack(side="left", padx=6)
-    tk.Label(fm, text="define con qué mes se guarda la tasa en config.json",
-             font=("Segoe UI", 8), fg="#555555").pack(side="left")
-    var_aamm.trace_add("write", lambda *a: refrescar_tasa())
-
     # ---- carpeta ----
     fc = tk.LabelFrame(cont, text="Carpeta 02 CASO RELIQUIDACION", padx=10, pady=6)
     fc.pack(fill="x", padx=20, pady=4)
@@ -796,8 +701,8 @@ def main():
              anchor="w").pack(side="left", fill="x", expand=True)
     tk.Label(fpr, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
              fg="#2d7a2d").pack(side="right", padx=8)
-    barra = ttk.Progressbar(cont, mode="determinate", length=400)
-    barra.pack(fill="x", padx=20, pady=(2, 4))
+    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
+    # es lo que dice que esta corriendo.
 
     fl = tk.LabelFrame(cont, text="Progreso detallado", padx=6, pady=4)
     fl.pack(fill="both", expand=True, padx=20, pady=4)
@@ -820,8 +725,6 @@ def main():
                     txt.see("end")
                 else:
                     a, t, m = val
-                    barra["maximum"] = t or 100
-                    barra["value"] = a
                     if m:
                         var_estado.set(m)
         except queue.Empty:
@@ -920,28 +823,11 @@ def main():
         except OSError:
             pass
 
-        tasa = None
-        if not v_no_tasa.get():
-            crudo = v_tasa.get().strip().replace(",", ".")
-            try:
-                tasa = float(crudo)
-            except ValueError:
-                messagebox.showerror("Tasa inválida",
-                                     f"No pude leer {v_tasa.get()!r} como número.")
-                return
-            if not (0 <= tasa < 3):
-                if not messagebox.askyesno(
-                        "Tasa fuera de lo normal",
-                        f"La tasa quedaría en {tasa}, que se sale de lo habitual "
-                        f"(se escribe como fracción: 0.168 = 16,8%).\n\n¿Seguir?"):
-                    return
-
-        aamm = var_aamm.get().strip()
         que = ["  • pegar la tabla del cuadro 1 (se REEMPLAZA A5:C)",
-               (f"  • poner la tasa en {tasa}" if tasa is not None
-                else "  • la tasa NO se toca: queda la del Excel"),
+               "  • la tasa (O2) NO se toca: queda la del Excel",
                "  • reescribir K5 e I9 y ajustar el largo de las fórmulas",
-               "  • Cuadro de pagos, Actualiza Rango y refrescar la dinámica"]
+               "  • después, a mano en Excel: Cuadro de pagos, Actualiza Rango y "
+               "refrescar la dinámica"]
         if v_guardar.get():
             que.append("  • GUARDAR el archivo al terminar")
         if not messagebox.askyesno(
@@ -949,12 +835,6 @@ def main():
                 f"Sobre {Path(c0).name}:\n\n" + "\n".join(que) +
                 "\n\nEste archivo se va a pago. ¿Seguir?"):
             return
-
-        if tasa is not None and aamm:
-            guardar_tasa(aamm, tasa)
-            cfg.setdefault("tasa_interes_por_mes", {})[aamm] = {
-                "valor": tasa, "fecha": f"{datetime.now():%d-%m-%Y %H:%M}"}
-            refrescar_tasa()
 
         txt.delete("1.0", "end")
         log(f"Cuadro 0 : {c0}")
@@ -964,13 +844,12 @@ def main():
         log("-" * 70)
 
         btn.config(state="disabled", bg="#aaaaaa")
-        barra["value"] = 0
         var_estado.set("Procesando...")
         timer["on"] = True
         timer["t0"] = time.time()
         tick()
 
-        op = {"tasa": tasa, "guardar": v_guardar.get()}
+        op = {"guardar": v_guardar.get()}
         rutas = {"cuadro0": c0, "cuadro1": c1}
 
         def trabajo():
@@ -1015,8 +894,6 @@ def main():
     tk.Button(frame_btns, text="Salir", command=root.destroy).pack(side="left", padx=8)
 
     refrescar()
-    refrescar_tasa()
-    _toggle_tasa()
     bombear()
     root.update_idletasks()
     w, h = root.winfo_width(), root.winfo_height()

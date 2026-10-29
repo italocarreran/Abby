@@ -1889,8 +1889,8 @@ class Revisor:
         sb_log.pack(side="right", fill="y")
         self.txt_log.pack(side="left", fill="both", expand=True)
 
-        self.progress = ttk.Progressbar(root, mode="determinate", length=400)
-        self.progress.pack(side="bottom", fill="x", padx=12, pady=(0, 4))
+        # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
+        # es lo que dice que esta corriendo.
 
         # 3) canvas con scroll
         canvas = tk.Canvas(root, borderwidth=0, highlightthickness=0)
@@ -3243,7 +3243,6 @@ class Revisor:
         self.timer["on"] = True
         self.timer["t0"] = time.time()
         self._tick()
-        self.progress.config(maximum=len(vids), value=0)
         self.var_estado.set("Verificando...")
         threading.Thread(target=self._worker, args=(vids,), daemon=True).start()
 
@@ -3369,7 +3368,7 @@ class Revisor:
                 if tipo == "log":
                     self.log(dato)
                 elif tipo == "prog":
-                    self.progress.config(value=dato)
+                    pass        # sin barra de progreso: solo corre el tiempo
                 elif tipo == "ver_guardar":
                     vid, reg = dato
                     if not ESTADO.set(vid, reg):

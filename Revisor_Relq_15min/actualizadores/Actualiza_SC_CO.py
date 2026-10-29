@@ -927,8 +927,8 @@ def main():
              anchor="w").pack(side="left", fill="x", expand=True)
     tk.Label(fpr, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
              fg="#2d7a2d").pack(side="right", padx=8)
-    barra = ttk.Progressbar(cont, mode="determinate", length=400)
-    barra.pack(fill="x", padx=20, pady=(2, 4))
+    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
+    # es lo que dice que esta corriendo.
 
     fl = tk.LabelFrame(cont, text="Progreso detallado", padx=6, pady=4)
     fl.pack(fill="both", expand=True, padx=20, pady=4)
@@ -951,8 +951,6 @@ def main():
                     txt.see("end")
                 else:
                     a, t, m = val
-                    barra["maximum"] = t or 100
-                    barra["value"] = a
                     if m:
                         var_estado.set(m)
         except queue.Empty:
@@ -1096,7 +1094,6 @@ def main():
         log("-" * 70)
 
         btn.config(state="disabled", bg="#aaaaaa")
-        barra["value"] = 0
         var_estado.set("Procesando...")
         timer["on"] = True
         timer["t0"] = time.time()
