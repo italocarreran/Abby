@@ -193,5 +193,21 @@ class DescargaNavegadorTest(unittest.TestCase):
         self.assertEqual(set(res), {"reuc", "reemplazos"})
 
 
+class HojaConColumnasTest(unittest.TestCase):
+    """Sin pandas real: basta algo con .columns."""
+
+    def test_toma_la_hoja_con_las_columnas(self):
+        cols = ar.COLUMNAS_REEMPLAZOS
+        hojas = {"Portada": types.SimpleNamespace(columns=["x"]),
+                 "Hoja1": types.SimpleNamespace(columns=list(cols) + ["Otra"])}
+        self.assertIs(ar.hoja_con_columnas(hojas, cols), hojas["Hoja1"])
+
+    def test_sin_columnas_dice_que_trae(self):
+        hojas = {"Hoja1": types.SimpleNamespace(columns=["Rut", "Nombre"])}
+        with self.assertRaises(ValueError) as e:
+            ar.hoja_con_columnas(hojas, ar.COLUMNAS_REEMPLAZOS, "datos_reuc_reemplazos_x.xlsx")
+        self.assertIn("Hoja1: Rut, Nombre", str(e.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

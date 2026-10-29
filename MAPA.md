@@ -558,6 +558,10 @@ y el paquete `revisor/`, salvo lo indicado).
   sigue `datos_reuc_reemplazos_*.xlsx`. `procesar_datos` lee el `Reporte_SEC_*`
   más nuevo (mismas columnas: A razón social, C RUT, columna `Rut`). Al bajar
   uno nuevo se borran también los `datos_reuc_*` viejos de auxiliares.
+- **Hoja de reemplazos:** ya no se exige `pyexcel_sheet1`. `hoja_con_columnas`
+  toma la primera hoja que tenga `COLUMNAS_REEMPLAZOS` (Rut, Rut Reemplazante,
+  Empresa, Reemplazada Por, Fin de Reemplazo); si ninguna, el error lista hojas
+  y columnas del archivo.
 
 ### `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py` — sin tasa (2026-10-29)
 

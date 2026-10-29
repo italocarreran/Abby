@@ -66,6 +66,15 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: reemplazos REUC sin hoja fija
+
+Con la descarga desde el navegador, la usuaria obtuvo «Worksheet named
+'pyexcel_sheet1' not found» al leer `datos_reuc_reemplazos_*`. Ahora se toma
+la hoja que tenga las columnas que se usan (`hoja_con_columnas`,
+`COLUMNAS_REEMPLAZOS`), y si ninguna las tiene el error muestra qué trae el
+archivo. 14 pruebas en verde. Falta que la usuaria lo corra con el archivo
+real; si las columnas también cambiaron, el error nuevo lo va a mostrar.
+
 ## 2026-10-29 — Claude — 15 min: el export de empresas del REUC se llama Reporte_SEC_*
 
 La usuaria avisó que `datos_reuc_*` (el que no es de reemplazos) ahora baja

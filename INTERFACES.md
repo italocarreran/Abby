@@ -48,7 +48,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1935 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1958 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3421 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
@@ -2377,6 +2377,7 @@ Corre una comprobacion y devuelve un dict con su resultado.
 | `_GUID_DESCARGAS` | `'{374DE290-123F-4565-9164-39C4925E467B}'` | GUID de la carpeta "Descargas" en el registro de Windows (puede estar movida). |
 | `_EXT_PARCIALES` | `('.crdownload', '.partial', '.part', '.tmp', '.download')` | Lo que deja el navegador mientras el archivo todavia se esta bajando. |
 | `_DESTINOS_REUC` | `dict de 2 claves: 'reuc', 'reemplazos', …` | clase -> (prefijo del nombre final, patrones a borrar, fragmento que no se borra) Al bajar un Reporte_SEC se borran tambien los datos_reuc_* viejos (el nombre anterior del mismo export), pero nunca l… |
+| `COLUMNAS_REEMPLAZOS` | `('Rut', 'Rut Reemplazante', 'Empresa', 'Reemplazada Por', 'Fin de Reemplazo')` |  |
 
 ### Funciones
 
@@ -2545,6 +2546,13 @@ en ese mismo navegador (la ventana se lo pide). El script no ve ni guarda
 la sesion ni la clave: todo queda en el navegador.
 
 Devuelve un dict {"reuc": Path, "reemplazos": Path}.
+
+#### `def hoja_con_columnas(hojas, columnas, nombre_archivo='')`
+
+De {nombre_hoja: DataFrame}, la primera hoja que tenga todas las columnas.
+
+Si ninguna las tiene, el error dice que hojas y columnas trae el archivo,
+para que se vea al tiro si el REUC cambio el formato.
 
 #### `def ultima_fila(sheet, col_letra, desde)`
 

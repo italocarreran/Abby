@@ -901,6 +901,27 @@ def descargar_reuc(carpeta_destino=None, log=print, espera_descarga_seg=300,
     return esperar_descargas(bajadas, carpeta_aux, desde, espera_descarga_seg, log=log)
 
 
+COLUMNAS_REEMPLAZOS = ("Rut", "Rut Reemplazante", "Empresa", "Reemplazada Por",
+                       "Fin de Reemplazo")
+
+
+def hoja_con_columnas(hojas, columnas, nombre_archivo=""):
+    """De {nombre_hoja: DataFrame}, la primera hoja que tenga todas las columnas.
+
+    Si ninguna las tiene, el error dice que hojas y columnas trae el archivo,
+    para que se vea al tiro si el REUC cambio el formato.
+    """
+    for df in hojas.values():
+        if all(c in df.columns for c in columnas):
+            return df
+    detalle = "; ".join(f"{h}: {', '.join(map(str, df.columns))}"
+                        for h, df in hojas.items())
+    raise ValueError(
+        f"{nombre_archivo}: ninguna hoja tiene las columnas "
+        f"{', '.join(columnas)}. Trae -> {detalle}"
+    )
+
+
 def ultima_fila(sheet, col_letra, desde):
     """Última fila con contenido en una columna (considera fórmulas)."""
     col_num = col_letra_a_num(col_letra)
@@ -983,11 +1004,13 @@ def procesar_datos(carpeta_datos, archivo_cuadros,
     )
     log(f"  Reemplazos REUC     : {archivo_reemplazos.name}")
 
-    df_reemplazos = pd.read_excel(
-        archivo_reemplazos,
-        sheet_name="pyexcel_sheet1",
-        usecols="A:H",
-        engine="openpyxl",
+    # La hoja se llamaba "pyexcel_sheet1"; desde la descarga con el navegador
+    # de siempre trae otro nombre (usuaria, 2026-10-29). Se toma la hoja que
+    # tenga las columnas, se llame como se llame.
+    df_reemplazos = hoja_con_columnas(
+        pd.read_excel(archivo_reemplazos, sheet_name=None, usecols="A:H",
+                      engine="openpyxl"),
+        COLUMNAS_REEMPLAZOS, archivo_reemplazos.name,
     )
 
     for col in ["Rut", "Rut Reemplazante", "Empresa", "Reemplazada Por"]:
