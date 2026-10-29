@@ -475,8 +475,12 @@ y el paquete `revisor/`, salvo lo indicado).
   filas con generación en J (GEN TG+TV ≠ 0) de una misma configuración (F) y
   cuarto de hora (A) se unen en una, sumando Sobrecosto y Generación.
 - **Consume:** `01 Sobrecostos/SC_CfrecSinFD_AAMM.csv`, el más nuevo (UTF-8 o
-  cp1252), o el que manda el Revisor en la clave de traspaso `sc_cfrec`. Exige
-  columnas hasta Z con `Embalse` en M.
+  cp1252), o el que manda el Revisor en la clave de traspaso `sc_cfrec`. Las
+  columnas se toman **por encabezado** (`COLUMNAS`, `ubicar_columnas`), no por
+  letra. Así sirven la estructura del script original y la de marzo 2026, que
+  trae una columna menos antes de `Fecha` y más al final (CMg-CV, Regla
+  especial, FA, ERNC). Si falta alguna, el error dice cuál. El cuarto de hora
+  para agrupar es `FECHA_HORA`; si no está, se usa la columna A.
 - **Produce:** `01 Sobrecostos/SC_CfrecSinFD_AAMM_para_coyailen.csv`, en la
   misma carpeta, UTF-8 con BOM. Se escribe en un `.tmp` y se reemplaza.
 - **Expone:** `procesar(entrada, salida=None, log)`, que devuelve

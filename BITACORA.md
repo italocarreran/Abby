@@ -67,6 +67,17 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: SC_CfrecSinFD por encabezado (estructura de marzo)
+
+El `SC_CfrecSinFD_2603.csv` trae una columna menos antes de `Fecha` (y
+CMg-CV, Regla especial, FA, ERNC al final). Con las letras fijas del script
+original, `Embalse` quedaba en L y no en M, así que el archivo se rechazaba;
+sin ese control, se habrían pegado las columnas corridas. Ahora
+`Reorganiza_SC_Cfrec.py` ubica cada campo por su encabezado. Con la
+estructura vieja la salida sigue idéntica byte a byte a la del original. Con
+la de marzo (armada con el encabezado que pasó la usuaria), sale lo mismo.
+5 pruebas en `test_sc_cfrec.py`. Falta correrlo con el archivo real de marzo.
+
 ## 2026-10-29 — Claude — 15 min: pagos_varios busca las tablas por encabezado
 
 Al correr abril, las tablas de la planilla 3 (DB) y de la 6

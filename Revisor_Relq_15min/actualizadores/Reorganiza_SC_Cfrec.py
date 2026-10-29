@@ -10,32 +10,28 @@
 #  El mes ya no va fijo en el codigo (CLAVE): se toma el SC_CfrecSinFD_* mas
 #  nuevo de la carpeta, o el que mande el Revisor.
 #
-#  Mapeo (letras de columna tipo Excel, entrada -> salida):
-#      A = D                      (Fecha)
-#      B = E                      (Hora)
-#      C = Z                      (Tipo)
-#      D = F si M == 0, G si M == 1   ("Central": CONFIGURACION / UNIDAD
-#                                      GENERADORA segun Embalse)
-#      E = Y                      (Sobrecosto)
-#      F = G                      (UNIDAD GENERADORA)
-#      G = I                      (GENERACION)
-#      H = F                      ("Configuración": igual a Central, pero en
-#                                  embalses mantiene F)
-#      I = K                      (CV)
-#      J = L                      (CMg[USD/MWh])
-#      K = N1 si N == 1, si no vacio   (CPF(+))
-#      L = O1 si O == 1, si no vacio   (CPF(-))
-#      M = P1 si P == 1, si no vacio   (CSF(+))
-#      N = R1 si R == 1, si no vacio   (CTF(+))
-#      O = Q1 si Q == 1, si no vacio   (CSF(-))
-#      P = S1 si S == 1, si no vacio   (CTF(-))
-#      Q = X                      (Dolar)
-#      R = B                      (Bloque_15min)
+#  Las columnas de la ENTRADA se toman por su encabezado (ver COLUMNAS): en
+#  marzo 2026 vino una columna menos antes de "Fecha" y las letras se
+#  corrieron. Mapeo (salida <- encabezado de la entrada):
+#      A = Fecha
+#      B = Hora
+#      C = Tipo
+#      D = CONFIGURACION si Embalse == 0, UNIDAD GENERADORA si Embalse == 1
+#      E = Sobrecosto
+#      F = UNIDAD GENERADORA
+#      G = GENERACION
+#      H = CONFIGURACION           ("Configuración": en embalses mantiene esta)
+#      I = CV
+#      J = CMg[USD/MWh]
+#      K..P = el nombre de CPF(+), CPF(-), CSF(+), CTF(+), CSF(-), CTF(-) si
+#             esa columna vale 1, si no vacio (ese orden, como el original)
+#      Q = Dolar
+#      R = Bloque_15min
 #
-#  Casos especiales (generacion en J = GEN TG+TV distinta de 0):
-#      Las filas de una misma configuracion (F) en el mismo cuarto de hora (A)
-#      se combinan en una sola: E = suma de Sobrecosto, G = suma de Generacion
-#      (I); el resto (Central, Unidad, etc.) se toma de la PRIMERA fila del
+#  Casos especiales (GEN TG+TV distinta de 0):
+#      Las filas de una misma CONFIGURACION en el mismo cuarto de hora
+#      (FECHA_HORA) se combinan en una sola: E = suma de Sobrecosto, G = suma
+#      de GENERACION; el resto (Central, Unidad, etc.) se toma de la PRIMERA fila del
 #      bloque, igual que el BUSCARV del proceso manual. Aplica tambien si viene
 #      una sola fila.
 #
@@ -214,21 +210,63 @@ def reparar_texto(v):
     return v
 
 
-def col(letra):
-    """Convierte letra de columna Excel (A, B, ..., Z, AA...) a indice base 0."""
-    n = 0
-    for ch in letra.upper():
-        n = n * 26 + (ord(ch) - ord("A") + 1)
-    return n - 1
+def clave_col(texto):
+    """Encabezado comparable: sin tildes, espacios ni guiones bajos, minusculas."""
+    return _texto.clave(texto or "")
 
 
-A, B, D, E, F, G, I, J, K, L, M = (col(x) for x in "A B D E F G I J K L M".split())
-N, O, P, Q, R, S, X, Y, Z = (col(x) for x in "N O P Q R S X Y Z".split())
+# Las columnas de la entrada se toman POR ENCABEZADO, no por letra: en marzo
+# 2026 el SinFD trae una columna menos antes de "Fecha" y todo se corrio una
+# letra (usuaria, 2026-10-29). Campo -> encabezado de la entrada. "clave" es
+# el cuarto de hora con que se agrupan los casos especiales (la columna A del
+# script original); si no esta, se usa la primera columna, como antes.
+COLUMNAS = {
+    "clave":      "FECHA_HORA",
+    "bloque":     "Bloque_15min",
+    "fecha":      "Fecha",
+    "hora":       "Hora",
+    "config":     "CONFIGURACION",
+    "unidad":     "UNIDAD GENERADORA",
+    "generacion": "GENERACION",
+    "gen_tg_tv":  "GEN TG+TV",
+    "cv":         "CV",
+    "cmg":        "CMg[USD/MWh]",
+    "embalse":    "Embalse",
+    "cpf_mas":    "CPF(+)",
+    "cpf_menos":  "CPF(-)",
+    "csf_mas":    "CSF(+)",
+    "csf_menos":  "CSF(-)",
+    "ctf_mas":    "CTF(+)",
+    "ctf_menos":  "CTF(-)",
+    "dolar":      "Dolar",
+    "sobrecosto": "Sobrecosto",
+    "tipo":       "Tipo",
+}
+OPCIONALES = ("clave",)
 
-# Columnas de banderas: (columna origen) en el orden de salida K..P
-BANDERAS = [N, O, P, R, Q, S]
+# Banderas en el orden de salida K..P (asi venian en el original: CTF(+)
+# antes que CSF(-)).
+BANDERAS = ["cpf_mas", "cpf_menos", "csf_mas", "ctf_mas", "csf_menos", "ctf_menos"]
 
-COLUMNAS_MINIMAS = col("Z") + 1  # la entrada debe tener al menos hasta Z
+
+def ubicar_columnas(encabezado):
+    """{campo: indice} segun el encabezado. Levanta ValueError con lo que falta."""
+    pos = {}
+    for i, h in enumerate(encabezado):
+        pos.setdefault(clave_col(h), i)
+    ix, faltan = {}, []
+    for campo, nombre in COLUMNAS.items():
+        i = pos.get(clave_col(nombre))
+        if i is None:
+            if campo in OPCIONALES:
+                i = 0
+            else:
+                faltan.append(nombre)
+                continue
+        ix[campo] = i
+    if faltan:
+        raise ValueError("faltan las columnas " + ", ".join(faltan))
+    return ix
 
 
 def a_float(valor):
@@ -242,81 +280,85 @@ def es_uno(valor):
     return a_float(valor) == 1
 
 
-def es_caso_especial(fila):
-    """Caso especial: generacion en la columna J (GEN TG+TV) distinta de 0."""
-    return a_float(fila[J]) != 0
+def es_caso_especial(fila, ix):
+    """Caso especial: generacion en GEN TG+TV distinta de 0."""
+    return a_float(fila[ix["gen_tg_tv"]]) != 0
 
 
-def construir_encabezado(h):
+def construir_encabezado(h, ix):
     return [
-        h[D],                 # A
-        h[E],                 # B
-        h[Z],                 # C
-        "Central",            # D
-        h[Y],                 # E
-        h[G],                 # F
-        h[I],                 # G
-        "Configuración",      # H
-        h[K],                 # I
-        h[L],                 # J
-        *[h[c] for c in BANDERAS],  # K..P
-        h[X],                 # Q
-        h[B],                 # R
+        h[ix["fecha"]],              # A
+        h[ix["hora"]],               # B
+        h[ix["tipo"]],               # C
+        "Central",                   # D
+        h[ix["sobrecosto"]],         # E
+        h[ix["unidad"]],             # F
+        h[ix["generacion"]],         # G
+        "Configuración",             # H
+        h[ix["cv"]],                 # I
+        h[ix["cmg"]],                # J
+        *[h[ix[c]] for c in BANDERAS],  # K..P
+        h[ix["dolar"]],              # Q
+        h[ix["bloque"]],             # R
     ]
 
 
-def transformar_fila(fila, h):
-    d = fila[F] if not es_uno(fila[M]) else fila[G]
-    banderas = [h[c] if es_uno(fila[c]) else "" for c in BANDERAS]
+def transformar_fila(fila, h, ix):
+    d = fila[ix["config"]] if not es_uno(fila[ix["embalse"]]) else fila[ix["unidad"]]
+    banderas = [h[ix[c]] if es_uno(fila[ix[c]]) else "" for c in BANDERAS]
     return [
-        fila[D],   # A
-        fila[E],   # B
-        fila[Z],   # C
-        d,         # D
-        fila[Y],   # E
-        fila[G],   # F
-        fila[I],   # G
-        fila[F],   # H  (configuracion original, tambien en embalses)
-        fila[K],   # I
-        fila[L],   # J
-        *banderas, # K..P
-        fila[X],   # Q
-        fila[B],   # R
+        fila[ix["fecha"]],       # A
+        fila[ix["hora"]],        # B
+        fila[ix["tipo"]],        # C
+        d,                       # D
+        fila[ix["sobrecosto"]],  # E
+        fila[ix["unidad"]],      # F
+        fila[ix["generacion"]],  # G
+        fila[ix["config"]],      # H  (configuracion original, tambien en embalses)
+        fila[ix["cv"]],          # I
+        fila[ix["cmg"]],         # J
+        *banderas,               # K..P
+        fila[ix["dolar"]],       # Q
+        fila[ix["bloque"]],      # R
     ]
 
 
-def combinar(grupo, h):
+def combinar(grupo, h, ix):
     """
-    Une en una sola fila las filas de una misma configuracion (col F) y
-    cuarto de hora (col A) con generacion en J:
+    Une en una sola fila las filas de una misma configuracion y cuarto de hora
+    con generacion en GEN TG+TV:
       - D, F, H (salida) = de la primera fila del grupo (como el BUSCARV
                            del proceso manual: Unidad = primera unidad)
-      - E (salida)     = suma del Sobrecosto (col Y)
-      - G (salida)     = suma de la Generacion (col I)
+      - E (salida)     = suma del Sobrecosto
+      - G (salida)     = suma de la Generacion
       - banderas K..P  = se marcan si alguna fila del grupo tiene 1
       - resto          = se toma de la primera fila del grupo
     """
     base = grupo[0]
-    salida = transformar_fila(base, h)
-    salida[4] = repr(sum(a_float(f[Y]) for f in grupo))       # E
-    salida[6] = repr(sum(a_float(f[I]) for f in grupo))       # G
-    for i, c in enumerate(BANDERAS):                          # K..P
-        salida[10 + i] = h[c] if any(es_uno(f[c]) for f in grupo) else ""
+    salida = transformar_fila(base, h, ix)
+    salida[4] = repr(sum(a_float(f[ix["sobrecosto"]]) for f in grupo))   # E
+    salida[6] = repr(sum(a_float(f[ix["generacion"]]) for f in grupo))   # G
+    for i, c in enumerate(BANDERAS):                                    # K..P
+        salida[10 + i] = h[ix[c]] if any(es_uno(f[ix[c]]) for f in grupo) else ""
     return salida
 
 
 def procesar(ruta_entrada, ruta_sal=None, log=print):
     """Escribe la salida y devuelve (ruta_salida, filas_entrada, filas_salida,
-    bloques_combinados). Si la entrada no tiene la estructura esperada (hasta
-    Z, con "Embalse" en M) levanta ValueError y no escribe nada."""
+    bloques_combinados). Las columnas se ubican por encabezado; si falta
+    alguna levanta ValueError y no escribe nada."""
     ruta_entrada = Path(ruta_entrada)
     ruta_sal = Path(ruta_sal) if ruta_sal else ruta_salida(ruta_entrada)
     lector = csv.reader(io.StringIO(leer_texto(ruta_entrada), newline=""))
     encabezado = next(lector, None)
-    if not encabezado or len(encabezado) < COLUMNAS_MINIMAS or encabezado[M] != "Embalse":
-        raise ValueError(
-            f"{ruta_entrada.name} no tiene la estructura esperada (columnas hasta Z "
-            f"y 'Embalse' en M). Encabezado: {', '.join(encabezado or [])}")
+    if not encabezado:
+        raise ValueError(f"{ruta_entrada.name} está vacío.")
+    encabezado = [reparar_texto(h).strip() for h in encabezado]
+    try:
+        ix = ubicar_columnas(encabezado)
+    except ValueError as e:
+        raise ValueError(f"{ruta_entrada.name}: {e}. Encabezado: "
+                         f"{', '.join(encabezado)}")
 
     # Se mantiene el orden original; los casos especiales quedan en la
     # posicion de su primera fila.
@@ -329,8 +371,8 @@ def procesar(ruta_entrada, ruta_sal=None, log=print):
         fila += [""] * (len(encabezado) - len(fila))
         fila = [reparar_texto(c) for c in fila]
         filas_entrada += 1
-        if es_caso_especial(fila):
-            clave = (fila[A], fila[F])
+        if es_caso_especial(fila, ix):
+            clave = (fila[ix["clave"]], fila[ix["config"]])
             if clave not in grupos:
                 grupos[clave] = []
                 orden.append(clave)
@@ -342,12 +384,12 @@ def procesar(ruta_entrada, ruta_sal=None, log=print):
     try:
         with tmp.open("w", encoding=ENCODING_SALIDA, newline="") as g:
             escritor = csv.writer(g)
-            escritor.writerow(construir_encabezado(encabezado))
+            escritor.writerow(construir_encabezado(encabezado, ix))
             for item in orden:
                 if isinstance(item, tuple):
-                    escritor.writerow(combinar(grupos[item], encabezado))
+                    escritor.writerow(combinar(grupos[item], encabezado, ix))
                 else:
-                    escritor.writerow(transformar_fila(item, encabezado))
+                    escritor.writerow(transformar_fila(item, encabezado, ix))
         os.replace(tmp, ruta_sal)
     finally:
         if tmp.exists():

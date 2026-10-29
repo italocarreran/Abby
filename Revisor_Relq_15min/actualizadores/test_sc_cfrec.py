@@ -25,7 +25,8 @@ sc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(sc)
 
 LETRAS = [chr(c) for c in range(ord("A"), ord("Z") + 1)]
-ENC = {"B": "Bloque_15min", "D": "Fecha", "E": "Hora", "F": "CONFIGURACION",
+# Estructura del script original (una columna "extra" en C, antes de Fecha).
+ENC = {"A": "FECHA_HORA", "B": "Bloque_15min", "C": "Extra", "D": "Fecha", "E": "Hora", "F": "CONFIGURACION",
        "G": "UNIDAD GENERADORA", "I": "GENERACION", "J": "GEN TG+TV", "K": "CV",
        "L": "CMg[USD/MWh]", "M": "Embalse", "N": "CPF(+)", "O": "CPF(-)",
        "P": "CSF(+)", "Q": "CSF(-)", "R": "CTF(+)", "S": "CTF(-)", "X": "Dolar",
@@ -79,6 +80,35 @@ class ScCfrec(unittest.TestCase):
         self.assertEqual(leido[2][14], "CSF(-)")
         self.assertEqual(leido[3][3:7], ["CC", "3.75", "TG1", "5.0"])
         self.assertEqual(leido[3][15], "CTF(-)")
+
+    def test_estructura_de_marzo_da_lo_mismo(self):
+        """SC_CfrecSinFD_2603: una columna menos antes de Fecha y mas columnas al
+        final. Por encabezado tiene que salir exactamente lo mismo."""
+        esperado = sc.procesar(self.entrada, log=lambda *_: None)[0].read_bytes()
+        texto = self.entrada.read_text(encoding="cp1252")
+        filas = list(csv.reader(texto.splitlines()))
+        # sacar la C y renombrar el encabezado como viene en marzo
+        marzo_enc = ("FECHA_HORA,Bloque_15min,Fecha,Hora,CONFIGURACION,UNIDAD GENERADORA,"
+                     "CONSIGNAS,GENERACION,GEN TG+TV,CV,CMg[USD/MWh],Embalse,CPF(+),CPF(-),"
+                     "CSF(+),CSF(-),CTF(+),CTF(-),Barra Cmg,MT Bloque,PMIN_BL,PMAX_BL,Dolar,"
+                     "Sobrecosto,Tipo,CMg-CV,Regla especial,FA,ERNC").split(",")
+        sin_c = [f[:2] + f[3:] + (["x", "y", "z", "w"] if any(f) else [""] * 4)
+                 for f in filas]
+        self.assertEqual(len(sin_c[0]), len(marzo_enc))
+        sin_c[0] = marzo_enc
+        marzo = self.sob / "SC_CfrecSinFD_2603.csv"
+        with marzo.open("w", encoding="utf-8", newline="") as g:
+            csv.writer(g).writerows(sin_c)
+        sal, n_in, n_out, n_gr = sc.procesar(marzo, log=lambda *_: None)
+        self.assertEqual((n_in, n_out, n_gr), (4, 3, 1))
+        self.assertEqual(sal.read_bytes(), esperado)
+
+    def test_falta_una_columna_dice_cual(self):
+        self.entrada.write_text("FECHA_HORA,Bloque_15min,Fecha\n1,2,3\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as e:
+            sc.procesar(self.entrada, log=lambda *_: None)
+        self.assertIn("Embalse", str(e.exception))
+        self.assertIn("Sobrecosto", str(e.exception))
 
     def test_busca_en_01_sobrecostos_sin_la_salida(self):
         sc.procesar(self.entrada, log=lambda *_: None)

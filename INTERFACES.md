@@ -55,7 +55,7 @@ Convenciones de esta página:
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 852 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1174 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1612 líneas
-- [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 552 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 594 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
@@ -3532,11 +3532,11 @@ Retorna (ok, lista_rutas_modificadas)
 > El mes ya no va fijo en el codigo (CLAVE): se toma el SC_CfrecSinFD_* mas
 > nuevo de la carpeta, o el que mande el Revisor.
 >
-> Mapeo (letras de columna tipo Excel, entrada -> salida):
->     A = D                      (Fecha)
->     B = E                      (Hora)
->     C = Z                      (Tipo)
->     D = F si M == 0, G si M == 1   ("Central": CONFIGURACION / UNIDAD
+> Las columnas de la ENTRADA se toman por su encabezado (ver COLUMNAS): en
+> marzo 2026 vino una columna menos antes de "Fecha" y las letras se
+> corrieron. Mapeo (salida <- encabezado de la entrada):
+>     A = Fecha
+>     B = Hora
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
@@ -3555,8 +3555,9 @@ Retorna (ok, lista_rutas_modificadas)
 | `ENCODING_SALIDA` | `'utf-8-sig'` |  |
 | `CLAVE_TRASPASO` | `'sc_cfrec'` | Clave del JSON de traspaso con la entrada (ver CLAVES_TRASPASO del Revisor). |
 | `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: todo lo de esta version va dentro de la clave SECCION_CONFIG de config.json (ver Actualiza_Pagos_Varios.py). |
-| `BANDERAS` | `[N, O, P, R, Q, S]` | Columnas de banderas: (columna origen) en el orden de salida K..P |
-| `COLUMNAS_MINIMAS` | `col('Z') + 1` |  |
+| `COLUMNAS` | `dict de 20 claves: 'clave', 'bloque', 'fecha', …` | Las columnas de la entrada se toman POR ENCABEZADO, no por letra: en marzo 2026 el SinFD trae una columna menos antes de "Fecha" y todo se corrio una letra (usuaria, 2026-10-29). |
+| `OPCIONALES` | `('clave',)` |  |
+| `BANDERAS` | `['cpf_mas', 'cpf_menos', 'csf_mas', 'ctf_mas', 'csf_menos', 'ctf_menos']` | Banderas en el orden de salida K..P (asi venian en el original: CTF(+) antes que CSF(-)). |
 
 ### Funciones
 
@@ -3590,38 +3591,42 @@ Lee el CSV en UTF-8; si no lo es, cae a Windows-1252 (ANSI).
 
 Repara textos mal codificados, ej: 'DEGAÃ‘' -> 'DEGAÑ'.
 
-#### `def col(letra)`
+#### `def clave_col(texto)`
 
-Convierte letra de columna Excel (A, B, ..., Z, AA...) a indice base 0.
+Encabezado comparable: sin tildes, espacios ni guiones bajos, minusculas.
+
+#### `def ubicar_columnas(encabezado)`
+
+{campo: indice} segun el encabezado. Levanta ValueError con lo que falta.
 
 #### `def a_float(valor)`
 
 #### `def es_uno(valor)`
 
-#### `def es_caso_especial(fila)`
+#### `def es_caso_especial(fila, ix)`
 
-Caso especial: generacion en la columna J (GEN TG+TV) distinta de 0.
+Caso especial: generacion en GEN TG+TV distinta de 0.
 
-#### `def construir_encabezado(h)`
+#### `def construir_encabezado(h, ix)`
 
-#### `def transformar_fila(fila, h)`
+#### `def transformar_fila(fila, h, ix)`
 
-#### `def combinar(grupo, h)`
+#### `def combinar(grupo, h, ix)`
 
-Une en una sola fila las filas de una misma configuracion (col F) y
-cuarto de hora (col A) con generacion en J:
+Une en una sola fila las filas de una misma configuracion y cuarto de hora
+con generacion en GEN TG+TV:
   - D, F, H (salida) = de la primera fila del grupo (como el BUSCARV
                        del proceso manual: Unidad = primera unidad)
-  - E (salida)     = suma del Sobrecosto (col Y)
-  - G (salida)     = suma de la Generacion (col I)
+  - E (salida)     = suma del Sobrecosto
+  - G (salida)     = suma de la Generacion
   - banderas K..P  = se marcan si alguna fila del grupo tiene 1
   - resto          = se toma de la primera fila del grupo
 
 #### `def procesar(ruta_entrada, ruta_sal=None, log=print)`
 
 Escribe la salida y devuelve (ruta_salida, filas_entrada, filas_salida,
-bloques_combinados). Si la entrada no tiene la estructura esperada (hasta
-Z, con "Embalse" en M) levanta ValueError y no escribe nada.
+bloques_combinados). Las columnas se ubican por encabezado; si falta
+alguna levanta ValueError y no escribe nada.
 
 **— VENTANA —**
 
