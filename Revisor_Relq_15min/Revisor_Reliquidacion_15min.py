@@ -764,6 +764,12 @@ NODOS = [
          carpeta=["00 Entregables"], patron=r"^5_remuneracion_cra", ext=XL, espejo="a_5_p9"),
     dict(id="a_6_ent", tipo="archivo", pref="│   ├── ", texto="6_REMUNERACIÓN_REA_Y_CO_ERNC_AAMM_*.xlsx",
          carpeta=["00 Entregables"], patron=r"^6_remuneracion_rea", ext=XL, espejo="a_6_p9"),
+    # Origen del pago de control de contingencias (EDAC) de la planilla 1. Por
+    # lo general no se actualiza; Actualiza_Cuadro1.py lo deja elegir.
+    dict(id="a_8_cc", tipo="archivo", pref="│   ├── ",
+         texto="8_REMUNERACIÓN_CONTROL_CONTINGENCIAS_AAMM_*.xlsx",
+         carpeta=["00 Entregables"], patron=r"^8_remuneracion_control", ext=XL,
+         espejo=None),
     dict(id="a_9_pagos", tipo="archivo", pref="│   └── ", texto="9_Pagos_Retiros_CRA_REA_CO_ERNC_Subastas_AAMM_*.xlsx",
          carpeta=["00 Entregables"], patron=r"^9_pagos_retiros", ext=XL, espejo=None),
 
@@ -839,6 +845,10 @@ ACTUALIZADORES = {
     # es un csv que se arma desde las planillas 3, 5 y 6.
     "a_pagos_varios": [dict(script="actualizadores/Actualiza_Pagos_Varios.py")],
     "a_6_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p6")],
+    # 15 minutos: la hoja 01.SSCC_Recurso_Técnico se arma desde las hojas
+    # PAGO_EMPRESAS_* de la planilla 4 y, si se elige, el RESUMEN de la 8.
+    "a_1_cuadros":    [dict(script="actualizadores/Actualiza_Cuadro1.py",
+                            texto="Actualizar data")],
     "a_0_cuadros": [
         # Reemplazos REUC vive en su propia subcarpeta y tiene su propio
         # reemplazos_reuc.json (dentro de __config__), no el compartido.
@@ -862,6 +872,8 @@ CLAVES_TRASPASO = {
     "a_6_p9":           "p6",
     "a_0_cuadros":      "cuadro_0",
     "a_1_cuadros":      "cuadro_1",
+    "a_4_rem":          "p4",
+    "a_8_cc":           "p8",
 }
 
 ARCHIVO_TRASPASO = "_traspaso_actualizador.json"

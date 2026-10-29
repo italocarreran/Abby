@@ -66,6 +66,38 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: planilla 1 desde las planillas 4 y 8
+
+La usuaria mandó una planilla 4 (`4_REMUNERACIÓN_SC_CO_Y_Pagos_Retiros_2601_rpre`)
+y una planilla 1 (`1_CUADROS_PAGO_SSCC_2601_def.xlsm`) reales (no versionadas)
+y pidió llenar `01.SSCC_Recurso_Técnico` desde las hojas `PAGO_EMPRESAS_*` de la
+4 (tipo en `B1:D1` → B; `A3:D` → `C:F`; apiladas; A y G estiradas; I:K con
+fórmula, al largo justo) y, opcionalmente, desde el RESUMEN de la planilla 8
+(C tipo, D empresa, E recibe, F paga, G neto), con una ventana chica que deje
+elegir 4, 8 o las dos y conserve lo que no se elige.
+
+Lo que se vio en los archivos: 11 hojas `PAGO_EMPRESAS_*` de 111 empresas y una
+fila TOTAL al final; la planilla 1 tenía 1.701 filas del formato anterior
+(conceptos repetidos, `CPF(-) ID`, `CCA`, `EDAC-BF`, `CO ERNC`), con las filas
+en 0 incluidas, y el `4346` fijo solo en esa hoja (F3:G5 e I:K). Se asumió que
+la planilla 8 está en `00 Entregables`, como las demás.
+
+- Nuevo `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py` + prueba
+  `test_cuadro1.py`; sumado a `test_seccion_config.py`.
+- Revisor 15 min: botón en `a_1_cuadros`, nodo `a_8_cc`, traspaso `p4`/`p8`.
+
+**Probado** con la planilla 4 real (1.221 filas en 0,2 s) y con la escritura
+simulada sobre los datos y fórmulas reales de la planilla 1: 1.856 filas, A/G
+hasta la 1864, I:K de 113 empresas con rangos a la 1864, F3:G5 al mismo largo,
+lo de abajo limpio. **No probado con Excel real** (AutoFill, recálculo de I:K,
+guardado). Sin la planilla 8 a mano, las filas viejas que no son de la 4
+(`CCA`, `CPF(-) ID`…) se conservan como "de la 8": la primera vez conviene
+marcar las dos.
+
+Pendientes: confirmar la carpeta de la planilla 8; que EDAC-BF sea su tipo.
+
+---
+
 ## 2026-10-28 — Claude — pagos_varios: verificador V12 y botón de detalle
 
 La usuaria pidió que la fila del pagos_varios tenga su verificador y su

@@ -506,6 +506,35 @@ y el paquete `revisor/`, salvo lo indicado).
   sintéticas con esos datos): mismas 40.248 filas, orden, centrales, tipos,
   bloques y totales por tipo. Pruebas: `actualizadores/test_pagos_varios.py`.
 
+### `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py` — planilla 1 (2026-10-29)
+
+- **Qué hace:** arma la hoja `01.SSCC_Recurso_Técnico` del `1_CUADROS_PAGO`
+  apilando los pagos por empresa de la **planilla 4** (todas las hojas
+  `PAGO_EMPRESAS_*`: tipo en `B1`, combinada `B1:D1`; tabla `A3:D` Empresa,
+  RECIBE, PAGA, Paga+Recibe, sin la fila TOTAL, con las filas en 0) y, si se
+  elige, de la **planilla 8** (`8_REMUNERACIÓN_CONTROL_CONTINGENCIAS`, hoja
+  `RESUMEN` desde la fila 9: C tipo, D empresa, E recibe, F paga, G neto).
+- **Destino** desde la fila 9: `B` tipo, `C:F` empresa / recibe / paga / SEN;
+  `A` y `G` fórmula, estiradas o cortadas; **`I:K`** empresa / paga / recibe
+  (suma de todos los tipos) con fórmulas que escribe el script: una fila por
+  empresa distinta y los rangos `$C$9:$C$<última>` (antes fijos a 4346);
+  `F3:G5` también al largo de la tabla.
+- **4 y 8 por separado:** ventana chica con dos casillas. La que no se marca
+  se conserva de la planilla 1, reconociendo sus filas por el tipo (columna B)
+  contra los tipos de la planilla 4 (sus `B1`) y de la 8 (su columna C),
+  comparando con `clave_mayusculas` (`CO ERNC` = `CO_ERNC`). Sin el archivo
+  de la 8, es de la 8 todo lo que no sea de la 4. Filas de ninguna de las dos
+  (formato viejo) se descartan y se avisa. Orden: la 4 y después la 8. La
+  planilla 4 hace falta siempre (de ahí salen los tipos que se conservan).
+- **Lectura** de las planillas 4 y 8 sin Excel (ZIP/XML; la 4 real de 27 MB en
+  0,2 s); escritura de la 1 con xlwings, cálculo manual, recalcula y guarda.
+- **Revisor 15 min:** botón «Actualizar data» en la fila de la planilla 1;
+  nodo nuevo `a_8_cc` (`00 Entregables/8_REMUNERACIÓN_CONTROL_CONTINGENCIAS*`);
+  claves de traspaso `p4`, `p8`, `cuadro_1`.
+- **Pruebas:** `actualizadores/test_cuadro1.py`. Probado además contra los
+  archivos reales de 2601 que mandó la usuaria (no versionados), con la
+  escritura simulada.
+
 ### `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,

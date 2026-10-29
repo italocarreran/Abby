@@ -33,6 +33,7 @@ SCRIPTS = [
     REVISOR / "actualizadores" / "Actualiza_Cuadro0.py",
     REVISOR / "actualizadores" / "Actualiza_SC_CO.py",
     REVISOR / "actualizadores" / "Actualiza_Pagos_Varios.py",
+    REVISOR / "actualizadores" / "Actualiza_Cuadro1.py",
     REVISOR / "Reemplazos REUC" / "ActualizaRemplazos.py",
 ]
 FUNCIONES = {"_seccion_config", "leer_config", "_modificar_config",
