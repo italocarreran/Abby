@@ -466,6 +466,26 @@ y el paquete `revisor/`, salvo lo indicado).
   `revisor/lectores.leer_columnas_rapido` despacha los `.csv` a
   `__comun__/csv_columnas.py`.
 
+### `Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py` — SC C.Frec para Coyailen (2026-10-29)
+
+- **Qué hace:** integra el `reorganizar_sc_cfrec.py` de la usuaria, con la
+  misma lógica (la salida es idéntica byte a byte a la del original). Reordena
+  las columnas A..Z de la entrada a A..R. «Central» es F, o G si es embalse
+  (M = 1). Las banderas K..P quedan con el nombre de la columna si valen 1. Las
+  filas con generación en J (GEN TG+TV ≠ 0) de una misma configuración (F) y
+  cuarto de hora (A) se unen en una, sumando Sobrecosto y Generación.
+- **Consume:** `01 Sobrecostos/SC_CfrecSinFD_AAMM.csv`, el más nuevo (UTF-8 o
+  cp1252), o el que manda el Revisor en la clave de traspaso `sc_cfrec`. Exige
+  columnas hasta Z con `Embalse` en M.
+- **Produce:** `01 Sobrecostos/SC_CfrecSinFD_AAMM_para_coyailen.csv`, en la
+  misma carpeta, UTF-8 con BOM. Se escribe en un `.tmp` y se reemplaza.
+- **Expone:** `procesar(entrada, salida=None, log)`, que devuelve
+  `(ruta, filas_entrada, filas_salida, bloques)`; `buscar_entrada`;
+  `ruta_salida`.
+- **Revisor:** nodos `a_sc_cfrec` (entrada) y `a_sc_cfrec_coyailen` (salida,
+  `crea_salida`, botón «Generar para Coyailen») en `01 Sobrecostos`.
+- **Pruebas:** `actualizadores/test_sc_cfrec.py`.
+
 ### `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py` — pagos_varios (2026-10-28)
 
 - **Qué hace:** reemplaza, en 15 minutos, a `Actualiza_Access_P9.py`: los mismos

@@ -768,8 +768,19 @@ NODOS = [
          carpeta=["00 Entregables"], patron=r"^9_pagos_retiros", ext=(".csv",), espejo=None),
 
     dict(id="c_sob", tipo="carpeta", pref="├── ", texto="01 Sobrecostos/          « MAESTRO »"),
-    dict(id="a_calc_sscc_01", tipo="archivo", pref="│   └── ", texto="Cálculo_SobrecostosSSCC_AAMM_*.xlsm  (maestro)",
+    dict(id="a_calc_sscc_01", tipo="archivo", pref="│   ├── ", texto="Cálculo_SobrecostosSSCC_AAMM_*.xlsm  (maestro)",
          carpeta=["01 Sobrecostos"], patron=r"^calculo_sobrecostossscc_", ext=XL, espejo=None),
+    # 15 minutos: Reorganiza_SC_Cfrec.py arma la salida para Coyailen desde este
+    # csv, en la misma carpeta (usuaria, 2026-10-29). La salida es
+    # "crea_salida": en rojo si falta, con el boton activo.
+    dict(id="a_sc_cfrec", tipo="archivo", pref="│   ├── ",
+         texto="SC_CfrecSinFD_AAMM.csv   (entrada para Coyailen)",
+         carpeta=["01 Sobrecostos"], patron=r"^sc_cfrecsinfd_(?!.*para_coyailen$)",
+         ext=(".csv",), espejo=None),
+    dict(id="a_sc_cfrec_coyailen", tipo="archivo", pref="│   └── ",
+         texto="SC_CfrecSinFD_AAMM_para_coyailen.csv",
+         carpeta=["01 Sobrecostos"], patron=r"^sc_cfrecsinfd_.*para_coyailen$",
+         ext=(".csv",), espejo=None, crea_salida=True),
 
     dict(id="c_p9", tipo="carpeta", pref="└── ", texto="04 Planilla 9/          « MAESTRO de 3_ / 5_ / 6_ »"),
     dict(id="a_3_p9", tipo="archivo", pref="    ├── ", texto="3_REMUNERACIÓN_SUBASTAS_E_ID_AAMM_*.xlsm  (maestro)",
@@ -838,6 +849,8 @@ ACTUALIZADORES = {
     # Antes, el Access de la planilla 9 (Actualiza_Access_P9.py). En 15 minutos
     # es un csv que se arma desde las planillas 3, 5 y 6.
     "a_pagos_varios": [dict(script="actualizadores/Actualiza_Pagos_Varios.py")],
+    "a_sc_cfrec_coyailen": [dict(script="actualizadores/Reorganiza_SC_Cfrec.py",
+                                 texto="Generar para Coyailen")],
     "a_6_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p6")],
     # 15 minutos: la hoja 01.SSCC_Recurso_Técnico se arma desde las hojas
     # PAGO_EMPRESAS_* de la planilla 4 y, si se elige, el RESUMEN de la 8.
@@ -861,6 +874,7 @@ CLAVES_TRASPASO = {
     "a_calc_sscc_01":   "calculo_sscc_maestro",
     "a_reporte_cra":    "reporte_cra",
     "a_pagos_varios":   "pagos_varios",
+    "a_sc_cfrec":       "sc_cfrec",
     "a_3_p9":           "p3",
     "a_5_p9":           "p5",
     "a_6_p9":           "p6",

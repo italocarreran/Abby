@@ -66,6 +66,20 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: SC_CfrecSinFD para Coyailen integrado al Revisor
+
+La usuaria mandó `reorganizar_sc_cfrec.py` y pidió integrarlo, con la entrada
+y la salida en `01 Sobrecostos`. Quedó como
+`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`, con la ventana
+estándar de 15 min (sin barra de progreso). El Revisor tiene los nodos
+`a_sc_cfrec` (entrada) y `a_sc_cfrec_coyailen` (salida, `crea_salida`) con el
+botón «Generar para Coyailen». La clave de traspaso es `sc_cfrec`. El mes ya
+no va fijo (`CLAVE`): se toma el archivo más nuevo. Se agregó la salida por
+`.tmp` y un error claro si la estructura no calza; el original salía con
+`None`. Con una entrada sintética, la salida es idéntica byte a byte a la del
+script original. 3 pruebas en `test_sc_cfrec.py`, en verde. Falta correrlo
+con un SC_CfrecSinFD real.
+
 ## 2026-10-29 — Claude — 15 min: reemplazos REUC sin hoja fija
 
 Con la descarga desde el navegador, la usuaria obtuvo «Worksheet named
