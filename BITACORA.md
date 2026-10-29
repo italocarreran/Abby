@@ -67,6 +67,23 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: pagos_varios busca las tablas por encabezado
+
+Al correr abril, las tablas de la planilla 3 (DB) y de la 6
+(ENERGIA_Y_CALCULO_CO_ERNC y CALCULO_REA_CENTRAL) estaban en otras columnas.
+La usuaria pidió buscar los encabezados (Clave Año_Mes, Tipo_pago, Central,
+Hora Mensual, Pago). Ahora `Actualiza_Pagos_Varios.py` busca la tabla en las
+filas 1–20 de A:EZ (`leer_zona`, `ubicar_encabezado`), anclada en «Pago». Las
+tablas con «Clave Año_Mes» no traen fecha, así que la fecha sale del bloque
+(«Hora Mensual» o «Periodo»). Las columnas fijas de respaldo pasaron a las de
+abril. En `__comun__/excel_xml.leer_columnas_rapido` se agregó el argumento
+opcional `fila_fin`, compatible con todo lo que ya lo usa. 5 pruebas de
+pagos_varios: tabla corrida, dos tablas en la hoja, sin encabezados. También
+`test_excel_xml` con `fila_fin`. **Supuestos:** que «Hora Mensual» y
+«Periodo» son el bloque de 15 min del mes (1 = 00:00 del día 1), y que la 5
+trae «Fecha_Hora», «Central», «Pago», «Tipo_pago» y un bloque. Si no, cae a
+las columnas fijas y avisa. Falta correrlo con las planillas reales de abril.
+
 ## 2026-10-29 — Claude — 15 min: SOBRECOSTOS extiende y recorta las fórmulas de S:EH
 
 La usuaria pidió que, al pegar el csv para Coyailen en A7:R, las fórmulas de

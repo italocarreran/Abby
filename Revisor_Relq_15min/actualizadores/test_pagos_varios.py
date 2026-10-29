@@ -65,9 +65,20 @@ def escribir_xlsx(ruta, hojas):
                    f'2006/relationships">{"".join(rels)}</Relationships>')
 
 
-def bloque(cols, fila_enc, filas, fecha=True):
-    """cols: {campo: letra}; filas: lista de dicts con los campos."""
-    c = {(fila_enc, cols["pago"]): "Pago", (fila_enc, cols["central"]): "Central"}
+# Encabezados como vienen en las planillas de abril 2026.
+TITULOS = {"pago": "Pago", "central": "Central", "tipo": "Tipo_pago",
+           "fecha": "Fecha_Hora", "bloque": "Bloque_15min", "clave": "Clave Año_Mes",
+           "hora": "Hora Mensual", "periodo": "Periodo", "aux": "Aux",
+           "config": "CONFIGURACION", "empresa": "Empresa"}
+
+
+def bloque(cols, fila_enc, filas, titulos=TITULOS):
+    """cols: {campo: letra}; filas: lista de dicts con los campos. Pone el
+    encabezado de cada campo en fila_enc (titulos=None: sin encabezados)."""
+    c = {}
+    if titulos:
+        for campo, letra in cols.items():
+            c[(fila_enc, letra)] = titulos[campo]
     for i, r in enumerate(filas, start=fila_enc + 1):
         for campo, letra in cols.items():
             if campo in r:
@@ -83,27 +94,41 @@ class PagosVarios(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: [p.unlink() for p in self.tmp.iterdir()])
-        p3 = bloque({"tipo": "BE", "central": "BF", "pago": "BH", "bloque": "BI"}, 2, [
-            {"tipo": "CPF(+)", "central": "HE RALCO U2", "pago": 1794.478875, "bloque": 37},
-            {"tipo": "CPF(+)", "central": "HE RALCO U2", "pago": 0, "bloque": 38},   # 0: fuera
-            {"tipo": "CSF(-)", "central": "", "pago": 5.0, "bloque": 39},            # sin central
-            {"tipo": "CSF(-)", "central": "SAE DEL DESIERTO", "pago": 3112.342612166663,
-             "bloque": 2880},
+        # Planilla 3, hoja DB (abril): Clave Año_Mes | Tipo_pago | Central |
+        # Hora Mensual | Pago, en BD:BH. Sin fecha: sale del bloque.
+        p3 = bloque({"clave": "BD", "tipo": "BE", "central": "BF", "hora": "BG",
+                     "pago": "BH"}, 2, [
+            {"clave": 2609, "tipo": "CPF(+)", "central": "HE RALCO U2", "pago": 1794.478875,
+             "hora": 37},
+            {"clave": 2609, "tipo": "CPF(+)", "central": "HE RALCO U2", "pago": 0,
+             "hora": 38},                                                       # 0: fuera
+            {"clave": 2609, "tipo": "CSF(-)", "central": "", "pago": 5.0, "hora": 39},
+            {"clave": 2609, "tipo": "CSF(-)", "central": "SAE DEL DESIERTO",
+             "pago": 3112.342612166663, "hora": 2880},
         ])
+        # Otra tabla en la misma hoja, lejos: no se tiene que tomar.
+        p3.update(bloque({"tipo": "D", "central": "E", "hora": "F", "pago": "G"}, 2, [
+            {"tipo": "OTRA", "central": "NO VA", "pago": 1.0, "hora": 1}]))
         p5 = bloque({"fecha": "AV", "central": "AX", "pago": "AY", "tipo": "AZ",
                      "bloque": "BA"}, 8, [
             {"fecha": SERIE_0109_1800 + 1e-9, "central": "RALCO_U1", "pago": 185.02,
              "tipo": "CRA", "bloque": 73},
         ])
-        co = bloque({"fecha": "BB", "central": "BD", "pago": "BE", "tipo": "BF",
-                     "bloque": "BG"}, 8, [
+        # CO_ERNC (abril): Fecha_Hora | CONFIGURACION | Periodo | Central | Pago |
+        # Tipo_pago | Empresa, en BB:BH.
+        co = bloque({"fecha": "BB", "config": "BC", "periodo": "BD", "central": "BE",
+                     "pago": "BF", "tipo": "BG", "empresa": "BH"}, 8, [
             {"fecha": SERIE_0109_1800, "central": "PFV CEME 1", "pago": 9929.683898156996,
-             "tipo": "CO_ERNC", "bloque": 73},
+             "tipo": "CO_ERNC", "periodo": 73, "empresa": "GM_HOLDINGS"},
+            {"fecha": SERIE_0109_1800, "central": "PFV CEME 2", "pago": 1.5,
+             "tipo": "CO_ERNC", "periodo": 74},                                 # no calza
         ])
-        rea = bloque({"fecha": "AT", "central": "AV", "pago": "AW", "tipo": "AX",
-                      "bloque": "AY"}, 9, [
-            {"fecha": SERIE_0109_1800, "central": "PFV EL ROMERO", "pago": 1000.0,
-             "tipo": "REA", "bloque": 74},                                         # no calza
+        # REA (abril), corrida 3 columnas a la derecha de AS:AX: se encuentra
+        # igual por los encabezados.
+        rea = bloque({"aux": "AV", "clave": "AW", "tipo": "AX", "central": "AY",
+                      "hora": "AZ", "pago": "BA"}, 9, [
+            {"aux": 0, "clave": SERIE_0109_1800, "central": "PFV EL ROMERO",
+             "pago": 1000.0, "tipo": "REA", "hora": 74},
         ])
         self.rutas = {
             "p3": self.tmp / "3_REMUNERACION_SUBASTAS_E_ID_2609_R01D.xlsm",
@@ -121,7 +146,7 @@ class PagosVarios(unittest.TestCase):
         filas, resumen, avisos = pv.generar(self.rutas, "2609", salida, log.append)
         crudo = salida.read_bytes()
         self.assertFalse(crudo.startswith(b"\xef\xbb\xbf"))
-        self.assertEqual(crudo.count(b"\r\n"), 6)
+        self.assertEqual(crudo.count(b"\r\n"), 7)
         leido = list(csv.reader(crudo.decode("utf-8").splitlines()))
         self.assertEqual(leido[0], pv.ENCABEZADO_CSV)
         self.assertEqual(leido[1:], [
@@ -129,11 +154,45 @@ class PagosVarios(unittest.TestCase):
             ["30/09/2026 23:45", "", "SAE DEL DESIERTO", "3112.342612166663", "CSF(-)", "2880"],
             ["01/09/2026 18:00", "", "RALCO_U1", "185.02", "CRA", "73"],
             ["01/09/2026 18:00", "", "PFV CEME 1", "9929.683898156996", "CO_ERNC", "73"],
-            ["01/09/2026 18:00", "", "PFV EL ROMERO", "1000", "REA", "74"],
+            ["01/09/2026 18:00", "", "PFV CEME 2", "1.5", "CO_ERNC", "74"],
+            ["01/09/2026 18:15", "", "PFV EL ROMERO", "1000", "REA", "74"],
         ])
         self.assertEqual(resumen["CPF(+)"][0], 1)
-        # El REA trae un bloque que no calza con su fecha: se avisa, no se toca.
-        self.assertTrue(any("REA" in a and "no calza" in a for a in avisos))
+        # Un bloque que no calza con su fecha: se avisa, no se toca.
+        self.assertTrue(any("CO_ERNC" in a and "no calza" in a for a in avisos))
+        self.assertFalse(any("no se encontraron" in a for a in avisos))
+        self.assertTrue(any("calzaron 2 tablas" in l for l in log))
+        rea = next(l for l in log if "encabezado en la fila 9" in l)
+        self.assertIn("central AY", rea)
+        self.assertIn("pago BA", rea)
+        self.assertIn("bloque AZ", rea)
+        self.assertIn("fecha desde el bloque", rea)
+
+    def test_sin_encabezados_usa_las_columnas_fijas(self):
+        rea = bloque({"tipo": "AU", "central": "AV", "hora": "AW", "pago": "AX"}, 9, [
+            {"central": "PFV EL ROMERO", "pago": 7.0, "tipo": "REA", "hora": 1}],
+            titulos=None)
+        co = bloque({"fecha": "BB", "periodo": "BD", "central": "BE", "pago": "BF",
+                     "tipo": "BG"}, 8, [
+            {"fecha": SERIE_0109_1800, "central": "C", "pago": 2.0, "tipo": "CO_ERNC",
+             "periodo": 73}])
+        escribir_xlsx(self.rutas["p6"], {"ENERGIA_Y_CALCULO_CO_ERNC": co,
+                                         "CALCULO_REA_CENTRAL": rea})
+        filas, _, avisos = pv.generar(self.rutas, "2609", self.tmp / "x.csv",
+                                      lambda *_: None)
+        self.assertIn(["01/09/2026 00:00", "", "PFV EL ROMERO", 7.0, "REA", 1], filas)
+        self.assertTrue(any("REA" in a and "no se encontraron" in a for a in avisos))
+
+    def test_ubicar_encabezado(self):
+        zona = {"B": {3: "Pago"}, "C": {3: "Central"}, "D": {3: "Tipo_pago"},
+                "E": {3: "Hora Mensual"}, "F": {3: "Bloque_15min"}}
+        f, cols, n = pv.ubicar_encabezado(zona)
+        self.assertEqual((f, n), (3, 1))
+        # Bloque_15min se prefiere a Hora Mensual; sin fecha no es error.
+        self.assertEqual(cols, {"pago": "B", "central": "C", "tipo": "D", "bloque": "F"})
+        # "Tipo_pago" no se confunde con "Pago"; sin Central no hay tabla.
+        self.assertIsNone(pv.ubicar_encabezado({"A": {1: "Tipo_pago"}, "B": {1: "Pago"},
+                                                "C": {1: "Periodo"}}))
 
     def test_falla_no_pisa_el_anterior(self):
         salida = self.tmp / "pagos_varios_2609.csv"

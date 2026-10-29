@@ -113,8 +113,12 @@ def desescapar_xml(valor):
     return _RE_ENT.sub(uno, valor)
 
 
-def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log):
-    """Lee columnas calculadas como ``{COL: {fila: valor}}`` o devuelve None."""
+def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log, fila_fin=None):
+    """Lee columnas calculadas como ``{COL: {fila: valor}}`` o devuelve None.
+
+    fila_fin: si viene, deja de leer al pasar esa fila (las filas vienen en
+    orden en el XML). Sirve para mirar solo los encabezados de una hoja grande.
+    """
     if not es_zip_excel(ruta):
         log(f"    ! {Path(ruta).name}: formato no soportado para lectura rápida")
         return None
@@ -126,6 +130,7 @@ def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log):
     patron = re.compile(rb'<c r="(' + alternativas + rb')(\d+)"([^>]*?)(?:/>|>(.*?)</c>)',
                         re.S)
     fila_inicio = int(fila_inicio)
+    fila_fin = int(fila_fin) if fila_fin is not None else None
     datos = {c: {} for c in objetivo}
     try:
         with zipfile.ZipFile(str(ruta)) as z:
@@ -139,7 +144,8 @@ def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log):
                 compartidas = ["".join(si.itertext()) for si in ss.iter(f"{NS_XL}si")]
             with z.open(ruta_hoja) as archivo:
                 cola = b""
-                while True:
+                pasado = False
+                while not pasado:
                     trozo = archivo.read(1 << 20)
                     if not trozo:
                         break
@@ -148,6 +154,9 @@ def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log):
                     for m in patron.finditer(buf):
                         fin = m.end()
                         col, nfila = m.group(1).decode(), int(m.group(2))
+                        if fila_fin is not None and nfila > fila_fin:
+                            pasado = True
+                            break
                         if nfila < fila_inicio:
                             continue
                         attrs, cuerpo = m.group(3), m.group(4) or b""

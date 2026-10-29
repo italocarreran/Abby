@@ -60,6 +60,19 @@ class TestExcelXml(unittest.TestCase):
         })
         self.assertEqual(mensajes, [])
 
+    def test_fila_fin_corta_la_lectura(self):
+        hoja = (f'<worksheet xmlns="{excel_xml.NS_XL[1:-1]}"><sheetData>'
+                + "".join(f'<row r="{i}"><c r="A{i}"><v>{i}</v></c></row>' for i in range(1, 50))
+                + "</sheetData></worksheet>")
+        with zipfile.ZipFile(self.ruta, "w") as z:
+            z.writestr("xl/workbook.xml", WORKBOOK)
+            z.writestr("xl/_rels/workbook.xml.rels", RELS)
+            z.writestr("xl/worksheets/sheet1.xml", hoja)
+        datos = excel_xml.leer_columnas_rapido(self.ruta, "#1", ["A"], 3, print, fila_fin=7)
+        self.assertEqual(sorted(datos["A"]), [3, 4, 5, 6, 7])
+        todo = excel_xml.leer_columnas_rapido(self.ruta, "#1", ["A"], 1, print)
+        self.assertEqual(len(todo["A"]), 49)
+
     def test_fallos_devuelven_none_y_avisan(self):
         mensajes = []
         self.assertIsNone(excel_xml.leer_columnas_rapido("x.xlsb", "H", ["A"], 1, mensajes.append))

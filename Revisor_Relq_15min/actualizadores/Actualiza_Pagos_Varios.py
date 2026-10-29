@@ -12,18 +12,25 @@
 #  ----------------------------------------------------------------------------
 #   | Fuente   | Archivo | Hoja                       | Fecha | Central | Pago | Tipo | Bloque |
 #   |----------|---------|----------------------------|-------|---------|------|------|--------|
-#   | SUBASTAS | 3_      | DB                         |  (*)  |   BF    |  BH  |  BE  |   BI   |
+#   | SUBASTAS | 3_      | DB                         |  (*)  |   BF    |  BH  |  BE  |   BG   |
 #   | CRA      | 5_      | CÁLCULO_CRA                |  AV   |   AX    |  AY  |  AZ  |   BA   |
-#   | CO_ERNC  | 6_      | ENERGIA_Y_CALCULO_CO_ERNC  |  BB   |   BD    |  BE  |  BF  |   BG   |
-#   | REA      | 6_      | CALCULO_REA_CENTRAL        |  AT   |   AV    |  AW  |  AX  |   AY   |
+#   | CO_ERNC  | 6_      | ENERGIA_Y_CALCULO_CO_ERNC  |  BB   |   BE    |  BF  |  BG  |   BD   |
+#   | REA      | 6_      | CALCULO_REA_CENTRAL        |  (*)  |   AV    |  AX  |  AU  |   AW   |
 #
-#  (*) El bloque de la planilla 3 no trae fecha (BG es la hora mensual): la
-#      Fecha_Hora se arma con el Bloque_15min y el mes del archivo.
+#  Son las columnas de abril 2026 (la 5, las de septiembre) y solo se usan si
+#  no se encuentran los encabezados (ver abajo).
+#  (*) Sin fecha (traen "Clave Año_Mes"): la Fecha_Hora se arma con el bloque
+#      ("Hora Mensual") y el mes del archivo.
 #
-#  La fila del encabezado se BUSCA (la primera, entre las 20 de arriba, que
-#  tenga un texto con "pago" en la columna del pago) y los datos empiezan en la
-#  siguiente. Si no se encuentra, se usa la fila de datos del script horario y
-#  se avisa.
+#  LAS COLUMNAS SE BUSCAN POR ENCABEZADO (2026-10-29): en abril las tablas se
+#  corrieron de columna en la 3 y en la 6. En las 20 filas de arriba, columnas
+#  A:EZ, se busca un "Pago" y, a no mas de 8 columnas de el, "Central",
+#  "Tipo_pago" y el bloque ("Bloque_15min", "Bloque", "Periodo" u "Hora
+#  Mensual", en ese orden de preferencia); "Fecha_Hora" es opcional. Si no
+#  trae fecha (como la 3 o la REA, que traen "Clave Año_Mes"), la fecha se arma
+#  con el bloque y el mes. Si hay mas de una tabla que calce, se toma la mas
+#  cercana a las columnas de la tabla de abajo. Si no se encuentra ninguna, se
+#  usan esas columnas fijas y se avisa.
 #
 #  REGLAS
 #  ----------------------------------------------------------------------------
@@ -106,21 +113,36 @@ PLANILLAS = {
 }
 ORDEN_PL = ["p3", "p5", "p6"]
 
-# Los cuatro bloques, en el orden en que van en el CSV. "fecha": None quiere
-# decir que la Fecha_Hora se arma desde el bloque. "fila_datos" es la del script
-# horario: solo se usa si no se encuentra el encabezado.
+# Los cuatro bloques, en el orden en que van en el CSV. Las letras son el
+# respaldo si no se encuentran los encabezados. "fecha": None quiere decir que
+# la Fecha_Hora se arma desde el bloque. "fila_datos" tambien es respaldo.
 FUENTES = [
     {"nombre": "SUBASTAS", "planilla": "p3", "hoja": "DB", "fila_datos": 3,
-     "fecha": None, "central": "BF", "pago": "BH", "tipo": "BE", "bloque": "BI"},
+     "fecha": None, "central": "BF", "pago": "BH", "tipo": "BE", "bloque": "BG"},
     {"nombre": "CRA", "planilla": "p5", "hoja": "CÁLCULO_CRA", "fila_datos": 9,
      "fecha": "AV", "central": "AX", "pago": "AY", "tipo": "AZ", "bloque": "BA"},
     {"nombre": "CO_ERNC", "planilla": "p6", "hoja": "ENERGIA_Y_CALCULO_CO_ERNC",
      "fila_datos": 9,
-     "fecha": "BB", "central": "BD", "pago": "BE", "tipo": "BF", "bloque": "BG"},
+     "fecha": "BB", "central": "BE", "pago": "BF", "tipo": "BG", "bloque": "BD"},
     {"nombre": "REA", "planilla": "p6", "hoja": "CALCULO_REA_CENTRAL",
      "fila_datos": 10,
-     "fecha": "AT", "central": "AV", "pago": "AW", "tipo": "AX", "bloque": "AY"},
+     "fecha": None, "central": "AV", "pago": "AX", "tipo": "AU", "bloque": "AW"},
 ]
+
+# Encabezados aceptados por campo, en orden de preferencia (se comparan sin
+# tildes, espacios ni guiones bajos). "pago" es el ancla de la busqueda.
+ENCABEZADOS = {
+    "pago":    ["Pago"],
+    "central": ["Central"],
+    "tipo":    ["Tipo_pago", "Tipo de pago"],
+    "bloque":  ["Bloque_15min", "Bloque", "Periodo", "Hora Mensual"],
+    "fecha":   ["Fecha_Hora", "Fecha"],
+}
+CAMPOS_OPCIONALES = ("fecha",)
+ZONA_ENCABEZADO = ("A", "EZ")       # columnas donde se buscan
+MAX_DISTANCIA_ENCABEZADO = 8        # columnas entre "Pago" y los demas
+
+FUENTES_POR_NOMBRE = {f["nombre"]: f for f in FUENTES}
 
 # AAMM del nombre del archivo: '..._2609_R01D.xlsm' -> 2609.
 RE_AAMM = re.compile(r"[_\s](\d{4})(?=[_\s.])")
@@ -356,36 +378,130 @@ def leer_columnas(ruta, hoja, columnas, log):
             pass
 
 
+def _col_num(letra):
+    n = 0
+    for ch in letra.upper():
+        n = n * 26 + ord(ch) - 64
+    return n
+
+
+def _col_letra(n):
+    s = ""
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def leer_zona(ruta, hoja, col_ini, col_fin, fila_fin, log):
+    """{COL: {fila: valor}} de col_ini:col_fin, filas 1..fila_fin (para buscar
+    encabezados). Sin Excel si se puede; si no, con xlwings."""
+    cols = [_col_letra(i) for i in range(_col_num(col_ini), _col_num(col_fin) + 1)]
+    d = _excel_xml.leer_columnas_rapido(ruta, hoja, cols, 1, log, fila_fin=fila_fin)
+    if d is not None:
+        return d
+    import xlwings as xw
+    app = xw.App(visible=False, add_book=False)
+    try:
+        app.display_alerts = False
+        wb = app.books.open(str(ruta), read_only=True, update_links=False)
+        sh = next((s for s in wb.sheets if normalizar(s.name) == normalizar(hoja)), None)
+        if sh is None:
+            raise RuntimeError(f"No está la hoja '{hoja}' en {Path(ruta).name}")
+        vals = sh.range(f"{col_ini}1:{col_fin}{fila_fin}").options(ndim=2).value
+        wb.close()
+        out = {c: {} for c in cols}
+        for f, fila in enumerate(vals, start=1):
+            for c, v in zip(cols, fila):
+                if v is not None:
+                    out[c][f] = v
+        return out
+    finally:
+        try:
+            app.quit()
+        except Exception:
+            pass
+
+
+def ubicar_encabezado(zona, respaldo=None, encabezados=ENCABEZADOS,
+                      opcionales=CAMPOS_OPCIONALES, max_dist=MAX_DISTANCIA_ENCABEZADO):
+    """Busca la tabla por sus encabezados. Devuelve (fila, {campo: COL}, n_tablas)
+    o None. respaldo: {campo: COL} de la tabla esperada, para elegir si hay mas
+    de una que calce (la mas cercana a su "pago")."""
+    claves = {campo: [_texto.clave(n) for n in nombres]
+              for campo, nombres in encabezados.items()}
+    filas = {}
+    for col, celdas in zona.items():
+        for f, v in celdas.items():
+            if isinstance(v, str) and v.strip():
+                filas.setdefault(f, {})[_col_num(col)] = _texto.clave(v)
+    candidatos = []
+    for f in sorted(filas):
+        celdas = filas[f]
+        for ancla, t in celdas.items():
+            if t not in claves["pago"]:
+                continue
+            mapa, usadas = {"pago": ancla}, {ancla}
+            for campo, ks in claves.items():
+                if campo == "pago":
+                    continue
+                opciones = [(ks.index(t2), abs(c - ancla), c) for c, t2 in celdas.items()
+                            if t2 in ks and c not in usadas and abs(c - ancla) <= max_dist]
+                if opciones:
+                    c = min(opciones)[2]
+                    mapa[campo] = c
+                    usadas.add(c)
+            if all(c in mapa for c in claves if c not in opcionales):
+                candidatos.append((f, mapa))
+    if not candidatos:
+        return None
+    ref = _col_num(respaldo["pago"]) if respaldo and respaldo.get("pago") else None
+    if ref is not None:
+        candidatos.sort(key=lambda fm: (abs(fm[1]["pago"] - ref), fm[0]))
+    f, mapa = candidatos[0]
+    return f, {campo: _col_letra(c) for campo, c in mapa.items()}, len(candidatos)
+
+
 def leer_fuente(ruta, fte, anio_mes, log):
     """Las filas de una fuente, ya en el formato del CSV, y los avisos."""
+    log(f"  {fte['nombre']}: {Path(ruta).name}, hoja {fte['hoja']}")
+    avisos = []
+
+    # --- la tabla, por sus encabezados ---
+    zona = leer_zona(ruta, fte["hoja"], *ZONA_ENCABEZADO, FILAS_BUSCAR_ENCABEZADO, log)
+    if zona is None:
+        raise RuntimeError(f"No se pudo leer la hoja '{fte['hoja']}' de "
+                           f"{Path(ruta).name}")
+    hallado = ubicar_encabezado(zona, respaldo=fte)
+    if hallado:
+        enc, cols_de, n_tablas = hallado
+        f_ini = enc + 1
+        fte = dict(fte, fecha=cols_de.get("fecha"), central=cols_de["central"],
+                   pago=cols_de["pago"], tipo=cols_de["tipo"], bloque=cols_de["bloque"])
+        log(f"    encabezado en la fila {enc}: "
+            + " | ".join(f"{campo} {cols_de[campo]} «{zona[cols_de[campo]].get(enc)}»"
+                         for campo in ("fecha", "central", "pago", "tipo", "bloque")
+                         if campo in cols_de)
+            + ("" if "fecha" in cols_de else " | fecha desde el bloque y el mes"))
+        if n_tablas > 1:
+            log(f"    (calzaron {n_tablas} tablas; se tomó la más cercana a "
+                f"{FUENTES_POR_NOMBRE[fte['nombre']]['pago']})")
+    else:
+        f_ini = fte["fila_datos"]
+        av = (f"{fte['nombre']}: no se encontraron los encabezados (Pago, Central, "
+              f"Tipo_pago y bloque en {ZONA_ENCABEZADO[0]}1:{ZONA_ENCABEZADO[1]}"
+              f"{FILAS_BUSCAR_ENCABEZADO}); se usan las columnas fijas desde la fila "
+              f"{f_ini}")
+        avisos.append(av)
+        log(f"    OJO: {av}")
+
     cols = [c for c in (fte["fecha"], fte["central"], fte["pago"], fte["tipo"],
                         fte["bloque"]) if c]
-    log(f"  {fte['nombre']}: {Path(ruta).name}, hoja {fte['hoja']}")
     d = leer_columnas(ruta, fte["hoja"], cols, log)
     if d is None:
         raise RuntimeError(f"No se pudo leer la hoja '{fte['hoja']}' de "
                            f"{Path(ruta).name}")
     g = lambda col, f: d.get(col.upper(), {}).get(f)
-    avisos = []
-
-    # --- la fila del encabezado ---
-    enc = None
-    for f in range(1, FILAS_BUSCAR_ENCABEZADO + 1):
-        v = g(fte["pago"], f)
-        if isinstance(v, str) and "pago" in normalizar(v):
-            enc = f
-            break
-    if enc is None:
-        f_ini = fte["fila_datos"]
-        av = (f"no se encontró el encabezado (un 'Pago' en {fte['pago']}1:"
-              f"{fte['pago']}{FILAS_BUSCAR_ENCABEZADO}); se lee desde la fila "
-              f"{f_ini}, como en el horario")
-        avisos.append(av)
-        log(f"    OJO: {av}")
-    else:
-        f_ini = enc + 1
-        log("    encabezado en la fila " + str(enc) + ": "
-            + " | ".join(str(g(c, enc)) for c in cols))
 
     filas_n = sorted({f for c in cols for f in d.get(c.upper(), {}) if f >= f_ini})
     salida, ceros, sin_central, malas, no_calza = [], 0, 0, 0, 0
@@ -414,7 +530,7 @@ def leer_fuente(ruta, fte, anio_mes, log):
                 no_calza += 1
         else:
             if anio_mes is None:
-                raise RuntimeError("La planilla 3 no trae fecha: hace falta el mes "
+                raise RuntimeError(f"{fte['nombre']} no trae fecha: hace falta el mes "
                                    "(AAMM) para armarla desde el bloque.")
             fecha = fecha_de_bloque(bloque, *anio_mes)
         if anio_mes and (fecha.year, fecha.month) != anio_mes:

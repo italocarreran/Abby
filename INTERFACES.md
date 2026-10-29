@@ -29,7 +29,7 @@ Convenciones de esta página:
 - [`__comun__/comparadores.py`](#__comun__comparadorespy) — 370 líneas — Infraestructura compartida por los dos comparadores.
 - [`__comun__/config.py`](#__comun__configpy) — 118 líneas — Lectura y escritura del config.json, indexado por <equipo>_<usuario>.
 - [`__comun__/csv_columnas.py`](#__comun__csv_columnaspy) — 104 líneas — Lectura de un .csv por letra de columna y fila, como si fuera una hoja.
-- [`__comun__/excel_xml.py`](#__comun__excel_xmlpy) — 185 líneas — Lectura rápida de columnas OOXML sin abrir Excel.
+- [`__comun__/excel_xml.py`](#__comun__excel_xmlpy) — 194 líneas — Lectura rápida de columnas OOXML sin abrir Excel.
 - [`__comun__/salidas.py`](#__comun__salidaspy) — 148 líneas — Rutas compartidas de ``00_Salidas`` y ``__config__``.
 - [`__comun__/texto.py`](#__comun__textopy) — 51 líneas — Normalización compartida de nombres del dominio y de rutas.
 - [`__comun__/traspaso.py`](#__comun__traspasopy) — 50 líneas — Contrato compartido del JSON que el Revisor pasa a los actualizadores.
@@ -52,7 +52,7 @@ Convenciones de esta página:
 - [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3436 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 736 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 852 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1174 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1612 líneas
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 552 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
@@ -396,9 +396,12 @@ Convierte ``CF:CI`` en ``[CF, CG, CH, CI]``.
 
 Desescapa entidades XML, incluidas referencias numéricas dec/hex.
 
-#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log)`
+#### `def leer_columnas_rapido(ruta, hoja, columnas, fila_inicio, log, fila_fin=None)`
 
 Lee columnas calculadas como ``{COL: {fila: valor}}`` o devuelve None.
+
+fila_fin: si viene, deja de leer al pasar esa fila (las filas vienen en
+orden en el XML). Sirve para mirar solo los encabezados de una hoja grande.
 
 
 ---
@@ -3130,10 +3133,10 @@ Abre la planilla 1, actualiza, recalcula y guarda. (ok, resumen).
 > DE DONDE SALE CADA DATO  —  confirmado por la usuaria el 2026-10-28
 >  | Fuente   | Archivo | Hoja                       | Fecha | Central | Pago | Tipo | Bloque |
 >  |----------|---------|----------------------------|-------|---------|------|------|--------|
->  | SUBASTAS | 3_      | DB                         |  (*)  |   BF    |  BH  |  BE  |   BI   |
+>  | SUBASTAS | 3_      | DB                         |  (*)  |   BF    |  BH  |  BE  |   BG   |
 >  | CRA      | 5_      | CÁLCULO_CRA                |  AV   |   AX    |  AY  |  AZ  |   BA   |
->  | CO_ERNC  | 6_      | ENERGIA_Y_CALCULO_CO_ERNC  |  BB   |   BD    |  BE  |  BF  |   BG   |
->  | REA      | 6_      | CALCULO_REA_CENTRAL        |  AT   |   AV    |  AW  |  AX  |   AY   |
+>  | CO_ERNC  | 6_      | ENERGIA_Y_CALCULO_CO_ERNC  |  BB   |   BE    |  BF  |  BG  |   BD   |
+>  | REA      | 6_      | CALCULO_REA_CENTRAL        |  (*)  |   AV    |  AX  |  AU  |   AW   |
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
@@ -3154,7 +3157,12 @@ Abre la planilla 1, actualiza, recalcula y guarda. (ok, resumen).
 | `FILAS_BUSCAR_ENCABEZADO` | `20` |  |
 | `PLANILLAS` | `dict de 3 claves: 'p3', 'p5', 'p6', …` |  |
 | `ORDEN_PL` | `['p3', 'p5', 'p6']` |  |
-| `FUENTES` | `lista de 4 elementos: {'nombre': 'SUBASTAS', 'planilla': 'p3', 'hoja': 'DB', 'fila_datos': 3, 'fecha': None, 'central': 'BF', 'pago': 'BH', 'tipo': 'BE', 'bloque': 'BI'}, {'nombre': 'CRA', 'planilla': 'p5', 'hoja': 'CÁLCULO_CRA', 'fila_datos': 9, 'fecha': 'AV', 'central': 'AX', 'pago': 'AY', 'tipo': 'AZ', 'bloque': 'BA'}, {'nombre': 'CO_ERNC', 'planilla': 'p6', 'hoja': 'ENERGIA_Y_CALCULO_CO_ERNC', 'fila_datos': 9, 'fecha': 'BB', 'central': 'BD', 'pago': 'BE', 'tipo': 'BF', 'bloque': 'BG'}, …` | Los cuatro bloques, en el orden en que van en el CSV. |
+| `FUENTES` | `lista de 4 elementos: {'nombre': 'SUBASTAS', 'planilla': 'p3', 'hoja': 'DB', 'fila_datos': 3, 'fecha': None, 'central': 'BF', 'pago': 'BH', 'tipo': 'BE', 'bloque': 'BG'}, {'nombre': 'CRA', 'planilla': 'p5', 'hoja': 'CÁLCULO_CRA', 'fila_datos': 9, 'fecha': 'AV', 'central': 'AX', 'pago': 'AY', 'tipo': 'AZ', 'bloque': 'BA'}, {'nombre': 'CO_ERNC', 'planilla': 'p6', 'hoja': 'ENERGIA_Y_CALCULO_CO_ERNC', 'fila_datos': 9, 'fecha': 'BB', 'central': 'BE', 'pago': 'BF', 'tipo': 'BG', 'bloque': 'BD'}, …` | Los cuatro bloques, en el orden en que van en el CSV. |
+| `ENCABEZADOS` | `dict de 5 claves: 'pago', 'central', 'tipo', …` | Encabezados aceptados por campo, en orden de preferencia (se comparan sin tildes, espacios ni guiones bajos). |
+| `CAMPOS_OPCIONALES` | `('fecha',)` |  |
+| `ZONA_ENCABEZADO` | `('A', 'EZ')` |  |
+| `MAX_DISTANCIA_ENCABEZADO` | `8` |  |
+| `FUENTES_POR_NOMBRE` | `{f['nombre']: f for f in FUENTES}` |  |
 | `RE_AAMM` | `re.compile('[_\\s](\\d{4})(?=[_\\s.])')` | AAMM del nombre del archivo: '..._2609_R01D.xlsm' -> 2609. |
 | `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
@@ -3210,6 +3218,17 @@ numero (3112.342612166663), sin '.0' en los enteros.
 
 {COL: {fila: valor}} desde la fila 1. Primero sin Excel (ZIP/XML); si eso
 no funciona, con xlwings en solo lectura.
+
+#### `def leer_zona(ruta, hoja, col_ini, col_fin, fila_fin, log)`
+
+{COL: {fila: valor}} de col_ini:col_fin, filas 1..fila_fin (para buscar
+encabezados). Sin Excel si se puede; si no, con xlwings.
+
+#### `def ubicar_encabezado(zona, respaldo=None, encabezados=ENCABEZADOS, opcionales=CAMPOS_OPCIONALES, max_dist=MAX_DISTANCIA_ENCABEZADO)`
+
+Busca la tabla por sus encabezados. Devuelve (fila, {campo: COL}, n_tablas)
+o None. respaldo: {campo: COL} de la tabla esperada, para elegir si hay mas
+de una que calce (la mas cercana a su "pago").
 
 #### `def leer_fuente(ruta, fte, anio_mes, log)`
 

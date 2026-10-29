@@ -493,18 +493,25 @@ y el paquete `revisor/`, salvo lo indicado).
   `Ocupar_este...`, sino a **`04 Planilla 9/pagos_varios_AAMM.csv`**
   (`Fecha_Hora,CONFIGURACION,Central,Pago,Tipo_pago,Bloque_15min`). Sin
   Central_Empresa.
-- **Consume** (columnas dadas por la usuaria; el encabezado se busca en las 20
-  primeras filas por un "Pago" y los datos empiezan en la siguiente):
+- **Consume:** las columnas se **buscan por encabezado** (2026-10-29, porque en
+  abril las tablas de la 3 y la 6 se corrieron). La búsqueda mira las filas
+  1–20 de A:EZ, que se leen con `fila_fin`. Busca un «Pago» y, a ≤ 8 columnas,
+  «Central», «Tipo_pago» y el bloque. Para el bloque prefiere, en este orden,
+  «Bloque_15min», «Bloque», «Periodo» y «Hora Mensual». «Fecha_Hora» es
+  opcional: si no está, la fecha sale del bloque y el mes. Si calza más de una
+  tabla, toma la más cercana a la columna fija de «Pago»
+  (`ubicar_encabezado`). Si no encuentra ninguna, usa las columnas fijas de
+  abril y avisa:
 
   | Fuente | Hoja | Fecha | Central | Pago | Tipo | Bloque |
   |---|---|---|---|---|---|---|
-  | Subastas (3) | `DB` | — | BF | BH | BE | BI |
+  | Subastas (3) | `DB` | — | BF | BH | BE | BG («Hora Mensual») |
   | CRA (5) | `CÁLCULO_CRA` | AV | AX | AY | AZ | BA |
-  | CO_ERNC (6) | `ENERGIA_Y_CALCULO_CO_ERNC` | BB | BD | BE | BF | BG |
-  | REA (6) | `CALCULO_REA_CENTRAL` | AT | AV | AW | AX | AY |
+  | CO_ERNC (6) | `ENERGIA_Y_CALCULO_CO_ERNC` | BB | BE | BF | BG | BD («Periodo») |
+  | REA (6) | `CALCULO_REA_CENTRAL` | — | AV | AX | AU | AW («Hora Mensual») |
 
-  La planilla 3 no trae fecha (BG es la hora mensual): se arma con el bloque y
-  el mes (AAMM del nombre de los archivos o de la ventana).
+  Cuando la tabla trae «Clave Año_Mes» en vez de fecha (3 y REA), la fecha se
+  arma con el bloque y el mes (AAMM del nombre de los archivos o de la ventana).
 - **Reglas:** Fecha_Hora siempre `DD/MM/AAAA HH:MM`; CONFIGURACION vacía; fuera
   los pagos 0 y las centrales vacías; orden Subastas, CRA, CO_ERNC, REA; coma,
   punto decimal, UTF-8 sin BOM, CRLF; escritura `.tmp` + `os.replace`. Avisa si
@@ -780,6 +787,8 @@ código.** Corregir el documento cuando haya oportunidad:
 - **Qué hace:** lee columnas calculadas de `.xlsx`/`.xlsm` escaneando el ZIP y
   XML, sin abrir Excel; ante un fallo devuelve `None` para conservar el fallback.
 - **Lo usan:** Revisor y `Actualiza_Data_Access.py`, mediante aliases históricos.
+- **`fila_fin`** (opcional, 2026-10-29): deja de leer al pasar esa fila. Lo
+  usa `Actualiza_Pagos_Varios.py` para buscar encabezados sin recorrer la hoja.
 - **Pruebas:** `__comun__/test_excel_xml.py`, con un OOXML sintético.
 
 ### `__comun__/csv_columnas.py` — **hecho** (2026-10-23)
