@@ -48,7 +48,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1925 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1935 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3421 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
@@ -2331,7 +2331,7 @@ Corre una comprobacion y devuelve un dict con su resultado.
 > Entradas (por ahora, en la carpeta desde donde se ejecuta el script):
 > "Reemplazos forzados.xlsx"                                      Copiar del ultimo mes reliquidado y confirmar
 > "datos_reuc_reemplazos_*.xlsx"                                  descargar de la pag REUC
-> "datos_reuc_*.xlsx"                                             descargar de la pag REUC
+> "Reporte_SEC_*.xlsx"                                            descargar de la pag REUC (antes datos_reuc_*)
 > "Cuadros de Pago_Balances_SEN_*_Simplificado_def.xlsb"          de PLABACOM, el más actualizado
 > "1_CUADROS_PAGO_SSCC_*.xlsm"                                    del disco T, el más actualizado
 >
@@ -2372,11 +2372,11 @@ Corre una comprobacion y devuelve un dict con su resultado.
 | **— DESCARGA DESDE REUC (con el navegador de siempre) —** | | |
 | `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
 | `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
-| `PATRONES_AUXILIARES` | `('datos_reuc*.xlsx', 'Reemplazos forzados*.xlsx')` | Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la carpeta vieja quedo algo de verdad y no solo basura suelta. |
+| `PATRONES_AUXILIARES` | `('Reporte_SEC*.xlsx', 'datos_reuc*.xlsx', 'Reemplazos forzados*.xlsx')` | Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la carpeta vieja quedo algo de verdad y no solo basura suelta. |
 | `URL_REUC_LOGIN` | `'https://reuc.coordinador.cl/login/'` | La descarga la hace TU navegador de siempre (no uno automatizado). |
 | `_GUID_DESCARGAS` | `'{374DE290-123F-4565-9164-39C4925E467B}'` | GUID de la carpeta "Descargas" en el registro de Windows (puede estar movida). |
 | `_EXT_PARCIALES` | `('.crdownload', '.partial', '.part', '.tmp', '.download')` | Lo que deja el navegador mientras el archivo todavia se esta bajando. |
-| `_DESTINOS_REUC` | `dict de 2 claves: 'reuc', 'reemplazos', …` | clase -> (prefijo del nombre final, patron a borrar, fragmento que no se borra) |
+| `_DESTINOS_REUC` | `dict de 2 claves: 'reuc', 'reemplazos', …` | clase -> (prefijo del nombre final, patrones a borrar, fragmento que no se borra) Al bajar un Reporte_SEC se borran tambien los datos_reuc_* viejos (el nombre anterior del mismo export), pero nunca l… |
 
 ### Funciones
 
@@ -2511,7 +2511,9 @@ Carpeta Descargas del usuario (la del registro si se movio).
 'reuc', 'reemplazos' o None segun el nombre del archivo bajado.
 
 Acepta los nombres que pone el navegador cuando ya habia uno igual,
-como "datos_reuc (1).xlsx".
+como "Reporte_SEC (1).xlsx". El export de empresas se llama Reporte_SEC_*
+(antes datos_reuc_*, usuaria 2026-10-29); el de reemplazos sigue siendo
+datos_reuc_reemplazos_*.
 
 #### `def descargas_nuevas(carpeta, desde)`
 
@@ -2535,7 +2537,7 @@ se avisa cual falta.
 #### `def descargar_reuc(carpeta_destino=None, log=print, espera_descarga_seg=300, carpeta_bajadas=None, abrir=None)`
 
 Pide los dos exports al navegador por defecto y los trae a auxiliares:
-  - datos_reuc_*.xlsx               (exportar_reuc)
+  - Reporte_SEC_*.xlsx              (exportar_reuc)
   - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
 
 Antes de llamarla la persona ya tiene que haber iniciado sesion en REUC

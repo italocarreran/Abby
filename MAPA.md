@@ -553,6 +553,11 @@ y el paquete `revisor/`, salvo lo indicado).
   `descargar_reuc(carpeta_destino, log, espera_descarga_seg=300, carpeta_bajadas,
   abrir)`. Ya no hace falta `pip install playwright`. Si el navegador guarda en
   otra carpeta, se avisa y se mueve a mano. La horaria sigue con Playwright.
+- **Reporte_SEC (2026-10-29):** el export de empresas (`exportar_reuc`) ahora
+  se llama `Reporte_SEC_*.xlsx` (antes `datos_reuc_*.xlsx`); el de reemplazos
+  sigue `datos_reuc_reemplazos_*.xlsx`. `procesar_datos` lee el `Reporte_SEC_*`
+  más nuevo (mismas columnas: A razón social, C RUT, columna `Rut`). Al bajar
+  uno nuevo se borran también los `datos_reuc_*` viejos de auxiliares.
 
 ### `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py` — sin tasa (2026-10-29)
 

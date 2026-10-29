@@ -132,34 +132,37 @@ class DescargaNavegadorTest(unittest.TestCase):
         return f
 
     def test_clase_descarga(self):
-        self.assertEqual(ar.clase_descarga("datos_reuc_20261029.xlsx"), "reuc")
-        self.assertEqual(ar.clase_descarga("datos_reuc (1).xlsx"), "reuc")
+        self.assertEqual(ar.clase_descarga("Reporte_SEC_20261029.xlsx"), "reuc")
+        self.assertEqual(ar.clase_descarga("Reporte_SEC (1).xlsx"), "reuc")
         self.assertEqual(ar.clase_descarga("Datos_REUC_reemplazos_2026.xlsx"), "reemplazos")
-        self.assertIsNone(ar.clase_descarga("datos_reuc.xlsx.crdownload"))
-        self.assertIsNone(ar.clase_descarga("~$datos_reuc.xlsx"))
+        self.assertIsNone(ar.clase_descarga("Reporte_SEC.xlsx.crdownload"))
+        self.assertIsNone(ar.clase_descarga("~$Reporte_SEC.xlsx"))
         self.assertIsNone(ar.clase_descarga("otra_cosa.xlsx"))
+        # el nombre viejo del export de empresas ya no se toma
+        self.assertIsNone(ar.clase_descarga("datos_reuc_20261029.xlsx"))
 
     def test_solo_las_nuevas(self):
         import os
         import time
-        viejo = self._bajar("datos_reuc_viejo.xlsx")
+        viejo = self._bajar("Reporte_SEC_viejo.xlsx")
         os.utime(viejo, (time.time() - 3600,) * 2)
         self._bajar("datos_reuc_reemplazos_1.xlsx")
         self._bajar("Unconfirmed 123.crdownload")
-        self._bajar("datos_reuc_vacio.xlsx", "")
+        self._bajar("Reporte_SEC_vacio.xlsx", "")
         nuevas = ar.descargas_nuevas(self.bajadas, time.time() - 60)
         self.assertEqual({c: f.name for c, f in nuevas.items()},
                          {"reemplazos": "datos_reuc_reemplazos_1.xlsx"})
 
     def test_espera_mueve_y_borra_viejos(self):
-        (self.aux / "datos_reuc_20260101.xlsx").write_text("viejo")
+        (self.aux / "datos_reuc_20260101.xlsx").write_text("viejo")      # nombre anterior
+        (self.aux / "Reporte_SEC_20260101.xlsx").write_text("viejo")
         (self.aux / "datos_reuc_reemplazos_20260101.xlsx").write_text("viejo")
-        self._bajar("datos_reuc_20261029.xlsx")
+        self._bajar("Reporte_SEC_20261029.xlsx")
         self._bajar("datos_reuc_reemplazos (2).xlsx")
         lineas = []
         res = ar.esperar_descargas(self.bajadas, self.aux, 0, 60, log=lineas.append,
                                    dormir=lambda _: None)
-        self.assertEqual(res["reuc"].name, "datos_reuc_20261029.xlsx")
+        self.assertEqual(res["reuc"].name, "Reporte_SEC_20261029.xlsx")
         self.assertTrue(res["reemplazos"].name.startswith("datos_reuc_reemplazos_"))
         self.assertNotIn(" ", res["reemplazos"].name)
         self.assertEqual(sorted(f.name for f in self.aux.iterdir()),
@@ -167,13 +170,13 @@ class DescargaNavegadorTest(unittest.TestCase):
         self.assertEqual(list(self.bajadas.iterdir()), [])
 
     def test_sin_descarga_avisa_cual_falta(self):
-        self._bajar("datos_reuc_20261029.xlsx")
+        self._bajar("Reporte_SEC_20261029.xlsx")
         t = iter(range(0, 1000, 10))
         with self.assertRaises(TimeoutError) as e:
             ar.esperar_descargas(self.bajadas, self.aux, 0, 60, log=lambda *_: None,
                                  reloj=lambda: next(t), dormir=lambda _: None)
         self.assertIn("datos_reuc_reemplazos", str(e.exception))
-        self.assertTrue((self.aux / "datos_reuc_20261029.xlsx").exists())
+        self.assertTrue((self.aux / "Reporte_SEC_20261029.xlsx").exists())
 
     def test_descargar_abre_los_dos_exports(self):
         abiertos = []
@@ -181,7 +184,7 @@ class DescargaNavegadorTest(unittest.TestCase):
         def abrir(url):
             abiertos.append(url)
             nombre = ("datos_reuc_reemplazos_x.xlsx" if "reemplazadas" in url
-                      else "datos_reuc_x.xlsx")
+                      else "Reporte_SEC_x.xlsx")
             self._bajar(nombre)
 
         res = ar.descargar_reuc(self.aux, log=lambda *_: None,

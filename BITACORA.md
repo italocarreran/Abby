@@ -66,6 +66,17 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: el export de empresas del REUC se llama Reporte_SEC_*
+
+La usuaria avisó que `datos_reuc_*` (el que no es de reemplazos) ahora baja
+como `Reporte_SEC_*`. En el `ActualizaRemplazos.py` de 15 min se cambió el
+reconocimiento en Descargas (`clase_descarga`), el nombre en auxiliares, la
+búsqueda de `procesar_datos` y los textos. Al mover uno nuevo se borran
+también los `datos_reuc_*` viejos, nunca los de reemplazos. 12 pruebas en
+verde. **Supuesto sin confirmar:** que el `Reporte_SEC` trae las mismas
+columnas (A razón social, C RUT, encabezado `Rut`) y una fecha AAAAMMDD en el
+nombre para F1; si no la trae, F1 no se actualiza. La horaria no se tocó.
+
 ## 2026-10-29 — Claude — 15 min: REUC se baja con el navegador de siempre (sin Playwright)
 
 A la usuaria le fallaba la verificación de Cloudflare al actualizar la data

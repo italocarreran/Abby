@@ -4,7 +4,7 @@ ActualizaRemplazos.py
 Entradas (por ahora, en la carpeta desde donde se ejecuta el script):
 "Reemplazos forzados.xlsx"                                      Copiar del ultimo mes reliquidado y confirmar
 "datos_reuc_reemplazos_*.xlsx"                                  descargar de la pag REUC
-"datos_reuc_*.xlsx"                                             descargar de la pag REUC
+"Reporte_SEC_*.xlsx"                                            descargar de la pag REUC (antes datos_reuc_*)
 "Cuadros de Pago_Balances_SEN_*_Simplificado_def.xlsb"          de PLABACOM, el más actualizado
 "1_CUADROS_PAGO_SSCC_*.xlsm"                                    del disco T, el más actualizado
 
@@ -47,7 +47,7 @@ import xlwings as xw
 # =========================================================
 # La carpeta de auxiliares vive en __config__/, junto al resto de los datos
 # intermedios del sistema, y es compartida por todos los usuarios. Ahi van los
-# datos_reuc_* descargados y el archivo "Reemplazos forzados". Como el .py
+# Reporte_SEC_* / datos_reuc_reemplazos_* descargados y el archivo "Reemplazos forzados". Como el .py
 # suele estar en un disco compartido, el config guarda las rutas SEPARADAS POR
 # PC+USUARIO (ver get_usuario), asi que cada persona conserva las suyas sin
 # pisar las de los demas.
@@ -626,7 +626,7 @@ def carpeta_auxiliares():
 
 # Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la
 # carpeta vieja quedo algo de verdad y no solo basura suelta.
-PATRONES_AUXILIARES = ("datos_reuc*.xlsx", "Reemplazos forzados*.xlsx")
+PATRONES_AUXILIARES = ("Reporte_SEC*.xlsx", "datos_reuc*.xlsx", "Reemplazos forzados*.xlsx")
 
 
 def carpeta_datos_guardada(cfg):
@@ -712,7 +712,8 @@ def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print):
 # Con Playwright, Cloudflare detectaba el navegador automatizado y la
 # verificacion fallaba siempre (usuaria, 2026-10-29). Ahora el script solo
 # abre los links en el navegador por defecto y mira la carpeta Descargas:
-# cuando aparecen los datos_reuc*, los mueve a Auxiliares REUC.
+# cuando aparecen Reporte_SEC* y datos_reuc_reemplazos*, los mueve a
+# Auxiliares REUC.
 # ---------------------------------------------------------
 URL_REUC_LOGIN = "https://reuc.coordinador.cl/login/"
 
@@ -745,12 +746,18 @@ def clase_descarga(nombre):
     """'reuc', 'reemplazos' o None segun el nombre del archivo bajado.
 
     Acepta los nombres que pone el navegador cuando ya habia uno igual,
-    como "datos_reuc (1).xlsx".
+    como "Reporte_SEC (1).xlsx". El export de empresas se llama Reporte_SEC_*
+    (antes datos_reuc_*, usuaria 2026-10-29); el de reemplazos sigue siendo
+    datos_reuc_reemplazos_*.
     """
     n = nombre.lower()
-    if n.startswith("~$") or not n.endswith(".xlsx") or not n.startswith("datos_reuc"):
+    if n.startswith("~$") or not n.endswith(".xlsx"):
         return None
-    return "reemplazos" if "reemplaz" in n else "reuc"
+    if n.startswith("reporte_sec"):
+        return "reuc"
+    if n.startswith("datos_reuc") and "reemplaz" in n:
+        return "reemplazos"
+    return None
 
 
 def descargas_nuevas(carpeta, desde):
@@ -797,10 +804,12 @@ def _borrar_viejos(carpeta_aux, patron_glob, excluir=None, log=print):
     return borrados
 
 
-# clase -> (prefijo del nombre final, patron a borrar, fragmento que no se borra)
+# clase -> (prefijo del nombre final, patrones a borrar, fragmento que no se borra)
+# Al bajar un Reporte_SEC se borran tambien los datos_reuc_* viejos (el nombre
+# anterior del mismo export), pero nunca los datos_reuc_reemplazos_*.
 _DESTINOS_REUC = {
-    "reuc": ("datos_reuc", "datos_reuc*.xlsx", "reemplazos"),
-    "reemplazos": ("datos_reuc_reemplazos", "datos_reuc_reemplazos*.xlsx", None),
+    "reuc": ("Reporte_SEC", ("Reporte_SEC*.xlsx", "datos_reuc*.xlsx"), "reemplazos"),
+    "reemplazos": ("datos_reuc_reemplazos", ("datos_reuc_reemplazos*.xlsx",), None),
 }
 
 
@@ -810,13 +819,14 @@ def mover_a_auxiliares(origen, clase, carpeta_aux, log=print):
     Si el navegador le puso " (1)" o similar, se renombra con la fecha para
     que procesar_datos lo encuentre como siempre.
     """
-    prefijo, patron, excluir = _DESTINOS_REUC[clase]
+    prefijo, patrones, excluir = _DESTINOS_REUC[clase]
     nombre = origen.name
     if not re.fullmatch(re.escape(prefijo) + r"[\w\-]*\.xlsx", nombre, re.I) or (
             clase == "reuc" and "reemplaz" in nombre.lower()):
         nombre = f"{prefijo}_{datetime.today().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    for v in _borrar_viejos(carpeta_aux, patron, excluir, log=log):
-        log(f"    Reemplazado (borrado): {v}")
+    for patron in patrones:
+        for v in _borrar_viejos(carpeta_aux, patron, excluir, log=log):
+            log(f"    Reemplazado (borrado): {v}")
     destino = Path(carpeta_aux) / nombre
     shutil.move(str(origen), str(destino))
     return destino
@@ -867,7 +877,7 @@ def descargar_reuc(carpeta_destino=None, log=print, espera_descarga_seg=300,
                    carpeta_bajadas=None, abrir=None):
     """
     Pide los dos exports al navegador por defecto y los trae a auxiliares:
-      - datos_reuc_*.xlsx               (exportar_reuc)
+      - Reporte_SEC_*.xlsx              (exportar_reuc)
       - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
 
     Antes de llamarla la persona ya tiene que haber iniciado sesion en REUC
@@ -922,7 +932,7 @@ def procesar_datos(carpeta_datos, archivo_cuadros,
     archivo_xlsb / archivo_xlsm: rutas explícitas (disco compartido). Si vienen
     en None, se buscan en la carpeta de datos como respaldo.
     """
-    # Los auxiliares (datos_reuc, reemplazos forzados) viven SIEMPRE en
+    # Los auxiliares (Reporte_SEC, datos_reuc_reemplazos, reemplazos forzados) viven SIEMPRE en
     # __config__/Auxiliares REUC, compartida por todos.
     avisar_legado(log)
     carpeta_datos = Path(carpeta_datos) if carpeta_datos else carpeta_auxiliares()
@@ -1004,11 +1014,11 @@ def procesar_datos(carpeta_datos, archivo_cuadros,
     # ---------- REUC ----------
     def _buscar_reuc_sin_reemplazos(carpeta):
         candidatos = [
-            p for p in Path(carpeta).glob("datos_reuc_*.xlsx")
-            if "reemplazos" not in p.name.lower() and not p.name.startswith("~$")
+            p for p in Path(carpeta).iterdir()
+            if p.name.lower().startswith("reporte_sec") and p.suffix.lower() == ".xlsx"
         ]
         if not candidatos:
-            raise FileNotFoundError(f"No hay datos_reuc_*.xlsx (sin 'reemplazos') en {carpeta}")
+            raise FileNotFoundError(f"No hay Reporte_SEC_*.xlsx en {carpeta}")
         candidatos.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         return candidatos[0]
 
@@ -1452,7 +1462,7 @@ def main():
     # ---------- Carpeta de datos ----------
     f1 = tk.LabelFrame(
         contenedor,
-        text="Carpeta con los archivos de entrada (datos_reuc, reemplazos forzados, cuadros de pago)",
+        text="Carpeta con los archivos de entrada (Reporte_SEC, datos_reuc_reemplazos, reemplazos forzados, cuadros de pago)",
         padx=10, pady=6,
     )
     f1.pack(fill="x", padx=20, pady=6)
