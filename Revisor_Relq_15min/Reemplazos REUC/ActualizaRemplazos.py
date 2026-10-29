@@ -608,7 +608,7 @@ def buscar_par_mensual(raiz_facturacion=RAIZ_FACTURACION_DEFAULT, meses=36, log=
 
 
 # =========================================================
-# DESCARGA AUTOMÁTICA DESDE REUC (playwright)
+# DESCARGA DESDE REUC (con el navegador de siempre)
 # =========================================================
 URL_REUC_EMPRESAS = (
     "https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search="
@@ -707,67 +707,75 @@ def buscar_archivo_con_respaldo(carpeta_preferida, patron, log=print):
     )
 
 
-def _sesion_lista(url):
+# ---------------------------------------------------------
+# La descarga la hace TU navegador de siempre (no uno automatizado).
+# Con Playwright, Cloudflare detectaba el navegador automatizado y la
+# verificacion fallaba siempre (usuaria, 2026-10-29). Ahora el script solo
+# abre los links en el navegador por defecto y mira la carpeta Descargas:
+# cuando aparecen los datos_reuc*, los mueve a Auxiliares REUC.
+# ---------------------------------------------------------
+URL_REUC_LOGIN = "https://reuc.coordinador.cl/login/"
+
+# GUID de la carpeta "Descargas" en el registro de Windows (puede estar movida).
+_GUID_DESCARGAS = "{374DE290-123F-4565-9164-39C4925E467B}"
+
+# Lo que deja el navegador mientras el archivo todavia se esta bajando.
+_EXT_PARCIALES = (".crdownload", ".partial", ".part", ".tmp", ".download")
+
+
+def carpeta_descargas():
+    """Carpeta Descargas del usuario (la del registro si se movio)."""
+    if sys.platform.startswith("win"):
+        try:
+            import winreg
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+            ) as k:
+                valor, _ = winreg.QueryValueEx(k, _GUID_DESCARGAS)
+            p = Path(os.path.expandvars(valor))
+            if p.is_dir():
+                return p
+        except OSError:
+            pass
+    return Path.home() / "Downloads"
+
+
+def clase_descarga(nombre):
+    """'reuc', 'reemplazos' o None segun el nombre del archivo bajado.
+
+    Acepta los nombres que pone el navegador cuando ya habia uno igual,
+    como "datos_reuc (1).xlsx".
     """
-    True cuando el navegador ya volvio a REUC y no esta en una pantalla de
-    login. El acceso unificado (hub / sso) rebota entre dominios varias
-    veces, asi que solo damos por buena la URL de REUC misma.
-    """
-    if not url:
-        return False
-    u = url.lower()
-    if "reuc.coordinador.cl" not in u:
-        return False          # todavia esta en el acceso unificado
-    if "/login" in u or "/logout" in u:
-        return False
-    return True
-
-
-def _confirmar_sesion(pagina, timeout_ms=20_000):
-    """
-    Chequeo liviano y barato: entra a una pagina normal de REUC. Si el
-    servidor devuelve la pagina (no rebota a login), la sesion sirve.
-    Se usa ANTES de pedir el export, que es pesado de generar.
-    """
-    try:
-        pagina.goto(
-            "https://reuc.coordinador.cl/maestro_usuarios/empresas/",
-            timeout=timeout_ms,
-            wait_until="domcontentloaded",
-        )
-    except Exception:
-        return False
-    return _sesion_lista(pagina.url)
-
-
-def _intentar_descarga(pagina, url, espera_ms=180_000):
-    """
-    Navega al link de exportacion y espera el evento de descarga del
-    NAVEGADOR (igual que si el usuario hiciera clic el mismo: mismos
-    headers, mismas cookies, mismo user-agent).
-
-    OJO 1: cuando el link dispara una descarga directa, Chromium ABORTA
-    la navegacion (se queda mostrando la pagina anterior). Eso es normal
-    y no es un error: se ignora y se confia solo en el evento de descarga.
-
-    OJO 2: el export lo genera el servidor al vuelo y puede demorar. NO
-    hay que reintentar con timeouts cortos: cada reintento cancela la
-    generacion en curso y obliga al servidor a partir de cero, que era
-    justamente lo que hacia que la descarga no terminara nunca. Por eso
-    aca se espera con paciencia (por defecto 3 minutos) una sola vez.
-    """
-    from playwright.sync_api import Error as PWError
-    from playwright.sync_api import TimeoutError as PWTimeoutError
-
-    try:
-        with pagina.expect_download(timeout=espera_ms) as info:
-            try:
-                pagina.goto(url, timeout=espera_ms, wait_until="commit")
-            except PWError:
-                pass  # navegacion abortada por la descarga: esperado
-        return info.value
-    except PWTimeoutError:
+    n = nombre.lower()
+    if n.startswith("~$") or not n.endswith(".xlsx") or not n.startswith("datos_reuc"):
         return None
+    return "reemplazos" if "reemplaz" in n else "reuc"
+
+
+def descargas_nuevas(carpeta, desde):
+    """{clase: Path} con el archivo mas nuevo de cada clase modificado desde 'desde'."""
+    encontrados = {}
+    try:
+        archivos = list(Path(carpeta).iterdir())
+    except OSError:
+        return encontrados
+    for f in archivos:
+        if f.name.lower().endswith(_EXT_PARCIALES):
+            continue
+        clase = clase_descarga(f.name)
+        if not clase:
+            continue
+        try:
+            st = f.stat()
+        except OSError:
+            continue
+        if st.st_mtime < desde or st.st_size == 0:
+            continue
+        actual = encontrados.get(clase)
+        if actual is None or st.st_mtime > actual[1]:
+            encontrados[clase] = (f, st.st_mtime)
+    return {c: f for c, (f, _) in encontrados.items()}
 
 
 def _borrar_viejos(carpeta_aux, patron_glob, excluir=None, log=print):
@@ -789,140 +797,98 @@ def _borrar_viejos(carpeta_aux, patron_glob, excluir=None, log=print):
     return borrados
 
 
-def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600,
-                   espera_descarga_seg=180):
+# clase -> (prefijo del nombre final, patron a borrar, fragmento que no se borra)
+_DESTINOS_REUC = {
+    "reuc": ("datos_reuc", "datos_reuc*.xlsx", "reemplazos"),
+    "reemplazos": ("datos_reuc_reemplazos", "datos_reuc_reemplazos*.xlsx", None),
+}
+
+
+def mover_a_auxiliares(origen, clase, carpeta_aux, log=print):
+    """Mueve una descarga a auxiliares, borrando antes las versiones viejas.
+
+    Si el navegador le puso " (1)" o similar, se renombra con la fecha para
+    que procesar_datos lo encuentre como siempre.
     """
-    Abre un navegador para que el usuario inicie sesion en REUC y, apenas
-    la sesion queda confirmada, descarga los dos exports:
+    prefijo, patron, excluir = _DESTINOS_REUC[clase]
+    nombre = origen.name
+    if not re.fullmatch(re.escape(prefijo) + r"[\w\-]*\.xlsx", nombre, re.I) or (
+            clase == "reuc" and "reemplaz" in nombre.lower()):
+        nombre = f"{prefijo}_{datetime.today().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    for v in _borrar_viejos(carpeta_aux, patron, excluir, log=log):
+        log(f"    Reemplazado (borrado): {v}")
+    destino = Path(carpeta_aux) / nombre
+    shutil.move(str(origen), str(destino))
+    return destino
+
+
+def esperar_descargas(carpeta_bajadas, carpeta_aux, desde, espera_seg=300,
+                      log=print, pausa=1.0, reloj=time.time, dormir=time.sleep):
+    """Espera los dos exports en Descargas y los mueve a auxiliares.
+
+    Un archivo se da por terminado cuando su tamano no cambia entre dos
+    revisiones seguidas. Si se acaba el tiempo, lo que llego igual se mueve y
+    se avisa cual falta.
+    """
+    t_ini = reloj()
+    tamanos = {}
+    listos = {}
+    t_aviso = t_ini
+    while len(listos) < len(_DESTINOS_REUC):
+        for clase, f in descargas_nuevas(carpeta_bajadas, desde).items():
+            if clase in listos:
+                continue
+            try:
+                tam = f.stat().st_size
+            except OSError:
+                continue
+            if tamanos.get(clase) == (f, tam):
+                listos[clase] = mover_a_auxiliares(f, clase, carpeta_aux, log=log)
+                log(f"    Llego {f.name} -> {listos[clase].name}")
+            else:
+                tamanos[clase] = (f, tam)
+        if len(listos) == len(_DESTINOS_REUC):
+            break
+        if reloj() - t_ini > espera_seg:
+            faltan = [_DESTINOS_REUC[c][0] for c in _DESTINOS_REUC if c not in listos]
+            raise TimeoutError(
+                f"No llego {' ni '.join(faltan)} a {carpeta_bajadas} en "
+                f"{espera_seg // 60} min. Si el navegador lo guardo en otra carpeta, "
+                f"muevelo a mano a {carpeta_aux}."
+            )
+        if reloj() - t_aviso > 30:
+            log("    (esperando las descargas en el navegador...)")
+            t_aviso = reloj()
+        dormir(pausa)
+    return listos
+
+
+def descargar_reuc(carpeta_destino=None, log=print, espera_descarga_seg=300,
+                   carpeta_bajadas=None, abrir=None):
+    """
+    Pide los dos exports al navegador por defecto y los trae a auxiliares:
       - datos_reuc_*.xlsx               (exportar_reuc)
       - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
 
-    Los guarda en la carpeta de auxiliares (por defecto
-    ``__config__/Auxiliares REUC``, compartida por todos los usuarios).
-
-    Flujo:
-      1. Espera a que el usuario termine el login (el acceso unificado
-         rebota entre dominios; solo se acepta la URL de REUC misma).
-      2. Confirma la sesion con una peticion liviana.
-      3. Descarga cada export UNA sola vez, esperando con paciencia.
-
-    El login lo hace la persona en el navegador: el script no escribe ni
-    recuerda nada (en 15 minutos se saco el correo recordado, usuaria
-    2026-10-30).
-
-    Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
-    navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
-    La CLAVE nunca pasa por este script ni se guarda en ninguna parte: se
-    escribe directamente en la pagina real de REUC, dentro del navegador.
+    Antes de llamarla la persona ya tiene que haber iniciado sesion en REUC
+    en ese mismo navegador (la ventana se lo pide). El script no ve ni guarda
+    la sesion ni la clave: todo queda en el navegador.
 
     Devuelve un dict {"reuc": Path, "reemplazos": Path}.
     """
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        raise RuntimeError(
-            "Falta instalar Playwright. Abre una consola (cmd) y ejecuta:\n"
-            "  pip install playwright\n"
-            "  playwright install chromium"
-        )
-
+    import webbrowser
+    abrir = abrir or webbrowser.open
     carpeta_aux = Path(carpeta_destino) if carpeta_destino else CARPETA_AUXILIARES
     carpeta_aux.mkdir(parents=True, exist_ok=True)
+    bajadas = Path(carpeta_bajadas) if carpeta_bajadas else carpeta_descargas()
 
-    # (clave, url, prefijo, patron_a_borrar, fragmento_a_excluir_del_borrado)
-    descargas = (
-        ("reuc", URL_REUC_EMPRESAS, "datos_reuc",
-         "datos_reuc*.xlsx", "reemplazos"),
-        ("reemplazos", URL_REUC_REEMPLAZADAS, "datos_reuc_reemplazos",
-         "datos_reuc_reemplazos*.xlsx", None),
-    )
-
-    resultados = {}
-
-    with sync_playwright() as pw:
-        navegador = pw.chromium.launch(headless=False)
-        contexto = navegador.new_context(accept_downloads=True,
-                                         viewport={"width": 1200, "height": 900})
-        try:
-            pagina = contexto.new_page()
-            pagina.goto("https://reuc.coordinador.cl/login/",
-                        wait_until="domcontentloaded")
-
-            log("  Se abrio el navegador: inicia sesion en REUC.")
-            log("  Puede pedirte pasar por el acceso unificado un par de veces;")
-            log("  apenas entres, la descarga parte sola. No cierres la ventana.")
-
-            # ---- 1. Esperar el login (sin tocar el export) ----
-            t_ini = time.time()
-            t_ultimo_aviso = time.time()
-
-            while True:
-                if time.time() - t_ini > timeout_login_seg:
-                    raise TimeoutError(
-                        "No se detecto el inicio de sesion a tiempo "
-                        f"({timeout_login_seg // 60} min). Intenta de nuevo."
-                    )
-                try:
-                    url_actual = pagina.url
-                except Exception:
-                    raise RuntimeError(
-                        "Se cerro la ventana del navegador antes de terminar."
-                    )
-
-                if _sesion_lista(url_actual):
-                    break
-
-                if time.time() - t_ultimo_aviso > 30:
-                    log(f"    (esperando el login... pagina actual: {url_actual})")
-                    t_ultimo_aviso = time.time()
-
-                pagina.wait_for_timeout(1000)
-
-            # ---- 2. Confirmar que la sesion realmente sirve ----
-            log("  Sesion detectada, confirmando...")
-            if not _confirmar_sesion(pagina):
-                raise RuntimeError(
-                    "El navegador volvio a REUC pero la sesion no quedo activa. "
-                    "Cierra e intenta de nuevo."
-                )
-            log("  Sesion confirmada.")
-
-            # ---- 3. Descargar cada export, una sola vez y con paciencia ----
-            for clave, url, prefijo, patron_borrado, excluir in descargas:
-                log(f"  Descargando {prefijo}... "
-                    f"(el servidor genera el archivo, puede demorar)")
-
-                t_desc = time.time()
-                descarga = _intentar_descarga(
-                    pagina, url, espera_ms=espera_descarga_seg * 1000
-                )
-                if descarga is None:
-                    raise RuntimeError(
-                        f"No se pudo descargar {prefijo}: el servidor no entrego "
-                        f"el archivo en {espera_descarga_seg}s. Puede estar lento; "
-                        "intenta de nuevo en un rato."
-                    )
-
-                nombre = descarga.suggested_filename or ""
-                if not normalizar(nombre).startswith(normalizar(prefijo)):
-                    nombre = (f"{prefijo}_"
-                              f"{datetime.today().strftime('%Y%m%d_%H%M%S')}.xlsx")
-
-                # Borrar versiones anteriores para no acumular archivos viejos
-                viejos = _borrar_viejos(carpeta_aux, patron_borrado, excluir, log=log)
-                for v in viejos:
-                    log(f"    Reemplazado (borrado): {v}")
-
-                destino = carpeta_aux / nombre
-                descarga.save_as(str(destino))
-                log(f"    Guardado en {int(time.time() - t_desc)}s: {destino.name}")
-                resultados[clave] = destino
-
-        finally:
-            contexto.close()
-            navegador.close()
-
-    return resultados
+    desde = time.time() - 5     # margen por relojes de archivo redondeados
+    log(f"  Mirando la carpeta de descargas: {bajadas}")
+    for url in (URL_REUC_EMPRESAS, URL_REUC_REEMPLAZADAS):
+        abrir(url)
+    log("  Se pidieron los dos exports en tu navegador "
+        "(el servidor los genera, puede demorar).")
+    return esperar_descargas(bajadas, carpeta_aux, desde, espera_descarga_seg, log=log)
 
 
 def ultima_fila(sheet, col_letra, desde):
@@ -1562,6 +1528,15 @@ def main():
         carpeta = var_carpeta.get()
         if not Path(carpeta).is_dir():
             messagebox.showerror("Error", "Primero selecciona la carpeta de datos.")
+            return
+        import webbrowser
+        webbrowser.open(URL_REUC_LOGIN)
+        if not messagebox.askokcancel(
+                "Iniciar sesión en REUC",
+                "Se abrió REUC en tu navegador.\n\n"
+                "Inicia sesión ahí (y pasa la verificación de Cloudflare). "
+                "Cuando ya veas REUC, presiona Aceptar y se bajan los dos "
+                "archivos solos."):
             return
         btn_reuc.config(state="disabled", bg="#aaaaaa")
         var_estado_reuc.set("Actualizando...")

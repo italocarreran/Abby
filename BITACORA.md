@@ -66,6 +66,22 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: REUC se baja con el navegador de siempre (sin Playwright)
+
+A la usuaria le fallaba la verificación de Cloudflare al actualizar la data
+REUC: Cloudflare reconoce el Chromium que maneja Playwright. No se intentó
+esconder la automatización. En
+`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py` se sacaron
+`_sesion_lista`, `_confirmar_sesion`, `_intentar_descarga` y el
+`descargar_reuc` con Playwright. Ahora el botón abre el login en el navegador
+por defecto, espera que la persona presione Aceptar, abre los dos exports con
+`webbrowser` y vigila Descargas (`carpeta_descargas`, `descargas_nuevas`,
+`esperar_descargas`, `mover_a_auxiliares`). Se agregaron 5 pruebas
+(`DescargaNavegadorTest`); son 12 en total y pasan. **Falta probarlo en
+Windows con la sesión real**: confirmar que el navegador baja directo sin
+preguntar dónde guardar y que los nombres empiezan con `datos_reuc`. La
+horaria no se tocó.
+
 ## 2026-10-30 — Claude — 15 min: ActualizaRemplazos sin el correo del REUC
 
 La usuaria pidió sacar lo del mail del actualizador de reemplazos REUC. En

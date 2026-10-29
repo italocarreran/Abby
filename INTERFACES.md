@@ -48,7 +48,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1950 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1925 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3421 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
@@ -2369,10 +2369,14 @@ Corre una comprobacion y devuelve un dict con su resultado.
 | `MESES_ES` | `lista de 12 elementos: 'enero', 'febrero', 'marzo', …` |  |
 | **— Verificación de coherencia nombre de archivo vs carpeta —** | | |
 | `MESES_ABR` | `dict de 13 claves: 'ene', 'feb', 'mar', …` |  |
-| **— DESCARGA AUTOMÁTICA DESDE REUC (playwright) —** | | |
+| **— DESCARGA DESDE REUC (con el navegador de siempre) —** | | |
 | `URL_REUC_EMPRESAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/exportar_reuc?&text_search='` |  |
 | `URL_REUC_REEMPLAZADAS` | `'https://reuc.coordinador.cl/maestro_usuarios/empresas/export_reemplazadas_data?&text_sea…` |  |
 | `PATRONES_AUXILIARES` | `('datos_reuc*.xlsx', 'Reemplazos forzados*.xlsx')` | Lo que la carpeta de auxiliares tiene que contener; sirve para saber si en la carpeta vieja quedo algo de verdad y no solo basura suelta. |
+| `URL_REUC_LOGIN` | `'https://reuc.coordinador.cl/login/'` | La descarga la hace TU navegador de siempre (no uno automatizado). |
+| `_GUID_DESCARGAS` | `'{374DE290-123F-4565-9164-39C4925E467B}'` | GUID de la carpeta "Descargas" en el registro de Windows (puede estar movida). |
+| `_EXT_PARCIALES` | `('.crdownload', '.partial', '.part', '.tmp', '.download')` | Lo que deja el navegador mientras el archivo todavia se esta bajando. |
+| `_DESTINOS_REUC` | `dict de 2 claves: 'reuc', 'reemplazos', …` | clase -> (prefijo del nombre final, patron a borrar, fragmento que no se borra) |
 
 ### Funciones
 
@@ -2498,30 +2502,45 @@ guardada en config). Si ahi no esta, cae de respaldo a Auxiliares REUC
 -- que es donde SIEMPRE deberia estar-- y avisa por log cual de las
 dos uso, para que quede claro y no parezca que "no encuentra nada".
 
-#### `def descargar_reuc(carpeta_destino=None, log=print, timeout_login_seg=600, espera_descarga_seg=180)`
+#### `def carpeta_descargas()`
 
-Abre un navegador para que el usuario inicie sesion en REUC y, apenas
-la sesion queda confirmada, descarga los dos exports:
+Carpeta Descargas del usuario (la del registro si se movio).
+
+#### `def clase_descarga(nombre)`
+
+'reuc', 'reemplazos' o None segun el nombre del archivo bajado.
+
+Acepta los nombres que pone el navegador cuando ya habia uno igual,
+como "datos_reuc (1).xlsx".
+
+#### `def descargas_nuevas(carpeta, desde)`
+
+{clase: Path} con el archivo mas nuevo de cada clase modificado desde 'desde'.
+
+#### `def mover_a_auxiliares(origen, clase, carpeta_aux, log=print)`
+
+Mueve una descarga a auxiliares, borrando antes las versiones viejas.
+
+Si el navegador le puso " (1)" o similar, se renombra con la fecha para
+que procesar_datos lo encuentre como siempre.
+
+#### `def esperar_descargas(carpeta_bajadas, carpeta_aux, desde, espera_seg=300, log=print, pausa=1.0, reloj=time.time, dormir=time.sleep)`
+
+Espera los dos exports en Descargas y los mueve a auxiliares.
+
+Un archivo se da por terminado cuando su tamano no cambia entre dos
+revisiones seguidas. Si se acaba el tiempo, lo que llego igual se mueve y
+se avisa cual falta.
+
+#### `def descargar_reuc(carpeta_destino=None, log=print, espera_descarga_seg=300, carpeta_bajadas=None, abrir=None)`
+
+Pide los dos exports al navegador por defecto y los trae a auxiliares:
   - datos_reuc_*.xlsx               (exportar_reuc)
   - datos_reuc_reemplazos_*.xlsx    (export_reemplazadas_data)
 
-Los guarda en la carpeta de auxiliares (por defecto
-``__config__/Auxiliares REUC``, compartida por todos los usuarios).
-
-Flujo:
-  1. Espera a que el usuario termine el login (el acceso unificado
-     rebota entre dominios; solo se acepta la URL de REUC misma).
-  2. Confirma la sesion con una peticion liviana.
-  3. Descarga cada export UNA sola vez, esperando con paciencia.
-
-El login lo hace la persona en el navegador: el script no escribe ni
-recuerda nada (en 15 minutos se saco el correo recordado, usuaria
-2026-10-30).
-
-Seguridad: no se guarda nada de la sesion. Cada ejecucion abre un
-navegador nuevo y sin memoria (sin perfil, sin cookies persistidas).
-La CLAVE nunca pasa por este script ni se guarda en ninguna parte: se
-escribe directamente en la pagina real de REUC, dentro del navegador.
+Antes de llamarla la persona ya tiene que haber iniciado sesion en REUC
+en ese mismo navegador (la ventana se lo pide). El script no ve ni guarda
+la sesion ni la clave: todo queda en el navegador.
 
 Devuelve un dict {"reuc": Path, "reemplazos": Path}.
 

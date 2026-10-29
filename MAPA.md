@@ -537,13 +537,22 @@ y el paquete `revisor/`, salvo lo indicado).
   archivos reales de 2601 que mandó la usuaria (no versionados), con la
   escritura simulada.
 
-### `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py` — sin correo (2026-10-30)
+### `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py` — sin correo ni Playwright (2026-10-30)
 
 - Igual que el horario, **sin el correo del REUC**: no hay campo en la ventana,
   no se escribe solo en el login ni se recuerda en `reemplazos_reuc.json`
   (la clave `correo_reuc` que ya esté ahí queda, nadie la lee).
-  `descargar_reuc(carpeta_destino, log, timeout_login_seg, espera_descarga_seg)`.
   El login se hace a mano en el navegador.
+- **Descarga sin Playwright (2026-10-29):** Cloudflare detectaba el Chromium
+  automatizado y la verificación fallaba. Ahora «Actualizar data REUC» abre el
+  login en el **navegador por defecto**, pide Aceptar cuando la sesión está
+  lista, abre los dos links de export ahí mismo y mira la carpeta Descargas
+  (`carpeta_descargas()`, la del registro de Windows si se movió). Cuando
+  `datos_reuc*.xlsx` y `datos_reuc_reemplazos*.xlsx` llegan y su tamaño deja de
+  cambiar, los mueve a `__config__/Auxiliares REUC/` borrando los viejos.
+  `descargar_reuc(carpeta_destino, log, espera_descarga_seg=300, carpeta_bajadas,
+  abrir)`. Ya no hace falta `pip install playwright`. Si el navegador guarda en
+  otra carpeta, se avisa y se mueve a mano. La horaria sigue con Playwright.
 
 ### `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py` — sin tasa (2026-10-29)
 
