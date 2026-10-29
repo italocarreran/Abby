@@ -649,6 +649,13 @@ y el paquete `revisor/`, salvo lo indicado).
 
 ### `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
 
+- **SOBRECOSTOS desde SC sin FD (2026-10-29):** en Cálculo_SobrecostosSSCC,
+  la casilla «Actualizar SOBRECOSTOS (desde SC sin FD para Coyailen)»
+  (`hacer_otro` en `sc`) pega `01 Sobrecostos/SC_CfrecSinFD_AAMM_para_coyailen.csv`
+  (salida de `Reorganiza_SC_Cfrec.py`) en la hoja `SOBRECOSTOS`, A7:R, solo
+  los datos. Borra en A:R lo que sobre de la pegada anterior. Los números y
+  las fechas van convertidos (`valor_csv`), no como texto. Clave de traspaso
+  `sc_cfrec_coyailen`. Reemplaza al «Traer Consolidado» horario.
 - **Filtros en el destino (2026-10-29):** antes de pegar en cada hoja destino
   (FD_*, PRORRATA_RETIROS, «SC y CO») se limpia cualquier filtro aplicado,
   en la hoja o en sus tablas (`quitar_filtros`, en `Actualiza_SC_CO.py`; las

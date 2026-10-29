@@ -49,12 +49,12 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1958 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3435 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3436 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 736 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1174 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
-- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1447 líneas
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1574 líneas
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 552 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
@@ -2639,7 +2639,7 @@ manteniendo el formato de las celdas.
 | `NODOS` | `lista de 24 elementos: dict(id='c_fd', tipo='carpeta', pref='', texto='../FD/          « ORIGEN — fuera de 02 CASO RELIQUIDACION »'), dict(id='a_sscc_desempeno', tipo='archivo', pref='    └── ', texto='SSCC_Desempeno*.xlsx\|xlsm   (origen de las hojas FD)', carpeta=['FD'], sube=True, solo_info=True, patron='^sscc_desempeno', ext=XL, espejo=None), dict(id='c_ent', tipo='carpeta', pref='├── ', texto='00 Entregables/'), …` |  |
 | `NODO_POR_ID` | `{n['id']: n for n in NODOS}` |  |
 | `ACTUALIZADORES` | `dict de 8 claves: 'a_calc_sscc_01', 'a_3_p9', 'a_5_p9', …` | Botón "Actualizar data": qué script lanza cada archivo maestro Solo va en los MAESTROS, que son los que el usuario edita. |
-| `CLAVES_TRASPASO` | `dict de 13 claves: 'a_sscc_desempeno', 'a_prorrata', 'a_calc_sscc_01', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
+| `CLAVES_TRASPASO` | `dict de 14 claves: 'a_sscc_desempeno', 'a_prorrata', 'a_calc_sscc_01', …` | Traduccion de los id del arbol a las claves del JSON de traspaso, que son las que esperan los actualizadores. |
 | `ARCHIVO_TRASPASO` | `'_traspaso_actualizador.json'` |  |
 | `TRASPASO_VERSION` | `_traspaso.VERSION_ACTUAL` |  |
 | `ACCIONES_INTERNAS` | `{'a_0_cuadros': [('Exportar CPRT', '_exportar_cprt')]}` | Acciones que corren DENTRO del revisor, sin lanzar otro proceso. |
@@ -3384,6 +3384,9 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 | `MAPEO_P3_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CPF_FD', 'cols_destino': [('F', 'N')], 'fila_ini_destino': 9, 'fila_det_destino': 'F', 'cols_formulas': [('A', 'E'), ('P', 'R')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CSF_FD', 'cols_destino': [('F', 'L')], 'fila_ini_destino': 9, 'fila_det_destino': 'F', 'cols_formulas': [('A', 'E'), ('N', 'O'), ('Q', 'Y')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'CTF_FD', 'cols_destino': [('F', 'M')], 'fila_ini_destino': 9, 'fila_det_destino': 'F', 'cols_formulas': [('A', 'E'), ('O', 'Q'), ('S', 'Z')]}, …` | Planilla 3, modo 15 minutos: en las tres hojas el bloque que se pega empieza en la F (antes D / E / E). |
 | `MAPEO_P5_FD` | `lista de 3 elementos: {'hoja_origen': 'CPF Horario', 'cols_origen': [('B', 'J')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CPF', 'cols_destino': [('B', 'J')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CSF Horario', 'cols_origen': [('B', 'H')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CSF', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, {'hoja_origen': 'CTF Horario', 'cols_origen': [('B', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD_CTF', 'cols_destino': [('B', 'I')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': [('A', 'A')]}, …` |  |
 | `MAPEO_P6_FD` | `lista de 1 elementos: {'hoja_origen': 'CT Diario', 'cols_origen': [('B', 'B'), ('D', 'I')], 'fila_ini_origen': 12, 'fila_det_origen': 'B', 'hoja_destino': 'FD', 'cols_destino': [('B', 'H')], 'fila_ini_destino': 7, 'fila_det_destino': 'B', 'cols_formulas': []}, …` |  |
+| `SOBRECOSTOS_COYAILEN` | `{'hoja_destino': 'SOBRECOSTOS', 'fila_ini': 7, 'col_ini': 'A', 'col_fin': 'R'}` | ── SOBRECOSTOS desde SC sin FD (para Coyailen) ───────────────────────────── Modo 15 minutos (usuaria, 2026-10-29): la hoja SOBRECOSTOS de Cálculo_SobrecostosSSCC se llena con la salida de Reorganiza… |
+| `_RE_FECHA` | `re.compile('^(\\d{1,2})[-/](\\d{1,2})[-/](\\d{4})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?…` |  |
+| `_RE_FECHA_ISO` | `re.compile('^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?$')` |  |
 | `BLOQUES_POR_HORA` | `4` | ── Configuración Prorrata (pivot tabla→matriz) ────────────────────────────── Origen: hoja "Prorrata 15min" (en el modo horario era PRORRATA_HORARIA_TABULAR), fila 2 en adelante. |
 | `MAX_FILAS_PRORRATA` | `31 * 24 * BLOQUES_POR_HORA + BLOQUES_POR_HORA` |  |
 | `PRORRATA_CONFIG` | `dict de 9 claves: 'hoja_origen', 'fila_ini_origen', 'col_hora', …` |  |
@@ -3405,6 +3408,10 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 FD está un nivel arriba de 02 CASO RELIQUIDACION.
 
 #### `def buscar_sobrecostos_xlsm(carpeta_reliq: Path) -> Path | None`
+
+#### `def buscar_sc_cfrec_coyailen(carpeta_reliq: Path) -> Path | None`
+
+La salida de Reorganiza_SC_Cfrec.py: 01 Sobrecostos/SC_CfrecSinFD_*_para_coyailen.csv.
 
 #### `def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None`
 
@@ -3440,6 +3447,24 @@ FD está un nivel arriba de 02 CASO RELIQUIDACION.
 
 Aplica una lista de mapeos entre wb_o (origen) y wb_d (destino).
 
+#### `def valor_csv(texto)`
+
+Texto del csv -> lo que se escribe en Excel. Los numeros van como numero
+(con punto decimal, que es como los escribe el csv: si se mandaran como
+texto, un Excel en español podria leer "3.5" como 35), las fechas
+DD-MM-AAAA / DD/MM/AAAA / AAAA-MM-DD como fecha, lo vacio como celda vacia
+y el resto tal cual.
+
+#### `def leer_csv_coyailen(ruta: Path, n_cols: int=18) -> list`
+
+Filas de datos (sin encabezado) del csv para Coyailen, ya convertidas y
+con n_cols columnas cada una. Sin filas vacias.
+
+#### `def pegar_sobrecostos_coyailen(wb_d, ruta_csv: Path, cfg: dict=SOBRECOSTOS_COYAILEN, log_func=print) -> int`
+
+Pega el csv para Coyailen en la hoja SOBRECOSTOS desde A7 y borra en A:R
+lo que sobre de la pegada anterior. Devuelve cuantas filas pego.
+
 #### `def aplicar_prorrata(app_xw, wb_o, wb_d, cfg: dict, log_func=print, progreso_func=None)`
 
 Transforma tabla larga (Hora,Suministrador,Valor) a matriz pivote en destino.
@@ -3451,8 +3476,9 @@ hacer_fd: actualizar FD
 hacer_sc_co: solo p5, subconjunto de ["SC", "CO"]: la hoja "SC y CO", con el
        motor de Actualiza_SC_CO.py (actualizar_en_libro) sobre el mismo
        libro abierto. Va despues de FD y prorrata.
-hacer_otro: p3/p5/p6=Prorrata. En sc no hace nada: el "Traer Consolidado"
-            del modo horario se saco junto con el tabulado.
+hacer_otro: p3/p5/p6=Prorrata. sc=hoja SOBRECOSTOS desde
+            SC_CfrecSinFD_AAMM_para_coyailen.csv (reemplaza al "Traer
+            Consolidado" del modo horario).
 rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
        cual y NO se vuelve a buscar el archivo; las que falten caen al
        buscar_* de siempre.

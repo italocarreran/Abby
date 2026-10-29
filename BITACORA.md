@@ -21,7 +21,8 @@
       En `Revisor_Relq_15min/` se sacaron detalles diarios, CCA, 02
       Consolidado_Tabulado y los Access. La usuaria va de a poco, actualizador
       por actualizador; no adelantarse. Falta saber: (a) de dónde sale la hoja
-      `SOBRECOSTOS` de `Cálculo_SobrecostosSSCC` (antes "Traer Consolidado");
+      `SOBRECOSTOS` de `Cálculo_SobrecostosSSCC` (antes "Traer Consolidado")
+      (resuelto 2026-10-29: del csv para Coyailen, A7:R);
       (b) qué arma `Pago_Retiro_reporte_tabla` sin `Prorratear.py`, y si
       `Carga_Retiros.py` sigue haciendo falta (resuelto 2026-10-23: no, se
       sacó); (c) `Consolidado_AAMM` y `Pago_Sobrecostos`: resuelto
@@ -65,6 +66,20 @@
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
+
+## 2026-10-29 — Claude — 15 min: SOBRECOSTOS se llena con el csv para Coyailen
+
+La usuaria pidió que Cálculo_SobrecostosSSCC tenga una opción para
+actualizarse con la salida del script SC sin FD, pegada en A7:R. Confirmó que
+va en la hoja `SOBRECOSTOS` y que se pegan solo los datos, borrando lo que
+sobre. En `Actualiza_datos.py` la casilla «otro» de `sc`, que estaba apagada
+desde que se sacó «Traer Consolidado», ahora hace eso
+(`pegar_sobrecostos_coyailen`, `leer_csv_coyailen`, `valor_csv`,
+`buscar_sc_cfrec_coyailen`). Antes de pegar quita el filtro de la hoja. El
+Revisor manda la ruta en `sc_cfrec_coyailen`. Esto resuelve el pendiente (a).
+4 pruebas en `test_sobrecostos_coyailen.py`, con una hoja falsa. Falta
+correrlo en Excel. **Supuesto:** las fechas del csv vienen como DD-MM-AAAA,
+DD/MM/AAAA o AAAA-MM-DD; si vienen de otra forma quedan como texto.
 
 ## 2026-10-29 — Claude — 15 min: se quitan los filtros del destino antes de pegar
 

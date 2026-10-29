@@ -322,6 +322,19 @@ def buscar_sobrecostos_xlsm(carpeta_reliq: Path) -> Path | None:
     candidatos.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return candidatos[0]
 
+def buscar_sc_cfrec_coyailen(carpeta_reliq: Path) -> Path | None:
+    """La salida de Reorganiza_SC_Cfrec.py: 01 Sobrecostos/SC_CfrecSinFD_*_para_coyailen.csv."""
+    objetivo_carpeta = normalizar("01 sobrecostos")
+    carpeta_sc = next((s for s in carpeta_reliq.iterdir() if s.is_dir()
+                       and normalizar(s.name) == objetivo_carpeta), None)
+    if carpeta_sc is None:
+        return None
+    patron = re.compile(r"^sc_cfrecsinfd_.*_para_coyailen\.csv$", re.IGNORECASE)
+    candidatos = [f for f in carpeta_sc.iterdir() if f.is_file() and patron.search(f.name)]
+    if not candidatos:
+        return None
+    return max(candidatos, key=lambda p: p.stat().st_mtime)
+
 def buscar_planilla9(carpeta_reliq: Path, prefijo: str) -> Path | None:
     p9 = None
     for sub in carpeta_reliq.iterdir():
@@ -608,6 +621,94 @@ def aplicar_mapeo(app_xw, wb_o, wb_d, mapeo: list, log_func=print, progreso_func
         if progreso_func:
             progreso_func(idx, total, f"Hoja {m['hoja_destino']} OK")
 
+# ── SOBRECOSTOS desde SC sin FD (para Coyailen) ─────────────────────────────
+# Modo 15 minutos (usuaria, 2026-10-29): la hoja SOBRECOSTOS de
+# Cálculo_SobrecostosSSCC se llena con la salida de Reorganiza_SC_Cfrec.py,
+# 01 Sobrecostos/SC_CfrecSinFD_AAMM_para_coyailen.csv (columnas A..R). Se pegan
+# solo los datos (sin el encabezado del csv) desde A7, y se borra en A:R lo que
+# quede abajo de la pegada anterior. Es lo que antes hacia "Traer Consolidado"
+# desde el tabulado.
+SOBRECOSTOS_COYAILEN = {
+    "hoja_destino": "SOBRECOSTOS",
+    "fila_ini": 7,
+    "col_ini": "A",
+    "col_fin": "R",
+}
+
+_RE_FECHA = re.compile(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$")
+_RE_FECHA_ISO = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$")
+
+def valor_csv(texto):
+    """Texto del csv -> lo que se escribe en Excel. Los numeros van como numero
+    (con punto decimal, que es como los escribe el csv: si se mandaran como
+    texto, un Excel en español podria leer "3.5" como 35), las fechas
+    DD-MM-AAAA / DD/MM/AAAA / AAAA-MM-DD como fecha, lo vacio como celda vacia
+    y el resto tal cual."""
+    from datetime import datetime
+    t = (texto or "").strip()
+    if t == "":
+        return None
+    try:
+        if re.fullmatch(r"[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?", t):
+            return float(t)
+    except ValueError:
+        pass
+    for rx, orden in ((_RE_FECHA, (2, 1, 0)), (_RE_FECHA_ISO, (0, 1, 2))):
+        m = rx.match(t)
+        if m:
+            g = m.groups()
+            a, mes, d = (int(g[i]) for i in orden)
+            try:
+                return datetime(a, mes, d, int(g[3] or 0), int(g[4] or 0), int(g[5] or 0))
+            except ValueError:
+                return t
+    return t
+
+def leer_csv_coyailen(ruta: Path, n_cols: int = 18) -> list:
+    """Filas de datos (sin encabezado) del csv para Coyailen, ya convertidas y
+    con n_cols columnas cada una. Sin filas vacias."""
+    import csv as _csv, io as _io
+    datos = Path(ruta).read_bytes()
+    try:
+        texto = datos.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        texto = datos.decode("cp1252")
+    filas = list(_csv.reader(_io.StringIO(texto, newline="")))[1:]
+    out = []
+    for f in filas:
+        if not any(c.strip() for c in f):
+            continue
+        f = (f + [""] * n_cols)[:n_cols]
+        out.append([valor_csv(c) for c in f])
+    return out
+
+def pegar_sobrecostos_coyailen(wb_d, ruta_csv: Path, cfg: dict = SOBRECOSTOS_COYAILEN,
+                               log_func=print) -> int:
+    """Pega el csv para Coyailen en la hoja SOBRECOSTOS desde A7 y borra en A:R
+    lo que sobre de la pegada anterior. Devuelve cuantas filas pego."""
+    t_ini = time.time()
+    hoja = cfg["hoja_destino"]
+    sh_d = next((sh for sh in wb_d.sheets if normalizar(sh.name) == normalizar(hoja)), None)
+    if sh_d is None:
+        raise RuntimeError(f"No está la hoja '{hoja}' en {wb_d.name}.")
+    c_ini, c_fin = col_letra_a_num(cfg["col_ini"]), col_letra_a_num(cfg["col_fin"])
+    n_cols = c_fin - c_ini + 1
+    filas = leer_csv_coyailen(ruta_csv, n_cols)
+    log_func(f"  {ruta_csv.name}: {len(filas)} filas")
+    if not filas:
+        raise RuntimeError(f"{ruta_csv.name} no trae datos.")
+    _quitar_filtros(sh_d, log_func)
+    f_ini = cfg["fila_ini"]
+    viejo_fin = ultima_fila_usedrange(sh_d, f_ini)
+    nuevo_fin = f_ini + len(filas) - 1
+    sh_d.range((f_ini, c_ini), (nuevo_fin, c_fin)).value = filas
+    if viejo_fin > nuevo_fin:
+        sh_d.range((nuevo_fin + 1, c_ini), (viejo_fin, c_fin)).clear_contents()
+        log_func(f"     borrado {cfg['col_ini']}{nuevo_fin + 1}:{cfg['col_fin']}{viejo_fin}")
+    log_func(f"     {hoja}!{cfg['col_ini']}{f_ini}:{cfg['col_fin']}{nuevo_fin} pegado "
+             f"| {fmt_tiempo(time.time() - t_ini)}")
+    return len(filas)
+
 # ── Configuración Prorrata (pivot tabla→matriz) ──────────────────────────────
 # Origen: hoja "Prorrata 15min" (en el modo horario era PRORRATA_HORARIA_TABULAR),
 #   fila 2 en adelante. Mismas columnas que la horaria:
@@ -788,8 +889,9 @@ def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str,
     hacer_sc_co: solo p5, subconjunto de ["SC", "CO"]: la hoja "SC y CO", con el
            motor de Actualiza_SC_CO.py (actualizar_en_libro) sobre el mismo
            libro abierto. Va despues de FD y prorrata.
-    hacer_otro: p3/p5/p6=Prorrata. En sc no hace nada: el "Traer Consolidado"
-                del modo horario se saco junto con el tabulado.
+    hacer_otro: p3/p5/p6=Prorrata. sc=hoja SOBRECOSTOS desde
+                SC_CfrecSinFD_AAMM_para_coyailen.csv (reemplaza al "Traer
+                Consolidado" del modo horario).
     rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
            cual y NO se vuelve a buscar el archivo; las que falten caen al
            buscar_* de siempre.
@@ -902,6 +1004,20 @@ def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str,
 
             log_func("── Actualizando Prorrata ──")
             aplicar_prorrata(app_xw, libros["prorrata"], wb_d, PRORRATA_CONFIG, log_func, progreso_func)
+            if ruta_destino not in rutas_ok:
+                rutas_ok.append(ruta_destino)
+
+        # ── SOBRECOSTOS desde SC sin FD para Coyailen (solo sc) ──────────────
+        if hacer_otro and planilla == "sc":
+            ruta_coy = _resolver("sc_cfrec_coyailen",
+                                 lambda: buscar_sc_cfrec_coyailen(carpeta_reliq),
+                                 "SC_CfrecSinFD_para_coyailen")
+            if ruta_coy is None or not ruta_coy.exists():
+                log_func("ERROR: No se encontró SC_CfrecSinFD_*_para_coyailen.csv en "
+                         "01 Sobrecostos (se arma con «Generar para Coyailen»).")
+                raise FileNotFoundError("SC_CfrecSinFD_para_coyailen no encontrado")
+            log_func("── Actualizando SOBRECOSTOS (SC sin FD para Coyailen) ──")
+            pegar_sobrecostos_coyailen(wb_d, ruta_coy, log_func=log_func)
             if ruta_destino not in rutas_ok:
                 rutas_ok.append(ruta_destino)
 
@@ -1072,7 +1188,8 @@ def main():
     opciones["p5"]["co"] = tk.BooleanVar(value=False)
 
     paths_detectados = {
-        "sc":    {"destino": tk.StringVar(), "sscc": tk.StringVar()},
+        "sc":    {"destino": tk.StringVar(), "sscc": tk.StringVar(),
+                  "coyailen": tk.StringVar()},
         "p3":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
         "p5":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar(),
                   "sc_origen": tk.StringVar(), "co_origen": tk.StringVar()},
@@ -1084,7 +1201,8 @@ def main():
 
     # Claves del JSON de traspaso que alimentan cada label de la ventana.
     MAPA_TRASPASO = {
-        "sc": {"destino": "calculo_sscc_maestro", "sscc": "sscc_desempeno"},
+        "sc": {"destino": "calculo_sscc_maestro", "sscc": "sscc_desempeno",
+               "coyailen": "sc_cfrec_coyailen"},
         "p3": {"destino": "p3", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros"},
         "p5": {"destino": "p5", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros",
                "sc_origen": "calculo_sscc_maestro", "co_origen": "reporte_cra"},
@@ -1119,6 +1237,9 @@ def main():
 
         sc = buscar_sobrecostos_xlsm(reliq)
         paths_detectados["sc"]["destino"].set(str(sc) if sc else "[Cálculo_SobrecostosSSCC no encontrado]")
+        coy = buscar_sc_cfrec_coyailen(reliq)
+        paths_detectados["sc"]["coyailen"].set(
+            str(coy) if coy else "[SC_CfrecSinFD_*_para_coyailen.csv no encontrado]")
         # Origenes de "SC y CO" (planilla 5)
         paths_detectados["p5"]["sc_origen"].set(str(sc) if sc else "[Cálculo_SobrecostosSSCC no encontrado]")
         rcra = buscar_reporte_cra(reliq)
@@ -1250,8 +1371,8 @@ def main():
         tk.Checkbutton(fr, text=nombre_fd, variable=opciones[key]["fd"],
                        font=("Segoe UI", 9)).pack(anchor="w", padx=20)
 
-        # Checkbox otro. Sin nombre no hay casillero: es el caso de sc, que en
-        # el modo horario tenia "Traer Consolidado" (desde el tabulado).
+        # Checkbox otro: Prorrata en p3/p5/p6; en sc, SOBRECOSTOS desde el csv
+        # para Coyailen (en el modo horario era "Traer Consolidado").
         if nombre_otro:
             cb_otro = tk.Checkbutton(fr, text=nombre_otro, variable=opciones[key]["otro"],
                                      font=("Segoe UI", 9))
@@ -1259,6 +1380,12 @@ def main():
                 cb_otro.config(state="disabled")
                 opciones[key]["otro"].set(False)
             cb_otro.pack(anchor="w", padx=20)
+
+        if key == "sc":
+            tk.Label(fr, text="Origen SOBRECOSTOS — 01 Sobrecostos/"
+                              "SC_CfrecSinFD_AAMM_para_coyailen.csv (se pega en A7:R):",
+                     font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14)
+            hacer_lbl_archivo(fr, paths_detectados["sc"]["coyailen"], "sc", "coyailen")
 
         # Origen Prorrata (p3/p5/p6)
         if key in ("p3", "p5", "p6"):
@@ -1285,8 +1412,8 @@ def main():
     hacer_fila_planilla(frame_plan, "sc",
                         "Cálculo_SobrecostosSSCC",
                         "Actualizar FD",
-                        None,
-                        otro_habilitado=False)
+                        "Actualizar SOBRECOSTOS (desde SC sin FD para Coyailen)",
+                        otro_habilitado=True)
 
     hacer_fila_planilla(frame_plan, "p3",
                         "3_REMUNERACIÓN_SUBASTAS_E_ID",

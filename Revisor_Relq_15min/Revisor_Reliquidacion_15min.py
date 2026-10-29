@@ -875,6 +875,7 @@ CLAVES_TRASPASO = {
     "a_reporte_cra":    "reporte_cra",
     "a_pagos_varios":   "pagos_varios",
     "a_sc_cfrec":       "sc_cfrec",
+    "a_sc_cfrec_coyailen": "sc_cfrec_coyailen",
     "a_3_p9":           "p3",
     "a_5_p9":           "p5",
     "a_6_p9":           "p6",
