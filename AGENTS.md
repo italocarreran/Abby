@@ -68,6 +68,11 @@ cerrar está en **`REGLAS.md`** — es obligatoria, no un resumen de esta
 sección. Se lee entera, siempre, antes que este archivo. No se duplica acá
 para no tener dos copias de la misma lista desincronizándose con el tiempo.
 
+**Pedido de la usuaria (2026-10-29): al terminar un cambio, fusionarlo
+siempre a `main`** (sin esperar que lo pida), después de dejar
+`scripts/verificar.sh` en `TODO OK`. La rama de trabajo queda fusionada y se
+puede borrar; avisarle cuáles.
+
 `BITACORA.md` es el registro de qué se hizo en cada sesión y qué quedó
 pendiente — lo que un `git log` no cuenta. Toda sesión que cambia algo real
 le agrega una entrada, según `REGLAS.md`.
