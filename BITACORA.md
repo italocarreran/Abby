@@ -66,6 +66,15 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — planilla 1: confirmados la carpeta y el tipo de la planilla 8
+
+La usuaria confirmó los dos supuestos de la entrada anterior: la planilla 8
+(`8_REMUNERACIÓN_CONTROL_CONTINGENCIAS_*`) está en `00 Entregables`, y su tipo
+de pago es `EDAC-BF`. No cambia código: el nodo `a_8_cc` ya la busca ahí y el
+tipo se lee de su columna C.
+
+---
+
 ## 2026-10-29 — Claude — 15 min: planilla 1 desde las planillas 4 y 8
 
 La usuaria mandó una planilla 4 (`4_REMUNERACIÓN_SC_CO_Y_Pagos_Retiros_2601_rpre`)
