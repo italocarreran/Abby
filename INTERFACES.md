@@ -49,9 +49,9 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 2093 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3431 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3422 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 1029 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 686 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 713 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 738 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1142 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1438 líneas
@@ -59,7 +59,7 @@ Convenciones de esta página:
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq_15min/revisor/lectores.py`](#revisor_relq_15minrevisorlectorespy) — 710 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
-- [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1441 líneas — Motor de las comprobaciones V4…V17 del Revisor.
+- [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1446 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2485 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
 
@@ -2611,8 +2611,8 @@ manteniendo el formato de las celdas.
 | `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
 | `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
 | `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
-| `VALORES` | `dict de 41 claves: 'PV_SUBASTAS', 'PV_CRA', 'PV_CO_ERNC', …` |  |
-| `VERIFICADORES` | `dict de 9 claves: 'V8', 'V9', 'V10', …` |  |
+| `VALORES` | `dict de 40 claves: 'PV_SUBASTAS', 'PV_CRA', 'PV_CO_ERNC', …` |  |
+| `VERIFICADORES` | `dict de 8 claves: 'V8', 'V9', 'V10', …` |  |
 | `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
 | `NODOS` | `lista de 22 elementos: dict(id='c_fd', tipo='carpeta', pref='', texto='../FD/          « ORIGEN — fuera de 02 CASO RELIQUIDACION »'), dict(id='a_sscc_desempeno', tipo='archivo', pref='    └── ', texto='SSCC_Desempeno*.xlsx\|xlsm   (origen de las hojas FD)', carpeta=['FD'], sube=True, solo_info=True, patron='^sscc_desempeno', ext=XL, espejo=None), dict(id='c_ent', tipo='carpeta', pref='├── ', texto='00 Entregables/'), …` |  |
 | `NODO_POR_ID` | `{n['id']: n for n in NODOS}` |  |
@@ -2999,7 +2999,7 @@ Devuelve (ok, resumen).
 > DESTINO, hoja 01.SSCC_Recurso_Técnico, desde la fila 9:
 >     B  tipo de pago        C  Empresa      D  RECIBE      E  PAGA     F  SEN
 >     A y G son formula: se estiran o se cortan al largo de la tabla.
->     I:K  Empresa | Paga | Recibe, la SUMA por empresa (todos los tipos):
+>     Las filas con RECIBE y PAGA en 0 no se pegan (se ve mas limpio).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
@@ -3025,9 +3025,10 @@ Devuelve (ok, resumen).
 | `COLS_P8` | `{'tipo': 'C', 'empresa': 'D', 'recibe': 'E', 'paga': 'F', 'neto': 'G'}` |  |
 | `CARPETA_ENT` | `'00 Entregables'` |  |
 | `PATRONES` | `{'p4': '^4_remuneracion_sc', 'p8': '^8_remuneracion_control', 'cuadro_1': '^1_cuadros'}` |  |
-| `F_EMPRESA` | `'=IFERROR(INDEX($C$9:$C${u},MATCH(0,INDEX(COUNTIF($I$8:I{a},$C$9:$C${u}),0,0),0)),"")'` | Formulas de I:K, en ingles y con coma (por COM no se pueden escribir en espanol). |
-| `F_PAGA` | `'=IF(SUMIF($C$9:$C${u},I{r},$G$9:$G${u})<-0.00001,SUMIF($C$9:$C${u},I{r},$G$9:$G${u}),"")'` |  |
-| `F_RECIBE` | `'=IF(SUMIF($C$9:$C${u},I{r},$G$9:$G${u})>0.00001,SUMIF($C$9:$C${u},I{r},$G$9:$G${u}),"")'` |  |
+| `F_EMPRESAS` | `'=LET(c,$C$9:$C${u},e,UNIQUE(FILTER(c,c<>"")),s,SUMIF(c,e,$G$9:$G${u}),FILTER(e,ABS(s)>0.…` | Formulas de I9, J9 y K9, en ingles y con coma (por COM no se pueden escribir en espanol): UNIQUE = UNICOS, FILTER = FILTRAR, SUMIF = SUMAR.SI. |
+| `F_PAGA` | `'=LET(s,SUMIF($C$9:$C${u},I9#,$G$9:$G${u}),IF(s<-0.00001,s,""))'` |  |
+| `F_RECIBE` | `'=LET(s,SUMIF($C$9:$C${u},I9#,$G$9:$G${u}),IF(s>0.00001,s,""))'` |  |
+| `EPS_CERO` | `1e-05` | Tolerancia para decir que una fila o una empresa "es 0". |
 | `F_TOTALES` | `dict de 6 claves: 'F3', 'G3', 'F4', …` | Totales de arriba (F3:G5) |
 | `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
 | **— TRASPASO DESDE EL REVISOR —** | | |
@@ -3072,14 +3073,19 @@ que ya estaban (`existentes`), clasificadas por su tipo.
 tipos_p8 None: no se pudo leer la planilla 8, y entonces es de la 8 todo lo
 que no es de la 4. Devuelve (filas, n_p4, n_p8).
 
+#### `def sin_ceros(filas)`
+
+(filas sin las que traen RECIBE y PAGA en 0, cuantas se sacaron).
+
 #### `def n_empresas(filas)`
 
-Empresas distintas de la columna C. COUNTIF no distingue mayusculas, asi
-que aca tampoco.
+Las empresas que va a listar I9: distintas en C (UNICOS no distingue
+mayusculas, asi que aca tampoco) y con total (columna SEN) distinto de 0.
+Es solo para el log: la lista la arma la formula.
 
-#### `def formulas_empresas(n, ultima)`
+#### `def formulas_empresas(ultima)`
 
-Las n filas de I:K con sus formulas, desde la fila 9.
+Las formulas de I9, J9 y K9 para una tabla que llega a `ultima`.
 
 **— ESCRITURA (xlwings) —**
 
@@ -4419,6 +4425,7 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py` |
+| `EPS_CERO` | `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py` |
 | `ETAPAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA_SLOT` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |

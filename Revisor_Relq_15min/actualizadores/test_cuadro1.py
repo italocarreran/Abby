@@ -84,13 +84,24 @@ class Cuadro1(unittest.TestCase):
         self.assertEqual(n8, 2)
 
     def test_formulas_ik(self):
-        self.assertEqual(c1.n_empresas([["a", "Enel"], ["b", "ENEL"], ["c", "Colbun"]]), 2)
-        f = c1.formulas_empresas(2, 120)
-        self.assertEqual(len(f), 2)
-        self.assertIn("COUNTIF($I$8:I9,$C$9:$C$120)", f[1][0])
-        self.assertIn("SUMIF($C$9:$C$120,I10,$G$9:$G$120)<-0.00001", f[1][1])
-        self.assertIn(">0.00001", f[1][2])
+        filas = [["a", "Enel", 0, 5, -5], ["b", "ENEL", 0, 5, -5],
+                 ["c", "Colbun", 5, 5, 0], ["d", "Aes", 1, 0, 1]]
+        # Enel (-10) y Aes (1) tienen monto; Colbun suma 0 y no se lista.
+        self.assertEqual(c1.n_empresas(filas), 2)
+        i, j, k = c1.formulas_empresas(120)
+        self.assertIn("UNIQUE(FILTER(c,c<>\"\"))", i)
+        self.assertIn("$C$9:$C$120", i)
+        self.assertIn("FILTER(e,ABS(s)>0.00001", i)
+        self.assertIn("SUMIF($C$9:$C$120,I9#,$G$9:$G$120)", j)
+        self.assertIn("s<-0.00001", j)
+        self.assertIn("s>0.00001", k)
 
+    def test_sin_ceros(self):
+        filas = [["t", "A", 0, 0, 0], ["t", "B", 0.0, 1.0, -1.0],
+                 ["t", "C", None, None, None], ["t", "D", 2, 0, 2]]
+        quedan, n = c1.sin_ceros(filas)
+        self.assertEqual([f[1] for f in quedan], ["B", "D"])
+        self.assertEqual(n, 2)
 
 if __name__ == "__main__":
     unittest.main()

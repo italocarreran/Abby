@@ -717,6 +717,9 @@ def comprobar(self, c, valores, L):
         #    viven en la planilla 4). Solo se comparan los que estan en las
         #    DOS; los que sobran de un lado se informan, no fallan.
         det, res = c["detalle"], c["resumen"]
+        # Conceptos que no se comparan aunque esten en los dos lados (en 15
+        # minutos, los EDAC: estan en la planilla 1 y no en la 9).
+        excluir = {clave_concepto(x) for x in c.get("excluir_conceptos", [])}
         r_det = self.rutas.get(det["archivo"])
         r_res = self.rutas.get(res["archivo"])
         if r_det is None or r_res is None:
@@ -773,9 +776,11 @@ def comprobar(self, c, valores, L):
             n_res += 1
         L(f"        {res['nombre']}: {n_res} fila(s) -> {len(pres)} par(es)")
 
-        # Solo los conceptos que estan en los dos lados.
-        con_det = {k[0] for k in pdet}
-        con_res = {k[0] for k in pres}
+        # Solo los conceptos que estan en los dos lados (y no excluidos).
+        con_det = {k[0] for k in pdet} - excluir
+        con_res = {k[0] for k in pres} - excluir
+        if excluir:
+            L(f"        se dejan fuera: {', '.join(c.get('excluir_conceptos', []))}")
         comunes = con_det & con_res
         solo_det = sorted(con_det - con_res)
         solo_res = sorted(con_res - con_det)

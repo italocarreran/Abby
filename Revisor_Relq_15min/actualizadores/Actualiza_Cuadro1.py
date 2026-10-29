@@ -14,10 +14,13 @@
 #  DESTINO, hoja 01.SSCC_Recurso_Técnico, desde la fila 9:
 #      B  tipo de pago        C  Empresa      D  RECIBE      E  PAGA     F  SEN
 #      A y G son formula: se estiran o se cortan al largo de la tabla.
+#      Las filas con RECIBE y PAGA en 0 no se pegan (se ve mas limpio).
 #      I:K  Empresa | Paga | Recibe, la SUMA por empresa (todos los tipos):
-#           formulas que escribe el script, con el largo exacto (una fila por
-#           empresa distinta) y los rangos $C$9:$C$<ultima> / $G$9:$G$<ultima>
-#           al largo de la tabla. Antes llegaban fijas hasta la 4346.
+#           tres formulas de matriz dinamica en I9, J9 y K9 que se derraman
+#           solas. I9 = UNICOS de C sin vacios y sin las empresas cuyo total da
+#           0; J9 / K9 = SUMAR.SI sobre I9#. Los rangos $C$9:$C$<ultima> van al
+#           largo de la tabla (antes, fijos hasta la 4346). Se escriben con
+#           Formula2: con Formula, Excel les pondria "@" y no se derramarian.
 #      F3:G5  los totales de arriba, tambien con el largo de la tabla.
 #
 #  PLANILLA 4 Y PLANILLA 8, POR SEPARADO
@@ -110,14 +113,17 @@ PATRONES = {
     "cuadro_1": r"^1_cuadros",
 }
 
-# Formulas de I:K, en ingles y con coma (por COM no se pueden escribir en
-# espanol). {r} es la fila, {a} la anterior y {u} la ultima fila de la tabla.
-F_EMPRESA = ('=IFERROR(INDEX($C$9:$C${u},MATCH(0,INDEX(COUNTIF($I$8:I{a},'
-             '$C$9:$C${u}),0,0),0)),"")')
-F_PAGA = ('=IF(SUMIF($C$9:$C${u},I{r},$G$9:$G${u})<-0.00001,'
-          'SUMIF($C$9:$C${u},I{r},$G$9:$G${u}),"")')
-F_RECIBE = ('=IF(SUMIF($C$9:$C${u},I{r},$G$9:$G${u})>0.00001,'
-            'SUMIF($C$9:$C${u},I{r},$G$9:$G${u}),"")')
+# Formulas de I9, J9 y K9, en ingles y con coma (por COM no se pueden escribir
+# en espanol): UNIQUE = UNICOS, FILTER = FILTRAR, SUMIF = SUMAR.SI. Son de
+# matriz dinamica: se derraman hacia abajo solas, una fila por empresa.
+# {u} es la ultima fila de la tabla. Una empresa cuyo total da 0 (o casi: el
+# mismo 0.00001 de siempre) no entra: queda la lista limpia.
+F_EMPRESAS = ('=LET(c,$C$9:$C${u},e,UNIQUE(FILTER(c,c<>"")),'
+              's,SUMIF(c,e,$G$9:$G${u}),FILTER(e,ABS(s)>0.00001,""))')
+F_PAGA = '=LET(s,SUMIF($C$9:$C${u},I9#,$G$9:$G${u}),IF(s<-0.00001,s,""))'
+F_RECIBE = '=LET(s,SUMIF($C$9:$C${u},I9#,$G$9:$G${u}),IF(s>0.00001,s,""))'
+# Tolerancia para decir que una fila o una empresa "es 0".
+EPS_CERO = 0.00001
 # Totales de arriba (F3:G5)
 F_TOTALES = {
     "F3": "=+SUM(F9:F{u})", "G3": "=+SUM(G9:G{u})",
@@ -338,20 +344,33 @@ def combinar(existentes, tipos_p4, tipos_p8, nuevas_p4, nuevas_p8,
     return bloque4 + bloque8, len(bloque4), len(bloque8)
 
 
+def _num(v):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else 0.0
+
+
+def sin_ceros(filas):
+    """(filas sin las que traen RECIBE y PAGA en 0, cuantas se sacaron)."""
+    quedan = [f for f in filas
+              if abs(_num(f[2])) > EPS_CERO or abs(_num(f[3])) > EPS_CERO]
+    return quedan, len(filas) - len(quedan)
+
+
 def n_empresas(filas):
-    """Empresas distintas de la columna C. COUNTIF no distingue mayusculas, asi
-    que aca tampoco."""
-    return len({str(f[1]).strip().casefold() for f in filas if not _vacio(f[1])})
+    """Las empresas que va a listar I9: distintas en C (UNICOS no distingue
+    mayusculas, asi que aca tampoco) y con total (columna SEN) distinto de 0.
+    Es solo para el log: la lista la arma la formula."""
+    tot = {}
+    for f in filas:
+        if _vacio(f[1]):
+            continue
+        k = str(f[1]).strip().casefold()
+        tot[k] = tot.get(k, 0.0) + _num(f[4])
+    return sum(1 for v in tot.values() if abs(v) > EPS_CERO)
 
 
-def formulas_empresas(n, ultima):
-    """Las n filas de I:K con sus formulas, desde la fila 9."""
-    out = []
-    for i in range(n):
-        r = FILA_DESTINO + i
-        p = dict(r=r, a=r - 1, u=ultima)
-        out.append([F_EMPRESA.format(**p), F_PAGA.format(**p), F_RECIBE.format(**p)])
-    return out
+def formulas_empresas(ultima):
+    """Las formulas de I9, J9 y K9 para una tabla que llega a `ultima`."""
+    return [f.format(u=ultima) for f in (F_EMPRESAS, F_PAGA, F_RECIBE)]
 
 
 # =============================================================================
@@ -397,6 +416,11 @@ def actualizar_en_libro(sh, rutas, hacer_p4, hacer_p8, log, progreso=lambda *a: 
 
     filas, n4, n8 = combinar(existentes, tipos_p4, tipos_p8, nuevas_p4 or [],
                              nuevas_p8 or [], hacer_p4, hacer_p8, log)
+    f4, c4 = sin_ceros(filas[:n4])
+    f8, c8 = sin_ceros(filas[n4:])
+    filas, n4, n8, n_cero = f4 + f8, len(f4), len(f8), c4 + c8
+    if n_cero:
+        log(f"  {n_cero} fila(s) con RECIBE y PAGA en 0 no se pegan")
     if not filas:
         raise RuntimeError("No quedó ninguna fila para escribir.")
     n = len(filas)
@@ -425,12 +449,15 @@ def actualizar_en_libro(sh, rutas, hacer_p4, hacer_p8, log, progreso=lambda *a: 
     log(f"  A y G estirados hasta la fila {ultima}")
 
     # --- I:K -------------------------------------------------------------------
+    # Se limpia TODO I9:K hacia abajo: una formula que derrama necesita las
+    # celdas de abajo vacias, o da #¡DESBORDAMIENTO!.
     i1, i2 = col_num(COLS_EMPRESAS[0]), col_num(COLS_EMPRESAS[1])
-    fin_ik = FILA_DESTINO + n_emp - 1
-    if previa > fin_ik:
-        sh.range((fin_ik + 1, i1), (previa, i2)).clear_contents()
-    sh.range((FILA_DESTINO, i1)).formula = formulas_empresas(n_emp, ultima)
-    log(f"  I{FILA_DESTINO}:K{fin_ik}: {n_emp} empresa(s), rangos hasta la fila {ultima}")
+    if previa >= FILA_DESTINO:
+        sh.range((FILA_DESTINO, i1), (previa, i2)).clear_contents()
+    for c, f in zip(range(i1, i2 + 1), formulas_empresas(ultima)):
+        sh.range((FILA_DESTINO, c)).api.Formula2 = f
+    log(f"  I{FILA_DESTINO}:K{FILA_DESTINO}: UNICOS sin vacíos ni ceros "
+        f"(~{n_emp} empresa(s)), rangos hasta la fila {ultima}")
 
     # --- totales de arriba -----------------------------------------------------
     for celda, f in F_TOTALES.items():

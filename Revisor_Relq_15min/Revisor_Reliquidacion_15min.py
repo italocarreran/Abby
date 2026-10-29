@@ -247,19 +247,15 @@ VALORES = {
     "P6_N7": {"tipo": "excel", "archivo": "a_6_p9", "hoja": "RESUMEN", "celda": "N7",
               "etiqueta": "Planilla 6  RESUMEN!N7"},
 
-    # 9_Pagos_Retiros y 4_REMUNERACION_SC_CO_CCA  (en 00 Entregables)
-    # La tabla de la planilla 9 cambia de largo, asi que el total NO se busca en
-    # una celda fija sino en la fila rotulada "Total general".
-    "P9_TOTAL_B": {"tipo": "excel_etiqueta", "archivo": "a_9_pagos",
-                   "hoja": "VERIFICADORES", "fila_inicio": 1,
-                   "columna_etiqueta": "A", "texto_fila": "Total general",
-                   "columna_valor": "B",
-                   "etiqueta": "Planilla 9  total general (rótulo en A, valor en B)"},
-    "P9_TOTAL_E": {"tipo": "excel_etiqueta", "archivo": "a_9_pagos",
-                   "hoja": "VERIFICADORES", "fila_inicio": 1,
-                   "columna_etiqueta": "D", "texto_fila": "Total general",
-                   "columna_valor": "E",
-                   "etiqueta": "Planilla 9  total general (rótulo en D, valor en E)"},
+    # 9_Pagos_Retiros_AAMM_*.csv  (en 00 Entregables; en 15 minutos es un csv).
+    # Total de la columna J (Pago). Hoja "(csv)": ver los PV_* de pagos_varios.
+    "P9_TOTAL": {
+        "tipo": "excel_col", "archivo": "a_9_pagos",
+        "hoja": "(csv)", "columna": "J", "fila_inicio": 2,
+        "columna_filtro": "", "valores_filtro": [],
+        "etiqueta": "Planilla 9 (csv): suma de Pago (J)",
+    },
+    # 4_REMUNERACION_SC_CO_CCA  (en 00 Entregables)
     "P4_K6": {"tipo": "excel", "archivo": "a_4_rem", "hoja": "VERIFICADORES",
               "celda": "K6", "etiqueta": "Planilla 4  VERIFICADORES!K6"},
     "P4_L6": {"tipo": "excel", "archivo": "a_4_rem", "hoja": "VERIFICADORES",
@@ -512,18 +508,8 @@ VERIFICADORES = {
              "izq": ["PV_REA"], "der": ["P6_E7"]},
         ],
     },
-    "V13": {
-        "archivo": "a_9_pagos",
-        "titulo": "Planilla 9: total general (A/B) = total general (D/E)",
-        # Antes colgaba del Ocupar_este.mdb (V12). Sin los Access, depende
-        # directo de las planillas 3, 5 y 6 de las que salia ese .mdb.
-        "depende": ["a_3_p9", "a_5_p9", "a_6_p9"],
-        "verif_previas": ["V9", "V10", "V11"],
-        "comprobaciones": [
-            {"tipo": "igualdad", "desc": "total general de A/B = total general de D/E",
-             "izq": ["P9_TOTAL_B"], "der": ["P9_TOTAL_E"]},
-        ],
-    },
+    # V13 (planilla 9: total general A/B = D/E) se saco: en 15 minutos la
+    # planilla 9 es un csv, sin esa hoja de totales.
     "V14": {
         "archivo": "a_4_rem",
         "titulo": "Planilla 4: K6 = -L6",
@@ -541,15 +527,17 @@ VERIFICADORES = {
     "V15": {
         "archivo": "a_1_cuadros",
         "titulo": "1_CUADROS_PAGO: totales y pago por empresa contra planillas 4 y 9",
+        # La planilla 9 sale del pagos_varios (V12), asi que V12 entra como previa
+        # donde antes estaba V13.
         "depende": ["a_4_rem", "a_9_pagos"],
-        "verif_previas": ["V14", "V13"],
+        "verif_previas": ["V14", "V12"],
         "comprobaciones": [
             {"tipo": "igualdad", "absoluto": True,
              "desc": "C10 + C11 + C13 = planilla 4 (L6)",
              "izq": ["P1_C10", "P1_C11", "P1_C13"], "der": ["P4_L6"]},
             {"tipo": "igualdad", "absoluto": True,
              "desc": "C12 + C14 + C15 + suma(C17:C25) = total general de planilla 9",
-             "izq": ["P1_C12", "P1_C14", "P1_C15", "P1_C17_C25"], "der": ["P9_TOTAL_B"]},
+             "izq": ["P1_C12", "P1_C14", "P1_C15", "P1_C17_C25"], "der": ["P9_TOTAL"]},
 
             # --- el pago por empresa y concepto -------------------------------
             # La planilla 1 y las planillas 9 y 4 son dos calculos PARALELOS del
@@ -562,14 +550,19 @@ VERIFICADORES = {
             # que todavia no existe.
             #
             # Las dos comprobaciones ya tienen las dependencias que hacen falta:
-            # V15 depende de a_4_rem y a_9_pagos, y arrastra V13 y V14 como
+            # V15 depende de a_4_rem y a_9_pagos, y arrastra V12 y V14 como
             # previas.
+            #
+            # 15 minutos: la planilla 9 es 9_Pagos_Retiros_*.csv, desde la fila
+            # 2: E suministrador, H tipo de pago, J pago. No trae los EDAC (que
+            # en la planilla 1 vienen de la planilla 8): se dejan fuera.
             {"tipo": "pago_por_empresa",
-             "desc": "pago por empresa y concepto: planilla 9 = planilla 1",
-             "detalle": {"archivo": "a_9_pagos", "hoja": "PAGO_RETIRO",
+             "desc": "pago por suministrador y tipo de pago: planilla 9 = planilla 1",
+             "detalle": {"archivo": "a_9_pagos", "hoja": "(csv)",
                          "fila_inicio": 2, "nombre": "P9",
-                         "col_concepto": "A", "col_empresa": "G",
-                         "col_monto": "H"},
+                         "col_concepto": "H", "col_empresa": "E",
+                         "col_monto": "J"},
+             "excluir_conceptos": ["EDAC-BF"],
              "resumen": {"archivo": "a_1_cuadros",
                          "hoja": "01.SSCC_Recurso_Técnico",
                          "fila_inicio": 9, "nombre": "P1",
@@ -770,8 +763,9 @@ NODOS = [
          texto="8_REMUNERACIÓN_CONTROL_CONTINGENCIAS_AAMM_*.xlsx",
          carpeta=["00 Entregables"], patron=r"^8_remuneracion_control", ext=XL,
          espejo=None),
-    dict(id="a_9_pagos", tipo="archivo", pref="│   └── ", texto="9_Pagos_Retiros_CRA_REA_CO_ERNC_Subastas_AAMM_*.xlsx",
-         carpeta=["00 Entregables"], patron=r"^9_pagos_retiros", ext=XL, espejo=None),
+    # 15 minutos: la planilla 9 es un csv.
+    dict(id="a_9_pagos", tipo="archivo", pref="│   └── ", texto="9_Pagos_Retiros_AAMM_*.csv",
+         carpeta=["00 Entregables"], patron=r"^9_pagos_retiros", ext=(".csv",), espejo=None),
 
     dict(id="c_sob", tipo="carpeta", pref="├── ", texto="01 Sobrecostos/          « MAESTRO »"),
     dict(id="a_calc_sscc_01", tipo="archivo", pref="│   └── ", texto="Cálculo_SobrecostosSSCC_AAMM_*.xlsm  (maestro)",
@@ -2384,7 +2378,6 @@ class Revisor:
                                 "No hay nada que copiar.")
             return
 
-        n_copiar = sum(1 for a in acciones if a[0] == "copiar")
         n_reemp = sum(1 for a in acciones if a[0] == "reemplazar")
         n_borrar = sum(1 for a in acciones if a[0] == "borrar")
 
@@ -2405,26 +2398,26 @@ class Revisor:
                 self.log(f"     en uso: {t}")
             return
 
-        detalle = []
-        for tipo, origen, destino, etiqueta in acciones[:14]:
-            verbo = {"copiar": "copiar", "reemplazar": "REEMPLAZAR",
-                     "borrar": "BORRAR"}[tipo]
-            detalle.append(f"  {verbo}  {etiqueta}")
-        if len(acciones) > 14:
-            detalle.append(f"  ... y {len(acciones) - 14} más")
-
-        resumen = ", ".join(p for p in (
-            f"{n_copiar} a copiar" if n_copiar else "",
-            f"{n_reemp} a reemplazar" if n_reemp else "",
-            f"{n_borrar} a BORRAR" if n_borrar else "") if p)
-
-        if not messagebox.askyesno(
-                "Traer el maestro",
-                f"Destino:\n{carpeta_copia}\n\n"
-                f"Maestro:\n{maestro['texto']}\n\n"
-                f"{resumen}\n\n" + "\n".join(detalle) +
-                "\n\nLo que haya en el destino se pierde. ¿Seguir?"):
-            return
+        # Si la copia no existe, se copia sin preguntar nada. Solo se confirma
+        # cuando se va a pisar o borrar algo que ya esta, y con una pregunta corta.
+        if n_reemp or n_borrar:
+            pisa = [destino.name for tipo, _, destino, _ in acciones
+                    if tipo == "reemplazar"]
+            borra = [destino.name for tipo, _, destino, _ in acciones
+                     if tipo == "borrar"]
+            if len(acciones) <= 2 and len(pisa) <= 1:
+                # El caso de siempre: un archivo suelto (si cambio de nombre, se
+                # borra el viejo y se copia el nuevo).
+                viejo = borra[0] if borra else (pisa[0] if pisa else "")
+                texto = (f"«{viejo}» ya existe.\n\n¿Seguro que desea reemplazarlo"
+                         + (f" por «{pisa[0]}»" if borra and pisa and pisa[0] != viejo
+                            else "") + "?")
+            else:
+                texto = (f"Ya existen {n_reemp + n_borrar} archivo(s) en el destino "
+                         f"({n_reemp} a reemplazar, {n_borrar} a borrar).\n\n"
+                         "¿Seguro que desea reemplazarlos?")
+            if not messagebox.askyesno("Reemplazar", texto):
+                return
 
         self.log("-" * 96)
         self.log(f"TRAER MAESTRO  {datetime.now():%d-%m-%Y %H:%M:%S}")
@@ -2454,15 +2447,13 @@ class Revisor:
         # Se relee para que el árbol muestre el resultado al toque.
         self.actualizar(motivo="después de traer el maestro", solo_ids={nid, esp})
 
+        # Si salio bien no se avisa nada: queda en la bitacora y el arbol ya
+        # lo muestra. Solo se avisa si algo fallo.
         if fallos:
             messagebox.showerror(
                 "Terminó con errores",
                 f"{ok} de {len(acciones)} operaciones salieron bien.\n\n"
                 f"Falló en {len(fallos)}; el detalle está en la bitácora.")
-        else:
-            messagebox.showinfo("Listo",
-                                f"{ok} operación(es).\n\nLa copia quedó igual "
-                                "que el maestro.")
 
     def _exportar_cprt(self, nid="a_0_cuadros"):
         """Saca la hoja CPRT del cuadro cero a un .csv listo para mandar a pago."""

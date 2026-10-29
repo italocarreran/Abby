@@ -66,6 +66,28 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-29 — Claude — 15 min: traer maestro, planilla 1 sin ceros con UNICOS, planilla 9 csv y V15
+
+Pedidos de la usuaria y lo hecho (solo `Revisor_Relq_15min/`):
+- **«Traer maestro»**: sin avisos cuando la copia no existe; pregunta corta
+  solo si reemplaza o borra; sin el «Listo» al final.
+- **Planilla 1** (`Actualiza_Cuadro1.py`): no se pegan las filas con RECIBE y
+  PAGA en 0; `I9:K` pasa a fórmulas de matriz dinámica (`UNIQUE`, `FILTER`,
+  `SUMIF` sobre `I9#`) escritas con `Formula2`, sin vacíos ni empresas con
+  total 0. Con los datos reales de 2601 (escritura simulada): 1.084 filas
+  (992 de la 4 + 92 de la 8), 772 en 0 fuera, A/G a la 1092, I9:K9 con rangos
+  a la 1092 y el resto de I:K vacío.
+- **Planilla 9** ahora es `9_Pagos_Retiros_*.csv`: nodo `.csv`, V13 fuera,
+  `P9_TOTAL` sobre la J. **V15** compara por suministrador y tipo de pago
+  (E, H, J del csv) contra B/C/E de la planilla 1, sin los EDAC
+  (`excluir_conceptos` en `pago_por_empresa`). Probado con un csv sintético.
+
+**No probado con Excel real**: `Formula2` y el derrame de I9:K (requiere
+Excel 365/2021), y que `Actualiza_Cuadro0.py` siga leyendo bien I9:K con
+valores derramados.
+
+---
+
 ## 2026-10-29 — Claude — planilla 1: confirmados la carpeta y el tipo de la planilla 8
 
 La usuaria confirmó los dos supuestos de la entrada anterior: la planilla 8

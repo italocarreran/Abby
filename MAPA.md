@@ -514,11 +514,13 @@ y el paquete `revisor/`, salvo lo indicado).
   RECIBE, PAGA, Paga+Recibe, sin la fila TOTAL, con las filas en 0) y, si se
   elige, de la **planilla 8** (`8_REMUNERACIÓN_CONTROL_CONTINGENCIAS`, hoja
   `RESUMEN` desde la fila 9: C tipo, D empresa, E recibe, F paga, G neto).
-- **Destino** desde la fila 9: `B` tipo, `C:F` empresa / recibe / paga / SEN;
-  `A` y `G` fórmula, estiradas o cortadas; **`I:K`** empresa / paga / recibe
-  (suma de todos los tipos) con fórmulas que escribe el script: una fila por
-  empresa distinta y los rangos `$C$9:$C$<última>` (antes fijos a 4346);
-  `F3:G5` también al largo de la tabla.
+- **Destino** desde la fila 9: `B` tipo, `C:F` empresa / recibe / paga / SEN,
+  **sin las filas con RECIBE y PAGA en 0**; `A` y `G` fórmula, estiradas o
+  cortadas; **`I:K`** empresa / paga / recibe (suma de todos los tipos) con
+  tres fórmulas de matriz dinámica en `I9`, `J9`, `K9` (`UNIQUE`/`FILTER`/
+  `SUMIF` sobre `I9#`, escritas con `Formula2`), sin vacíos ni empresas con
+  total 0, y rangos `$C$9:$C$<última>` (antes fijos a 4346); se limpia todo
+  `I9:K` hacia abajo para que derramen. `F3:G5` también al largo de la tabla.
 - **4 y 8 por separado:** ventana chica con dos casillas. La que no se marca
   se conserva de la planilla 1, reconociendo sus filas por el tipo (columna B)
   contra los tipos de la planilla 4 (sus `B1`) y de la 8 (su columna C),
@@ -534,6 +536,19 @@ y el paquete `revisor/`, salvo lo indicado).
 - **Pruebas:** `actualizadores/test_cuadro1.py`. Probado además contra los
   archivos reales de 2601 que mandó la usuaria (no versionados), con la
   escritura simulada.
+
+### Revisor 15 min: planilla 9, V15 y «Traer maestro» (2026-10-29)
+
+- **Planilla 9** = `00 Entregables/9_Pagos_Retiros_AAMM_*.csv` (nodo
+  `a_9_pagos`, `.csv`). **V13** (total A/B = D/E de su hoja VERIFICADORES) se
+  sacó. `P9_TOTAL` = suma de J del csv.
+- **V15**: pago por suministrador y tipo de pago, planilla 9 (csv, fila 2:
+  E suministrador, H tipo, J pago) contra la planilla 1 (B tipo, C empresa,
+  E PAGA), en magnitud y con `TOL_PAGO_EMPRESA`; **EDAC-BF fuera**
+  (`excluir_conceptos`, nuevo en `pago_por_empresa`). Previas V14 y V12.
+- **«Traer maestro»**: si la copia no existe copia sin preguntar ni avisar; si
+  pisa o borra algo, una pregunta corta («X ya existe. ¿Seguro que desea
+  reemplazarlo?»); si sale bien no muestra aviso (queda en la bitácora).
 
 ### `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
 
@@ -554,7 +569,7 @@ y el paquete `revisor/`, salvo lo indicado).
   del ejecutor; `cache_directorios()` como context manager; `CENTRALES_EMBALSE`
   (27); `UMBRAL_DESCUADRE_CPRT` (**1000.0**, no 500) y `UMBRAL_PAR_SEGURO`
   (100.0); `TOLERANCIA` (1.0), `TOL_PAGO_EMPRESA` (150.0), `TOL_MTIME` (2 s);
-  `NODOS` (**21**) y `VERIFICADORES` (**9**: V8, V9, V10, V11, V12, V13, V14,
+  `NODOS` (**22**) y `VERIFICADORES` (**8**: V8, V9, V10, V11, V12, V14,
   V15, V16).
 - **Depende de:** los 5 scripts que lanza, pero solo por línea de comandos — no
   los importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**
