@@ -17,6 +17,9 @@
 
 ## Pendientes abiertos ahora mismo
 
+- [ ] **Verificador nuevo de Cálculo_SobrecostosSSCC (15 min)** (2026-10-30).
+      Se sacó V8 porque no aplicaba. La usuaria va a dar cómo verificar esa
+      planilla.
 - [ ] **Versión 15 minutos — definir qué reemplaza lo quitado** (2026-10-22).
       En `Revisor_Relq_15min/` se sacaron detalles diarios, CCA, 02
       Consolidado_Tabulado y los Access. La usuaria va de a poco, actualizador
@@ -66,6 +69,15 @@
       `T:\Facturacion\<mes>\<versión>` es el mismo archivo que el
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
+
+## 2026-10-30 — Claude — 15 min: se saca el verificador V8 (Cálculo_SobrecostosSSCC)
+
+La usuaria pidió sacar el verificador de la planilla de sobrecostos: no se usa
+y salía desaprobado porque la información no está. Se sacaron V8 de
+`VERIFICADORES` y su valor `SSCC_H1` (`'SOBRECOSTOS TOTAL'!H1`). V14 quedó
+sin previas, como fondo de la cadena del cuadro cero. Un V8 que quede guardado
+en el estado de un mes se ignora, porque todo recorre `VERIFICADORES`.
+**Pendiente:** la usuaria va a dar la forma nueva de verificar esa planilla.
 
 ## 2026-10-30 — Claude — 15 min: Sobrecostos con ventana propia y sin ventanas congeladas
 

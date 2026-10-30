@@ -176,11 +176,6 @@ VALORES = {
     },
 
     # --- celdas puntuales --------------------------------------------------
-    "SSCC_H1": {
-        "tipo": "excel", "archivo": "a_calc_sscc_01",
-        "hoja": "SOBRECOSTOS TOTAL", "celda": "H1",
-        "etiqueta": "Calculo_SobrecostosSSCC  'SOBRECOSTOS TOTAL'!H1",
-    },
 
     # 3_REMUNERACION_SUBASTAS_E_ID  (maestro en 04 Planilla 9)
     # El descuadre del cuadro de pago. En la hoja CPRT del cuadro cero:
@@ -310,28 +305,10 @@ VALORES = {
 # =============================================================================
 
 VERIFICADORES = {
-    "V8": {
-        # Es el fondo de la cadena del cuadro cero:
-        #     V16 -> V15 -> V14 -> V8
-        # En el modo horario colgaba ademas de V17 (el 02 Consolidado_Tabulado,
-        # de donde se traia la hoja SOBRECOSTOS) y comparaba EE6 contra el total
-        # SCAGC del tabulado. En el modo 15 minutos el tabulado no existe.
-        "archivo": "a_calc_sscc_01",
-        "titulo": "Calculo_SobrecostosSSCC (maestro): 'SOBRECOSTOS TOTAL'!H1 = 0 y marcas",
-        "depende": [],
-        "verif_previas": [],
-        "comprobaciones": [
-            {"tipo": "cero", "desc": "'SOBRECOSTOS TOTAL'!H1 = 0",
-             "claves": ["SSCC_H1"]},
-            {"tipo": "marcas", "activa": True,
-             "desc": "sin #N/D ni textos REVISAR en las columnas de control",
-             "archivo": "a_calc_sscc_01", "hoja": "SOBRECOSTOS", "fila_inicio": 7,
-             "reglas": [
-                 {"rangos": ["CF:CI"], "errores": True, "textos": ["REVISAR"]},
-                 {"rangos": ["CD", "CE", "CS"], "errores": False, "textos": ["REVISAR"]},
-             ]},
-        ],
-    },
+    # V8 (Calculo_SobrecostosSSCC: 'SOBRECOSTOS TOTAL'!H1 = 0 y marcas) se saco
+    # (usuaria, 2026-10-30): en 15 minutos esa hoja no trae la informacion y
+    # salia desaprobado siempre. La usuaria va a dar la forma nueva de
+    # verificar esa planilla.
     "V9": {
         "archivo": "a_3_p9",
         "titulo": "Planilla 3 (maestro): RESUMEN, RESUMEN_DESGLOSADO y la prorrata",
@@ -515,10 +492,10 @@ VERIFICADORES = {
         "titulo": "Planilla 4: K6 = -L6",
         # Antes la L6 se comparaba con la suma del 03b ENTRADA_SOB_SSCC.mdb, que
         # en el modo 15 minutos ya no existe. Las dependencias que tenia por ese
-        # .mdb (Calculo SSCC + Calculo CO, via V4) pasan directo aca, para que la
-        # cadena del cuadro cero siga llegando hasta V8.
+        # .mdb (Calculo SSCC + Calculo CO, via V4) pasan directo aca. Sin V8
+        # (sacado el 2026-10-30), V14 es el fondo de la cadena del cuadro cero.
         "depende": ["a_calc_sscc_01", "a_reporte_cra"],
-        "verif_previas": ["V8"],
+        "verif_previas": [],
         "comprobaciones": [
             {"tipo": "igualdad", "desc": "K6 = -L6",
              "izq": ["P4_K6"], "der": ["-P4_L6"]},

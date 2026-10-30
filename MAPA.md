@@ -650,7 +650,7 @@ y el paquete `revisor/`, salvo lo indicado).
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,
   verifica por fecha de modificación (copias contra sus maestros) y por valores
-  (V8…V16, con cadena de dependencias entre verificaciones), y desde cada fila lanza
+  (V9…V16, con cadena de dependencias entre verificaciones), y desde cada fila lanza
   el actualizador que corresponde.
 - **Consume:** el árbol de `02 CASO RELIQUIDACION` + `FD/` (solo Excel y el
   parquet de retiros; ya no hay `.mdb`), `config.json` (`carpeta_base`,
@@ -665,8 +665,10 @@ y el paquete `revisor/`, salvo lo indicado).
   del ejecutor; `cache_directorios()` como context manager; `CENTRALES_EMBALSE`
   (27); `UMBRAL_DESCUADRE_CPRT` (**1000.0**, no 500) y `UMBRAL_PAR_SEGURO`
   (100.0); `TOLERANCIA` (1.0), `TOL_PAGO_EMPRESA` (150.0), `TOL_MTIME` (2 s);
-  `NODOS` (**22**) y `VERIFICADORES` (**8**: V8, V9, V10, V11, V12, V14,
-  V15, V16).
+  `NODOS` (**22**) y `VERIFICADORES` (**7**: V9, V10, V11, V12, V14, V15,
+  V16). V8 se sacó el 2026-10-30: la hoja `SOBRECOSTOS TOTAL` no trae la
+  información en 15 min y salía desaprobado. La usuaria va a dar la forma
+  nueva de verificar Cálculo_SobrecostosSSCC.
 - **Depende de:** los 5 scripts que lanza, pero solo por línea de comandos — no
   los importa. **Duplica `CENTRALES_EMBALSE` con `Actualiza_SC_CO.py`.**
 - **División interna:** `revisor/archivos.py` contiene la búsqueda y el caché
@@ -679,9 +681,9 @@ y el paquete `revisor/`, salvo lo indicado).
   comprobación `sobrecosto_por_fila` (era V17) y `centrales_sin_dueno` (era
   V12). V7 quedó solo con `M5 = 0`; V8 sin el `EE6 = SCAGC` del tabulado; V13
   sin la suma del `Ocupar_este.mdb` y colgando de V9/V10/V11; V14 sin la suma
-  del `03b ENTRADA_SOB_SSCC.mdb` y colgando de V8.
+  del `03b ENTRADA_SOB_SSCC.mdb` y, sin V8, sin previas.
 - **Detalles que importan:** la cadena del cuadro cero es ahora
-  `V16 -> V15 -> V14 -> V8` (y `V15 -> V13 -> V9/V10/V11`). El caché de
+  `V16 -> V15 -> V14` (y `V15 -> V13 -> V9/V10/V11`). El caché de
   directorios está apagado por omisión y solo se enciende dentro del `with`,
   porque `mtime()` se usa después para decidir si una verificación venció.
   `cache_directorios` es una clase, no una función: al salir deja
