@@ -67,6 +67,37 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-30 — Claude — 15 min: ventanas chicas en todos los actualizadores
+
+La usuaria pidió ventanas más simples, intuitivas y chicas, como la de la
+planilla 1, menos en el Revisor: los botones justos, con su descripción justa,
+sin tantos links ni tanta información. Se armó `actualizadores/ventana_chica.py`
+y con él se rehízo el `main()` de Actualiza_datos, Pagos_Varios, Cuadro0,
+Cuadro1, SC_CO, Reorganiza_SC_Cfrec y ActualizaRemplazos. Qué cambia:
+- de 900–1000 px con scroll a ~560×330–440;
+- los archivos, solo por nombre;
+- sin LabelFrame por ruta, sin bloque de carpeta (queda el botón
+  «Carpeta…») y sin instrucciones;
+- confirmaciones más cortas.
+
+La lógica no se tocó: las mismas funciones `ejecutar*`/`generar`/`procesar` y
+las mismas validaciones. Lo que se perdió a propósito:
+- el campo Mes de la ventana de SC_CO (usa el mes del Revisor o `ultimo_mes`);
+- la ventana de «Completado» de Actualiza_datos (ahora es un aviso con los
+  nombres);
+- el botón «Abrir carpeta Reemplazos REUC» (ahora se pregunta al terminar).
+
+Se sacaron las `abrir_en_explorador`/`fmt_tiempo` y los imports que quedaron
+sin uso. Al probar con Xvfb apareció un error: con `root.after` desde el hilo
+del trabajo, el fin podía no llegar. Ahora vuelve por la cola de la ventana.
+
+Probado con python3.12 + tkinter bajo `xvfb-run`:
+- fotos de las 8 vistas con un caso de prueba;
+- un clic real en GENERAR de Reorganiza_SC_Cfrec, que escribió la salida;
+- 4 pruebas de `test_ventana_chica.py`.
+
+Sin Excel no se probó correr los que lo usan.
+
 ## 2026-10-29 — Claude — 15 min: la REA de pagos_varios sale de una matriz
 
 La usuaria cambió el origen de la REA: ahora es una matriz en

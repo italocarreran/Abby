@@ -48,14 +48,15 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lanzamiento.py`](#revisor_relqrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
-- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1958 líneas — ActualizaRemplazos.py
+- [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1605 líneas — ActualizaRemplazos.py
 - [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3436 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 906 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 711 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
-- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 961 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
-- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 1174 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
-- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1612 líneas
-- [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 594 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 702 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 611 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 823 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 961 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1322 líneas
+- [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 471 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/ventana_chica.py`](#revisor_relq_15minactualizadoresventana_chicapy) — 286 líneas — Ventana chica comun de los actualizadores — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
@@ -2348,7 +2349,7 @@ Corre una comprobacion y devuelve un dict con su resultado.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `datetime`, `json`, `os`, `pandas`, `pathlib`, `queue`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
+**Importa:** `datetime`, `json`, `os`, `pandas`, `pathlib`, `re`, `shutil`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`, `xlwings`
 
 ### Constantes
 
@@ -2887,7 +2888,7 @@ lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -2924,8 +2925,6 @@ lento: streaming del XML, openpyxl, y por ultimo Excel via xlwings.
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
 #### `def leer_traspaso(argv)`
 
 #### `def buscar_hoja(wb, nombre)`
@@ -2952,8 +2951,6 @@ resultado). Recalcular cuatro veces a proposito, en vez de una por cada
 escritura, es la diferencia entre segundos y minutos.
 
 Se cronometra y queda en el log: si algun mes se pone lento, se ve donde.
-
-#### `def fmt_tiempo(seg)`
 
 #### `def paso_pegar_tabla(sh1, sh3, log)`
 
@@ -3016,7 +3013,7 @@ Devuelve (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `pathlib`, `queue`, `re`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `zipfile`
+**Importa:** `pathlib`, `re`, `sys`, `time`, `tkinter`, `traceback`, `zipfile`
 
 ### Constantes
 
@@ -3054,11 +3051,7 @@ Devuelve (ok, resumen).
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
 #### `def leer_traspaso(argv)`
-
-#### `def fmt_tiempo(seg)`
 
 #### `def col_num(letra)`
 
@@ -3140,7 +3133,7 @@ Abre la planilla 1, actualiza, recalcula y guarda. (ok, resumen).
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `csv`, `datetime`, `io`, `os`, `pathlib`, `queue`, `re`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`
+**Importa:** `csv`, `datetime`, `io`, `os`, `pathlib`, `re`, `sys`, `time`, `tkinter`
 
 ### Constantes
 
@@ -3175,11 +3168,7 @@ Abre la planilla 1, actualiza, recalcula y guarda. (ok, resumen).
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
 #### `def leer_traspaso(argv)`
-
-#### `def fmt_tiempo(seg)`
 
 #### `def aamm_de_nombre(ruta)`
 
@@ -3263,7 +3252,7 @@ tocar el archivo anterior.
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `datetime`, `json`, `os`, `pathlib`, `queue`, `re`, `socket`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `datetime`, `json`, `os`, `pathlib`, `re`, `socket`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
@@ -3304,8 +3293,6 @@ tocar el archivo anterior.
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
 #### `def leer_traspaso(argv)`
 
 #### `def quitar_filtros(sh, log=print)`
@@ -3326,8 +3313,6 @@ tablas (ListObjects). Devuelve cuantos filtros se limpiaron.
 #### `def col_letra(n)`
 
 #### `def ultima_fila(sh, col, desde=1)`
-
-#### `def fmt_tiempo(seg)`
 
 #### `def dia_de(v)`
 
@@ -3393,14 +3378,12 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 
 ## `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
 
-**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `subprocess`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
+**Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
 
 ### Constantes
 
 | Nombre | Valor | |
 |---|---|---|
-| **— Constantes configurables —** | | |
-| `INSTRUCCIONES` | `"Selecciona la carpeta '02 CASO RELIQUIDACION'.\nEl script detecta automáticamente todos …` |  |
 | `CONFIG_PATH` | `Path(__file__).resolve().parent.parent.parent / '__config__' / 'config.json'` | ── Config por usuario/PC ─────────────────────────────────────────────────── config.json es compartido con el Revisor y el resto de los actualizadores, que viven un nivel arriba (en scripts/, junto a… |
 | `_RAIZ_COMUN` | `Path(__file__).resolve().parents[2]` | Implementaciones compartidas; los envoltorios conservan la interfaz historica. |
 | `SECCION_CONFIG` | `'modo_15min'` | Modo 15 minutos: config.json se comparte con la version horaria, que vive en la misma raiz con el mismo __comun__/ y el mismo __config__/. |
@@ -3424,10 +3407,6 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 #### `def guardar_config(data)`
 
 #### `def leer_traspaso(argv)`
-
-**— Utilidades —**
-
-#### `def abrir_en_explorador(ruta: str, es_archivo: bool=False)`
 
 #### `def buscar_sscc_desempeno(carpeta_reliq: Path) -> Path | None`
 
@@ -3547,7 +3526,7 @@ Retorna (ok, lista_rutas_modificadas)
 >
 > *(el encabezado sigue arriba de todo en el archivo)*
 
-**Importa:** `csv`, `io`, `os`, `pathlib`, `queue`, `re`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`
+**Importa:** `csv`, `io`, `os`, `pathlib`, `re`, `sys`, `time`, `tkinter`
 
 ### Constantes
 
@@ -3572,11 +3551,7 @@ Retorna (ok, lista_rutas_modificadas)
 
 #### `def guardar_config(data)`
 
-#### `def abrir_en_explorador(ruta, es_archivo=False)`
-
 #### `def leer_traspaso(argv)`
-
-#### `def fmt_tiempo(seg)`
 
 **— ARCHIVOS —**
 
@@ -3638,6 +3613,74 @@ alguna levanta ValueError y no escribe nada.
 **— VENTANA —**
 
 #### `def main()`
+
+
+---
+
+## `Revisor_Relq_15min/actualizadores/ventana_chica.py`
+
+> Ventana chica comun de los actualizadores  —  VERSION 15 MIN
+> La usuaria pidio (2026-10-30) ventanas mas simples, intuitivas y chicas,
+> como la de la planilla 1: los botones justos, con su descripcion justa, sin
+> tantas rutas ni tanta informacion. Esta es esa ventana, armada una sola vez:
+>
+>     Titulo                                  (una linea de descripcion)
+>     [Mes 2603 · desde el Revisor]           (solo si vino del Revisor)
+>     ┌ seccion ─────────────────────────────┐
+>     │ ☐ Casilla             nota corta     │
+>     │   Etiqueta   nombre_del_archivo.xlsx │  <- verde si esta, rojo si no;
+>     └──────────────────────────────────────┘     clic abre la carpeta
+>     Estado ...                     00:00:12
+>     [ log chico ]
+>     [ ACCION ]  [Carpeta…]  [Salir]
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `pathlib`, `queue`, `subprocess`, `sys`, `threading`, `time`, `tkinter`, `traceback`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `VERDE` | `'#1e7b34'` |  |
+| `ROJO` | `'#c0392b'` |  |
+| `GRIS` | `'#666666'` |  |
+| `AMARILLO` | `'#fff4c2'` |  |
+| `BOTON` | `'#2d7a2d'` |  |
+| `FUENTE` | `'Segoe UI'` |  |
+
+### Clases
+
+#### `class VentanaChica`
+
+- `def __init__(self, titulo, descripcion='', traspaso=None, ancho=560, alto=400)`
+- `def seccion(self, titulo, parent=None)`
+- `def archivo(self, parent, etiqueta, var, crea=False, sangria=0)` — Una linea: etiqueta gris + nombre del archivo en color.
+- `def casilla(self, parent, texto, var, nota=None)`
+- `def nota(self, parent, texto)`
+- `def boton(self, texto, comando, principal=False)`
+- `def pintar(self)`
+- `def log(self, m='')` — Seguro desde cualquier hilo.
+- `def estado(self, m)`
+- `def progreso(self, a=0, t=100, m=None)`
+- `def limpiar_log(self)`
+- `def correr(self, trabajo, fin, boton=None, hilo=True, estado='Procesando...')` — Corre trabajo() (en un hilo, o en el principal si hilo=False, que es lo que necesitan los que manejan Excel desde ahi)…
+- `def iniciar(self)`
+
+### Funciones
+
+#### `def fmt_tiempo(seg)`
+
+#### `def abrir_carpeta(ruta)`
+
+Abre la carpeta de un archivo (o la carpeta misma), subiendo hasta la
+primera que exista. No hace nada con los textos entre corchetes.
+
+#### `def texto_archivo(valor, crea=False)`
+
+(texto, color) para mostrar una ruta: solo el nombre del archivo. Un
+valor entre corchetes es un aviso ("[no encontrado]") y va en rojo. crea:
+es una salida, que puede no existir todavia.
 
 
 ---

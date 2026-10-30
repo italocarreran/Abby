@@ -124,6 +124,15 @@ Estas ya están establecidas en el código existente. **Todo script nuevo las re
 - **Log de progreso** con timer y barra, visible durante toda la corrida.
   **En la versión 15 minutos, sin barra** (usuaria, 2026-10-29): solo el
   tiempo corriendo y el texto de estado. Un script nuevo de 15 min no la pone.
+- **Ventanas de los actualizadores 15 min: chicas** (usuaria, 2026-10-30). Todas,
+  menos el Revisor (el del árbol de carpetas), se arman con
+  `Revisor_Relq_15min/actualizadores/ventana_chica.py` (`VentanaChica`). Llevan
+  un título y una línea de descripción, y los archivos se muestran por nombre
+  (no la ruta), en verde si están y en rojo si faltan; un clic abre la carpeta.
+  Hay casillas con una nota corta, un log chico y los botones justos: la
+  acción, «Carpeta…» y «Salir». Las rutas completas van al log al correr. Un
+  script nuevo de 15 min usa esa ventana, sin canvas con scroll, sin un
+  LabelFrame por ruta y sin textos de instrucciones.
 - **Colores fijos, sin opción de tema.** Hubo un piloto de tema claro/oscuro en
   los dos comparadores y **se sacó**: repintar recursivamente el árbol de widgets
   costaba más de lo que aportaba. Los colores de estado son los históricos y

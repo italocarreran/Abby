@@ -623,6 +623,29 @@ y el paquete `revisor/`, salvo lo indicado).
   pisa o borra algo, una pregunta corta («X ya existe. ¿Seguro que desea
   reemplazarlo?»); si sale bien no muestra aviso (queda en la bitácora).
 
+### `Revisor_Relq_15min/actualizadores/ventana_chica.py` — ventana común (2026-10-30)
+
+- **Qué hace:** la ventana chica de todos los actualizadores 15 min:
+  Actualiza_datos, Pagos_Varios, Cuadro0, Cuadro1, SC_CO, Reorganiza_SC_Cfrec
+  y ActualizaRemplazos. El Revisor no la usa. Tiene título y descripción,
+  aviso «Mes AAMM · desde el Revisor», secciones con filas de archivo (solo el
+  nombre; verde/rojo/gris «se crea»; clic abre la carpeta), casillas con nota,
+  estado + tiempo, un log de 6 líneas y los botones.
+- **Expone:** `VentanaChica(titulo, descripcion, traspaso, ancho, alto)` con
+  `seccion`, `archivo(parent, etiqueta, var, crea, sangria)`, `casilla`,
+  `nota`, `boton`, `log`/`estado`/`progreso` (se pueden llamar desde
+  cualquier hilo), `correr(trabajo, fin, boton, hilo)` e `iniciar()`.
+  `texto_archivo`, `abrir_carpeta` y `fmt_tiempo` son sueltas.
+- **`correr`:** con `hilo=True`, el trabajo corre en un hilo y `fin` vuelve
+  por la cola al hilo de la ventana. `hilo=False` es para Actualiza_datos,
+  que maneja Excel desde el hilo principal como siempre. Si el trabajo levanta
+  una excepción, la traza va al log y sale una ventana de error.
+- **Se importa** con `sys.path` a `Revisor_Relq_15min/actualizadores`; si
+  falta, `_morir` lo dice. Vive en esta versión y no en `__comun__/` porque
+  usa tkinter.
+- **Pruebas:** `actualizadores/test_ventana_chica.py`. Las de la ventana
+  necesitan pantalla (`xvfb-run`); sin tkinter, `verificar.sh` las omite.
+
 ### `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`
 
 - **Qué hace:** es la consola del proceso. Arma el árbol de archivos del mes,

@@ -43,7 +43,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from pathlib import Path
-import csv, io, os, re, subprocess, sys, threading, time, traceback, queue
+import csv, io, os, re, sys, time
 
 DIR_SCRIPT = Path(__file__).resolve().parent
 
@@ -80,6 +80,17 @@ except ImportError as e:
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq_15min.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
+
+# La ventana chica comun de esta version (actualizadores/ventana_chica.py).
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "actualizadores"))
+    from ventana_chica import VentanaChica
+except ImportError as e:
+    _morir("Falta ventana_chica.py",
+           "No se pudo cargar actualizadores/ventana_chica.py.\n\n"
+           "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
+           f"Detalle: {e}")
+
 
 
 # =============================================================================
@@ -132,34 +143,11 @@ def guardar_config(data):
         lambda todo: todo.setdefault(get_usuario(), {}).update(data))
 
 
-def abrir_en_explorador(ruta, es_archivo=False):
-    if not ruta or str(ruta).startswith("["):
-        return
-    p = Path(ruta)
-    if not p.exists():
-        p = p.parent
-        if not p.exists():
-            return
-        es_archivo = False
-    carpeta = p.parent if es_archivo else p
-    if sys.platform == "win32":
-        subprocess.Popen(["explorer", str(carpeta)])
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(carpeta)])
-    else:
-        subprocess.Popen(["xdg-open", str(carpeta)])
-
-
 def leer_traspaso(argv):
     return _traspaso.leer_argumento(argv)
 
 
 normalizar = _texto.suave
-
-
-def fmt_tiempo(seg):
-    seg = int(seg)
-    return f"{seg // 3600:02d}:{(seg % 3600) // 60:02d}:{seg % 60:02d}"
 
 
 # =============================================================================
@@ -409,96 +397,17 @@ def main():
     traspaso = leer_traspaso(sys.argv)
     modo = {"traspaso": traspaso is not None}
 
-    root = tk.Tk()
-    root.title("Reorganiza SC_CfrecSinFD para Coyailen"
-               + ("  —  enviado por el Revisor" if traspaso else ""))
-    root.geometry("900x560")
-
-    if traspaso:
-        fa = tk.Frame(root, bg="#fff4c2", bd=1, relief="solid")
-        fa.pack(fill="x", padx=20, pady=(10, 0))
-        tk.Label(fa, text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
-                 bg="#fff4c2", font=("Segoe UI", 11, "bold")).pack(pady=(6, 0))
-        tk.Label(fa, text="Las rutas las resolvió el Revisor.", bg="#fff4c2",
-                 font=("Segoe UI", 8), fg="#444444").pack(pady=(0, 6))
-
-    tk.Label(root, text="SC_CfrecSinFD_AAMM.csv  →  SC_CfrecSinFD_AAMM_para_coyailen.csv",
-             font=("Segoe UI", 12, "bold")).pack(pady=(10, 2))
-    tk.Label(root, text="Lee y escribe en 01 Sobrecostos. Une los bloques con "
-                        "generación en J (GEN TG+TV).",
-             font=("Segoe UI", 8), fg="#555555").pack(pady=(0, 6))
-
+    v = VentanaChica("SC sin FD para Coyailen",
+                     "Reordena SC_CfrecSinFD_AAMM.csv y deja la salida en "
+                     "01 Sobrecostos.", traspaso, alto=330)
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
     var_entrada = tk.StringVar(value="[pendiente]")
     var_salida = tk.StringVar(value="[pendiente]")
-    labels = {}
 
-    def fila(titulo, var, clave):
-        fr = tk.LabelFrame(root, text=titulo, padx=10, pady=4)
-        fr.pack(fill="x", padx=20, pady=3)
-        l = tk.Label(fr, textvariable=var, wraplength=820, justify="left",
-                     cursor="hand2", font=("Segoe UI", 9), anchor="w")
-        l.pack(fill="x")
-        l.bind("<Button-1>", lambda e: abrir_en_explorador(var.get(), es_archivo=True))
-        labels[clave] = l
-
-    fila("Entrada — 01 Sobrecostos/SC_CfrecSinFD_AAMM.csv", var_entrada, "entrada")
-    fila("Salida — 01 Sobrecostos/SC_CfrecSinFD_AAMM_para_coyailen.csv  "
-         "(se crea o se reemplaza)", var_salida, "salida")
-
-    fc = tk.LabelFrame(root, text="Carpeta 02 CASO RELIQUIDACION", padx=10, pady=4)
-    fc.pack(fill="x", padx=20, pady=3)
-    lc = tk.Label(fc, textvariable=var_carpeta, wraplength=820, justify="left",
-                  cursor="hand2", font=("Segoe UI", 9), anchor="w")
-    lc.pack(fill="x")
-    lc.bind("<Button-1>", lambda e: abrir_en_explorador(var_carpeta.get()))
-
-    var_estado = tk.StringVar(value="Listo")
-    var_tiempo = tk.StringVar(value="00:00:00")
-    fpr = tk.Frame(root)
-    fpr.pack(fill="x", padx=20, pady=(6, 0))
-    tk.Label(fpr, textvariable=var_estado, font=("Segoe UI", 9),
-             anchor="w").pack(side="left", fill="x", expand=True)
-    tk.Label(fpr, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
-             fg="#2d7a2d").pack(side="right", padx=8)
-    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo.
-
-    frame_btns = tk.Frame(root)
-    frame_btns.pack(side="bottom", fill="x", pady=8)
-    fl = tk.LabelFrame(root, text="Progreso detallado", padx=6, pady=4)
-    fl.pack(fill="both", expand=True, padx=20, pady=4)
-    txt = tk.Text(fl, height=10, font=("Consolas", 9), wrap="none")
-    sb = tk.Scrollbar(fl, command=txt.yview)
-    txt.configure(yscrollcommand=sb.set)
-    sb.pack(side="right", fill="y")
-    txt.pack(fill="both", expand=True)
-
-    cola = queue.Queue()
-    log = lambda m="": cola.put(str(m))
-
-    def bombear():
-        try:
-            for _ in range(200):
-                txt.insert("end", cola.get_nowait() + "\n")
-                txt.see("end")
-        except queue.Empty:
-            pass
-        root.after(120, bombear)
-
-    timer = {"on": False, "t0": 0.0}
-
-    def tick():
-        if timer["on"]:
-            var_tiempo.set(fmt_tiempo(time.time() - timer["t0"]))
-            root.after(500, tick)
-
-    def pintar():
-        for clave, var in (("entrada", var_entrada), ("salida", var_salida)):
-            v = var.get()
-            # La salida sale en rojo si todavia no existe: se crea al generar.
-            ok = not v.startswith("[") and Path(v).is_file()
-            labels[clave].config(fg="blue" if ok else "red")
+    fr = v.seccion("Archivos")
+    v.archivo(fr, "Entrada", var_entrada)
+    v.archivo(fr, "Salida", var_salida, crea=True)
 
     def refrescar(*_):
         e = None
@@ -506,13 +415,13 @@ def main():
             r = traspaso.get("rutas", {}).get(CLAVE_TRASPASO)
             e = Path(r) if r else None
             if e is None:
-                var_entrada.set("[el Revisor no mandó SC_CfrecSinFD_*.csv]")
+                var_entrada.set("[el Revisor no mandó la entrada]")
         else:
             base = var_carpeta.get()
             if base and Path(base).is_dir():
                 e = buscar_entrada(base)
                 if e is None:
-                    var_entrada.set("[SC_CfrecSinFD_*.csv no encontrado en 01 Sobrecostos]")
+                    var_entrada.set("[SC_CfrecSinFD_*.csv no encontrado]")
             else:
                 var_entrada.set("[elige la carpeta 02 CASO RELIQUIDACION]")
         if e is not None:
@@ -520,7 +429,6 @@ def main():
             var_salida.set(str(ruta_salida(e)))
         else:
             var_salida.set("[falta la entrada]")
-        pintar()
 
     def sel_carpeta():
         ini = var_carpeta.get()
@@ -529,12 +437,8 @@ def main():
         if r:
             var_carpeta.set(r)
             guardar_config({"carpeta_reliq": r})
-            if modo["traspaso"]:
-                modo["traspaso"] = False
-                log("Carpeta elegida a mano: se dejan de usar las rutas del Revisor.")
+            modo["traspaso"] = False
             refrescar()
-
-    tk.Button(fc, text="Examinar", command=sel_carpeta).pack(anchor="w", pady=(4, 0))
 
     def lanzar():
         entrada = var_entrada.get()
@@ -543,51 +447,24 @@ def main():
                                  "No se encontró SC_CfrecSinFD_*.csv en 01 Sobrecostos.")
             return
         salida = var_salida.get()
+        v.limpiar_log()
+        v.log(f"Entrada: {entrada}")
+        v.log(f"Salida : {salida}")
 
-        txt.delete("1.0", "end")
-        log(f"Entrada: {entrada}")
-        log(f"Salida : {salida}")
-        log("-" * 70)
-        btn.config(state="disabled", bg="#aaaaaa")
-        var_estado.set("Reorganizando...")
-        timer["on"] = True
-        timer["t0"] = time.time()
-        tick()
+        def fin(r):
+            _, n_in, n_out, n_gr = r
+            msg = f"{n_in} filas -> {n_out} ({n_gr} bloques combinados)"
+            v.var_estado.set(f"Listo — {msg}")
+            messagebox.showinfo("Listo", f"Salida generada.\n\n{msg}")
 
-        def trabajo():
-            try:
-                _, n_in, n_out, n_gr = procesar(entrada, salida, log)
-                ok, msg = True, (f"{n_in} filas de entrada -> {n_out} de salida "
-                                 f"({n_gr} bloques combinados)")
-            except Exception as e:
-                log(f"\nERROR: {e}")
-                log(traceback.format_exc())
-                ok, msg = False, str(e)
+        v.correr(lambda: procesar(entrada, salida, v.log), fin, boton=btn,
+                 estado="Reorganizando...")
 
-            def fin():
-                timer["on"] = False
-                btn.config(state="normal", bg="#2d7a2d")
-                pintar()
-                if ok:
-                    var_estado.set(f"Listo — {msg}")
-                    messagebox.showinfo("Listo", f"Salida generada.\n\n{msg}\n\n{salida}")
-                else:
-                    var_estado.set("Terminó con errores — revisa el log")
-                    messagebox.showerror("Error", f"Falló.\n\n{msg}")
-            root.after(0, fin)
-
-        threading.Thread(target=trabajo, daemon=True).start()
-
-    btn = tk.Button(frame_btns, text="GENERAR para Coyailen", bg="#2d7a2d",
-                    fg="white", font=("Segoe UI", 10, "bold"), command=lanzar)
-    btn.pack(side="left", padx=8, expand=True)
-    tk.Button(frame_btns, text="Refrescar rutas",
-              command=refrescar).pack(side="left", padx=8)
-    tk.Button(frame_btns, text="Salir", command=root.destroy).pack(side="left", padx=8)
-
+    btn = v.boton("GENERAR", lanzar, principal=True)
+    v.boton("Carpeta…", sel_carpeta)
+    v.boton("Salir", v.root.destroy)
     refrescar()
-    bombear()
-    root.mainloop()
+    v.iniciar()
 
 
 if __name__ == "__main__":

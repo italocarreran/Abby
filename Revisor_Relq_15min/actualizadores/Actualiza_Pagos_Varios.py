@@ -53,10 +53,10 @@
 # =============================================================================
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 from pathlib import Path
 from datetime import datetime, timedelta
-import csv, io, os, re, subprocess, sys, threading, time, traceback, queue
+import csv, io, os, re, sys, time
 
 DIR_SCRIPT = Path(__file__).resolve().parent
 
@@ -94,6 +94,17 @@ except ImportError as e:
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq_15min.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
+
+# La ventana chica comun de esta version (actualizadores/ventana_chica.py).
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "actualizadores"))
+    from ventana_chica import VentanaChica
+except ImportError as e:
+    _morir("Falta ventana_chica.py",
+           "No se pudo cargar actualizadores/ventana_chica.py.\n\n"
+           "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
+           f"Detalle: {e}")
+
 
 
 # =============================================================================
@@ -201,24 +212,6 @@ def guardar_config(data):
         lambda todo: todo.setdefault(get_usuario(), {}).update(data))
 
 
-def abrir_en_explorador(ruta, es_archivo=False):
-    if not ruta or str(ruta).startswith("["):
-        return
-    p = Path(ruta)
-    if not p.exists():
-        p = p.parent
-        if not p.exists():
-            return
-        es_archivo = False
-    carpeta = p.parent if es_archivo else p
-    if sys.platform == "win32":
-        subprocess.Popen(["explorer", str(carpeta)])
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(carpeta)])
-    else:
-        subprocess.Popen(["xdg-open", str(carpeta)])
-
-
 # =============================================================================
 #  TRASPASO DESDE EL REVISOR
 # =============================================================================
@@ -234,11 +227,6 @@ def leer_traspaso(argv):
 #  UTILIDADES
 # =============================================================================
 normalizar = _texto.suave
-
-
-def fmt_tiempo(seg):
-    seg = int(seg)
-    return f"{seg // 3600:02d}:{(seg % 3600) // 60:02d}:{seg % 60:02d}"
 
 
 def aamm_de_nombre(ruta):
@@ -720,109 +708,25 @@ def main():
     traspaso = leer_traspaso(sys.argv)
     modo = {"traspaso": traspaso is not None}
 
-    root = tk.Tk()
-    root.title("Arma pagos_varios (planillas 3, 5 y 6)"
-               + ("  —  enviado por el Revisor" if traspaso else ""))
-    root.geometry("980x680")
-
-    if traspaso:
-        fa = tk.Frame(root, bg="#fff4c2", bd=1, relief="solid")
-        fa.pack(fill="x", padx=20, pady=(10, 0))
-        tk.Label(fa, text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
-                 bg="#fff4c2", font=("Segoe UI", 11, "bold")).pack(pady=(6, 0))
-        tk.Label(fa, text="Las rutas las resolvió el Revisor.", bg="#fff4c2",
-                 font=("Segoe UI", 8), fg="#444444").pack(pady=(0, 6))
-
-    tk.Label(root, text="pagos_varios_AAMM.csv  —  Subastas (3), CRA (5), "
-                        "CO_ERNC y REA (6)",
-             font=("Segoe UI", 12, "bold")).pack(pady=(10, 2))
-    tk.Label(root, text="Solo lee las planillas (no hace falta cerrarlas). "
-                        "Fecha DD/MM/AAAA HH:MM, sin pagos en 0.",
-             font=("Segoe UI", 8), fg="#555555").pack(pady=(0, 6))
-
+    v = VentanaChica("pagos_varios", "Arma 04 Planilla 9/pagos_varios_AAMM.csv con "
+                     "Subastas (3), CRA (5), CO_ERNC y REA (6).", traspaso, alto=380)
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
     var_aamm = tk.StringVar(value=(traspaso or {}).get("aamm") or "")
     vars_pl = {k: tk.StringVar(value="[pendiente]") for k in ORDEN_PL}
     var_salida = tk.StringVar(value="[pendiente]")
-    labels = {}
 
-    def fila(titulo, var, clave):
-        fr = tk.LabelFrame(root, text=titulo, padx=10, pady=4)
-        fr.pack(fill="x", padx=20, pady=3)
-        l = tk.Label(fr, textvariable=var, wraplength=880, justify="left",
-                     cursor="hand2", font=("Segoe UI", 9), anchor="w")
-        l.pack(fill="x")
-        l.bind("<Button-1>", lambda e: abrir_en_explorador(var.get(), es_archivo=True))
-        labels[clave] = l
-        return fr
-
-    for k in ORDEN_PL:
-        fila(PLANILLAS[k]["etiqueta"], vars_pl[k], k)
-    fila("Salida — 04 Planilla 9/pagos_varios_AAMM.csv  (se crea o se reemplaza)",
-                var_salida, "salida")
-
-    fm = tk.Frame(root)
-    fm.pack(fill="x", padx=24, pady=(4, 0))
-    tk.Label(fm, text="Mes (AAMM):", font=("Segoe UI", 9)).pack(side="left")
-    tk.Entry(fm, textvariable=var_aamm, width=8,
-             font=("Consolas", 10)).pack(side="left", padx=6)
-    tk.Label(fm, text="si queda vacío se saca del nombre de las planillas",
-             font=("Segoe UI", 8), fg="#555555").pack(side="left")
-
-    fc = tk.LabelFrame(root, text="Carpeta 02 CASO RELIQUIDACION", padx=10, pady=4)
-    fc.pack(fill="x", padx=20, pady=3)
-    lc = tk.Label(fc, textvariable=var_carpeta, wraplength=880, justify="left",
-                  cursor="hand2", font=("Segoe UI", 9), anchor="w")
-    lc.pack(fill="x")
-    lc.bind("<Button-1>", lambda e: abrir_en_explorador(var_carpeta.get()))
-
-    var_estado = tk.StringVar(value="Listo")
-    var_tiempo = tk.StringVar(value="00:00:00")
-    fpr = tk.Frame(root)
-    fpr.pack(fill="x", padx=20, pady=(6, 0))
-    tk.Label(fpr, textvariable=var_estado, font=("Segoe UI", 9),
-             anchor="w").pack(side="left", fill="x", expand=True)
-    tk.Label(fpr, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
-             fg="#2d7a2d").pack(side="right", padx=8)
-    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
-    # es lo que dice que esta corriendo.
-
-    frame_btns = tk.Frame(root)
-    frame_btns.pack(side="bottom", fill="x", pady=8)
-    fl = tk.LabelFrame(root, text="Progreso detallado", padx=6, pady=4)
-    fl.pack(fill="both", expand=True, padx=20, pady=4)
-    txt = tk.Text(fl, height=12, font=("Consolas", 9), wrap="none")
-    sb = tk.Scrollbar(fl, command=txt.yview)
-    txt.configure(yscrollcommand=sb.set)
-    sb.pack(side="right", fill="y")
-    txt.pack(fill="both", expand=True)
-
-    cola = queue.Queue()
-    log = lambda m="": cola.put(("log", str(m)))
-    progreso = lambda a, t=100, m=None: cola.put(("prog", (a, t, m)))
-
-    def bombear():
-        try:
-            for _ in range(200):
-                tipo, val = cola.get_nowait()
-                if tipo == "log":
-                    txt.insert("end", val + "\n")
-                    txt.see("end")
-                else:
-                    a, t, m = val
-                    if m:
-                        var_estado.set(m)
-        except queue.Empty:
-            pass
-        root.after(120, bombear)
-
-    timer = {"on": False, "t0": 0.0}
-
-    def tick():
-        if timer["on"]:
-            var_tiempo.set(fmt_tiempo(time.time() - timer["t0"]))
-            root.after(500, tick)
+    fr = v.seccion("Archivos")
+    for k, et in (("p3", "Planilla 3"), ("p5", "Planilla 5"), ("p6", "Planilla 6")):
+        v.archivo(fr, et, vars_pl[k])
+    v.archivo(fr, "Salida", var_salida, crea=True)
+    fm = tk.Frame(fr)
+    fm.pack(fill="x", pady=(2, 0))
+    tk.Label(fm, text="Mes (AAMM)", font=("Segoe UI", 8), fg="#666666", width=12,
+             anchor="w").pack(side="left")
+    tk.Entry(fm, textvariable=var_aamm, width=6, font=("Consolas", 9)).pack(side="left")
+    tk.Label(fm, text="vacío = del nombre de las planillas", font=("Segoe UI", 8),
+             fg="#666666").pack(side="left", padx=4)
 
     def rutas_actuales():
         return {k: vars_pl[k].get() for k in ORDEN_PL
@@ -832,18 +736,8 @@ def main():
         a = var_aamm.get().strip()
         if a:
             return a, "escrito en la ventana"
-        v, motivo = detectar_aamm(rutas_actuales())
-        return (str(v) if v else None), motivo
-
-    def pintar():
-        for k in ORDEN_PL:
-            v = vars_pl[k].get()
-            ok = not v.startswith("[") and Path(v).is_file()
-            labels[k].config(fg="blue" if ok else "red")
-        v = var_salida.get()
-        # Rojo si todavia no existe: se crea al generar.
-        labels["salida"].config(fg="blue" if not v.startswith("[") and Path(v).is_file()
-                                else "red")
+        val, motivo = detectar_aamm(rutas_actuales())
+        return (str(val) if val else None), motivo
 
     def poner_salida():
         aamm, _ = mes_actual()
@@ -859,20 +753,21 @@ def main():
             var_salida.set("[falta la carpeta 04 Planilla 9 o el mes]")
         else:
             var_salida.set(str(ruta_salida(p9, aamm)))
-        pintar()
 
     def refrescar(*_):
         if modo["traspaso"]:
             d = traspaso.get("rutas", {})
             for k in ORDEN_PL:
-                vars_pl[k].set(d.get(k) or f"[el Revisor no mandó {k}]")
+                vars_pl[k].set(d.get(k) or "[el Revisor no la mandó]")
         else:
             base = var_carpeta.get()
             if base and Path(base).is_dir():
                 for k in ORDEN_PL:
                     r = buscar_planilla(base, PLANILLAS[k]["patron"])
-                    vars_pl[k].set(str(r) if r else
-                                   f"[{PLANILLAS[k]['etiqueta']}: no encontrada]")
+                    vars_pl[k].set(str(r) if r else "[no encontrada]")
+            else:
+                for k in ORDEN_PL:
+                    vars_pl[k].set("[elige la carpeta 02 CASO RELIQUIDACION]")
         poner_salida()
 
     def sel_carpeta():
@@ -882,12 +777,9 @@ def main():
         if r:
             var_carpeta.set(r)
             guardar_config({"carpeta_reliq": r})
-            if modo["traspaso"]:
-                modo["traspaso"] = False
-                log("Carpeta elegida a mano: se dejan de usar las rutas del Revisor.")
+            modo["traspaso"] = False
             refrescar()
 
-    tk.Button(fc, text="Examinar", command=sel_carpeta).pack(anchor="w", pady=(4, 0))
     var_aamm.trace_add("write", lambda *_: poner_salida())
 
     def lanzar():
@@ -895,66 +787,36 @@ def main():
         faltan = [PLANILLAS[k]["etiqueta"] for k in ORDEN_PL
                   if k not in rutas or not Path(rutas[k]).is_file()]
         if faltan:
-            messagebox.showerror("Faltan entradas",
-                                 "No se encontró:\n\n" + "\n".join(faltan))
+            messagebox.showerror("Faltan entradas", "No se encontró:\n\n" + "\n".join(faltan))
             return
         aamm, motivo = mes_actual()
         if not aamm or not re.fullmatch(r"\d{4}", aamm) or not 1 <= int(aamm) % 100 <= 12:
             messagebox.showerror("Falta el mes",
-                                 f"No se pudo saber el mes ({motivo}).\n\n"
-                                 "Escríbelo en AAMM.")
+                                 f"No se pudo saber el mes ({motivo}).\n\nEscríbelo en AAMM.")
             return
         salida = var_salida.get()
         if salida.startswith("["):
-            messagebox.showerror("Falta la salida", salida)
+            messagebox.showerror("Falta la salida", salida.strip("[]"))
             return
-
-        txt.delete("1.0", "end")
-        log(f"Mes {aamm} ({motivo})")
+        v.limpiar_log()
+        v.log(f"Mes {aamm} ({motivo})")
         for k in ORDEN_PL:
-            log(f"{k}: {rutas[k]}")
-        log(f"Salida: {salida}")
-        log("-" * 70)
-        btn.config(state="disabled", bg="#aaaaaa")
-        timer["on"] = True
-        timer["t0"] = time.time()
-        tick()
+            v.log(f"{k}: {rutas[k]}")
+        v.log(f"Salida: {salida}")
 
-        def trabajo():
-            try:
-                filas, resumen, avisos = generar(rutas, aamm, salida, log, progreso)
-                ok, msg = True, f"{len(filas)} filas" + (
-                    f" | {len(avisos)} aviso(s)" if avisos else "")
-            except Exception as e:
-                log(f"\nERROR: {e}")
-                log(traceback.format_exc())
-                ok, msg = False, str(e)
+        def fin(r):
+            filas, _, avisos = r
+            msg = f"{len(filas)} filas" + (f" | {len(avisos)} aviso(s)" if avisos else "")
+            v.var_estado.set(f"Listo — {msg}")
+            messagebox.showinfo("Listo", f"pagos_varios generado.\n\n{msg}")
 
-            def fin():
-                timer["on"] = False
-                btn.config(state="normal", bg="#2d7a2d")
-                pintar()
-                if ok:
-                    var_estado.set(f"Listo — {msg}")
-                    messagebox.showinfo("Listo", f"pagos_varios generado.\n\n{msg}\n\n"
-                                        f"{salida}")
-                else:
-                    var_estado.set("Terminó con errores — revisa el log")
-                    messagebox.showerror("Error", f"Falló.\n\n{msg}")
-            root.after(0, fin)
+        v.correr(lambda: generar(rutas, aamm, salida, v.log, v.progreso), fin, boton=btn)
 
-        threading.Thread(target=trabajo, daemon=True).start()
-
-    btn = tk.Button(frame_btns, text="GENERAR pagos_varios", bg="#2d7a2d",
-                    fg="white", font=("Segoe UI", 10, "bold"), command=lanzar)
-    btn.pack(side="left", padx=8, expand=True)
-    tk.Button(frame_btns, text="Refrescar rutas",
-              command=refrescar).pack(side="left", padx=8)
-    tk.Button(frame_btns, text="Salir", command=root.destroy).pack(side="left", padx=8)
-
+    btn = v.boton("GENERAR", lanzar, principal=True)
+    v.boton("Carpeta…", sel_carpeta)
+    v.boton("Salir", v.root.destroy)
     refrescar()
-    bombear()
-    root.mainloop()
+    v.iniciar()
 
 
 if __name__ == "__main__":

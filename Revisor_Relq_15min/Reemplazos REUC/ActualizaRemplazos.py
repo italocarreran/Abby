@@ -23,12 +23,12 @@ El programa:
 import os
 import re
 import json
-import queue
+
 import shutil
 import socket
 import subprocess
 import sys
-import threading
+
 import time
 import traceback
 import unicodedata
@@ -37,7 +37,7 @@ from pathlib import Path
 
 import pandas as pd
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 
 import xlwings as xw
 
@@ -91,6 +91,17 @@ except ImportError as e:
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
+
+# La ventana chica comun de esta version (actualizadores/ventana_chica.py).
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "actualizadores"))
+    from ventana_chica import VentanaChica
+except ImportError as e:
+    _morir("Falta ventana_chica.py",
+           "No se pudo cargar actualizadores/ventana_chica.py.\n\n"
+           "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
+           f"Detalle: {e}")
+
 
 
 get_usuario = _cfg.clave_equipo
@@ -1393,565 +1404,201 @@ def main():
     # modo["traspaso"] se apaga si el usuario elige el destino a mano.
     modo = {"traspaso": traspaso is not None}
 
-    root = tk.Tk()
-    root.title("Actualiza Reemplazos SSCC"
-               + ("  —  enviado por el Revisor" if traspaso else ""))
-    root.geometry("900x620")
-
-    # 1) Botones fijos abajo PRIMERO
-    frame_btns_fijo = tk.Frame(root)
-    frame_btns_fijo.pack(side="bottom", fill="x", pady=8)
-
-    # 2) Canvas con scrollbar
-    canvas = tk.Canvas(root, borderwidth=0, highlightthickness=0)
-    scroll = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
-    canvas.configure(yscrollcommand=scroll.set)
-    scroll.pack(side="right", fill="y")
-    canvas.pack(side="left", fill="both", expand=True)
-
-    contenedor = tk.Frame(canvas)
-    canvas_win = canvas.create_window((0, 0), window=contenedor, anchor="nw")
-
-    def _ajustar(event=None):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-        canvas.itemconfig(canvas_win, width=canvas.winfo_width())
-
-    contenedor.bind("<Configure>", _ajustar)
-    canvas.bind("<Configure>", _ajustar)
-    # La rueda del mouse: el canvas de la ventana solo scrollea si el puntero NO
-    # esta sobre un widget que scrollea solo (el log, por ejemplo).
-    #
-    # bind_all captura la rueda GLOBALMENTE. Sin este filtro, al intentar subir
-    # en el log se movia la ventana entera y el log no se movia: los dos
-    # respondian a la misma rueda, o directamente ganaba el canvas.
-    def _rueda(e, _cv=canvas):
-        w = e.widget.winfo_toplevel().winfo_containing(e.x_root, e.y_root)
-        pasos = int(-e.delta / 120)
-        # Se sube por los padres: el puntero puede estar sobre un hijo del Text.
-        while w is not None:
-            if isinstance(w, (tk.Text, tk.Listbox)):
-                w.yview_scroll(pasos, "units")
-                return "break"
-            if w is _cv:
-                break
-            w = getattr(w, "master", None)
-        _cv.yview_scroll(pasos, "units")
-
-    canvas.bind_all("<MouseWheel>", _rueda)
-
-    # ---------- Variables ----------
+    v = VentanaChica("Reemplazos REUC", "Empresas con RUT y reemplazos a la hoja "
+                     "EMPRESAS del cuadro 0.", traspaso, alto=430)
     var_carpeta = tk.StringVar(value=carpeta_datos_guardada(cfg))
     var_destino = tk.StringVar(
         value=(traspaso or {}).get("rutas", {}).get("cuadro_0")
-              or cfg.get("archivo_destino", "[seleccionar archivo]"))
-    var_raiz_facturacion = tk.StringVar(
-        value=cfg.get("raiz_facturacion", RAIZ_FACTURACION_DEFAULT))
-    var_balances = tk.StringVar(value="[sin buscar]")
-    var_sscc = tk.StringVar(value="[sin buscar]")
-    var_par_info = tk.StringVar(value="")
-    var_aviso_balances = tk.StringVar(value="")
-    var_aviso_sscc = tk.StringVar(value="")
-    estado_avisos = {"lista": []}
-    var_estado = tk.StringVar(value="Listo")
-    var_tiempo = tk.StringVar(value="00:00:00")
-    cola_reuc = queue.Queue()
-    cola_ejecutar = queue.Queue()
-    ruta_carpeta_salida = {"path": ""}
+              or cfg.get("archivo_destino", "[elige el cuadro 0 con Destino…]"))
+    var_raiz = tk.StringVar(value=cfg.get("raiz_facturacion", RAIZ_FACTURACION_DEFAULT))
+    var_balances = tk.StringVar(value="[buscando…]")
+    var_sscc = tk.StringVar(value="[buscando…]")
+    var_avisos = tk.StringVar(value="")
     var_abrir = tk.BooleanVar(value=True)
+    avisos_par = {"lista": []}
 
-    def actualizar_color_label(lbl, valor, es_archivo=False):
-        if not valor or valor.startswith("["):
-            lbl.config(fg="red")
-        elif es_archivo and Path(valor).is_file():
-            lbl.config(fg="blue")
-        elif not es_archivo and Path(valor).is_dir():
-            lbl.config(fg="blue")
+    fe = v.seccion("Entradas")
+    v.archivo(fe, "Datos REUC", var_carpeta)
+    fr_reuc = tk.Frame(fe)
+    fr_reuc.pack(fill="x", pady=(1, 2))
+    btn_reuc = tk.Button(fr_reuc, text="Actualizar data REUC", font=("Segoe UI", 8),
+                         command=lambda: actualizar_reuc())
+    btn_reuc.pack(side="left", padx=(86, 0))
+    tk.Label(fr_reuc, text="con tu navegador",
+             font=("Segoe UI", 8), fg="#666666").pack(side="left", padx=4)
+    v.archivo(fe, "Balances SEN", var_balances)
+    v.archivo(fe, "1_CUADROS", var_sscc)
+    tk.Label(fe, textvariable=var_avisos, font=("Segoe UI", 8), fg=NARANJO,
+             anchor="w", justify="left", wraplength=500).pack(fill="x")
+    fd = v.seccion("Destino")
+    v.archivo(fd, "Cuadro 0", var_destino)
+    v.casilla(fd, "Dejar Excel abierto al terminar", var_abrir)
+
+    # ---------- disco compartido ----------
+    def buscar_par(mostrar_detalle=False):
+        var_balances.set("[buscando…]")
+        var_sscc.set("[buscando…]")
+        var_avisos.set("")
+        v.root.update_idletasks()
+        detalle = []
+        par, info = buscar_par_mensual(var_raiz.get(), log=lambda m: detalle.append(str(m)))
+        if par:
+            var_balances.set(str(par["xlsb"]))
+            var_sscc.set(str(par["xlsm"]))
+            avisos_par["lista"] = par["avisos_xlsb"] + par["avisos_xlsm"]
+            v.log(f"Disco compartido: {info}")
         else:
-            lbl.config(fg="red")
+            var_balances.set(f"[{info}]")
+            var_sscc.set(f"[{info}]")
+            avisos_par["lista"] = []
+        if mostrar_detalle or not par:
+            v.log("== Detalle de la búsqueda en el disco compartido ==")
+            for d in detalle:
+                v.log(d)
+        if avisos_par["lista"]:
+            var_avisos.set("⚠ " + "  |  ".join(avisos_par["lista"]))
+            for a in avisos_par["lista"]:
+                v.log(f"  ⚠ {a}")
 
-    # ---------- Aviso de procedencia (solo si vino del Revisor) ----------
-    if traspaso:
-        fr_aviso = tk.Frame(contenedor, bg="#fff4c2", bd=1, relief="solid")
-        fr_aviso.pack(fill="x", padx=20, pady=(10, 0))
-        tk.Label(fr_aviso,
-                 text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
-                 bg="#fff4c2", font=("Segoe UI", 11, "bold")).pack(pady=(6, 0))
-        tk.Label(fr_aviso,
-                 text="El archivo destino lo resolvió el Revisor.\n"
-                      "Las demás rutas se buscan igual que siempre.",
-                 bg="#fff4c2", font=("Segoe UI", 8), fg="#444444",
-                 justify="center").pack(pady=(0, 6))
-
-    # ---------- Carpeta de datos ----------
-    f1 = tk.LabelFrame(
-        contenedor,
-        text="Carpeta con los archivos de entrada (Reporte_SEC, datos_reuc_reemplazos, reemplazos forzados, cuadros de pago)",
-        padx=10, pady=6,
-    )
-    f1.pack(fill="x", padx=20, pady=6)
-
-    lbl_carpeta = tk.Label(f1, textvariable=var_carpeta, wraplength=760,
-                           justify="center", cursor="hand2", font=("Segoe UI", 9))
-    lbl_carpeta.pack()
-    lbl_carpeta.bind("<Button-1>", lambda e: abrir_en_explorador(var_carpeta.get()))
-
-    def sel_carpeta():
-        ini = var_carpeta.get() if Path(var_carpeta.get()).is_dir() else ""
-        r = filedialog.askdirectory(title="Carpeta de datos", initialdir=ini)
-        if r:
-            var_carpeta.set(r)
-            actualizar_color_label(lbl_carpeta, r)
-            guardar_config({"carpeta_datos": r})
-
-    def usar_auxiliares():
-        r = str(carpeta_auxiliares())
-        var_carpeta.set(r)
-        actualizar_color_label(lbl_carpeta, r)
-        guardar_config({"carpeta_datos": r})
-
-    frame_btns1 = tk.Frame(f1)
-    frame_btns1.pack(pady=(4, 0))
-    tk.Button(frame_btns1, text="Examinar", command=sel_carpeta).pack(side="left", padx=4)
-    tk.Button(frame_btns1, text=f"Usar {NOMBRE_AUXILIARES} (default)",
-              command=usar_auxiliares).pack(side="left", padx=4)
-
-    var_estado_reuc = tk.StringVar(value="")
-    frame_reuc = tk.Frame(f1)
-    frame_reuc.pack(pady=(8, 0))
-
-    def _revisar_cola_reuc():
-        try:
-            while True:
-                tipo, dato = cola_reuc.get_nowait()
-                if tipo == "log":
-                    log(dato)
-                elif tipo == "ok":
-                    log(f"  Guardado en auxiliares: {dato['reuc'].name}")
-                    log(f"  Guardado en auxiliares: {dato['reemplazos'].name}")
-                    log("== Fin actualización REUC ==\n")
-                    var_estado_reuc.set("")
-                    btn_reuc.config(state="normal", bg="#2d7a2d")
-                    messagebox.showinfo(
-                        "REUC actualizado",
-                        "Se descargaron los archivos REUC correctamente."
-                    )
-                    return
-                elif tipo == "error":
-                    log(f"ERROR: {dato}")
-                    var_estado_reuc.set("")
-                    btn_reuc.config(state="normal", bg="#2d7a2d")
-                    messagebox.showerror("Error al actualizar REUC", dato.splitlines()[0])
-                    return
-        except queue.Empty:
-            pass
-        root.after(300, _revisar_cola_reuc)
-
-    def hilo_reuc():
-        # El log vuelve por la cola: desde otro hilo no se toca tkinter.
-        def log_cola(msg):
-            cola_reuc.put(("log", msg))
-
-        try:
-            resultados = descargar_reuc(carpeta_auxiliares(), log=log_cola)
-            cola_reuc.put(("ok", resultados))
-        except Exception as e:
-            cola_reuc.put(("error", f"{e}\n{traceback.format_exc()}"))
-
+    # ---------- REUC ----------
     def actualizar_reuc():
-        carpeta = var_carpeta.get()
-        if not Path(carpeta).is_dir():
-            messagebox.showerror("Error", "Primero selecciona la carpeta de datos.")
+        if not Path(var_carpeta.get()).is_dir():
+            messagebox.showerror("Error", "Primero elige la carpeta de datos.")
             return
         import webbrowser
         webbrowser.open(URL_REUC_LOGIN)
         if not messagebox.askokcancel(
                 "Iniciar sesión en REUC",
-                "Se abrió REUC en tu navegador.\n\n"
-                "Inicia sesión ahí (y pasa la verificación de Cloudflare). "
-                "Cuando ya veas REUC, presiona Aceptar y se bajan los dos "
-                "archivos solos."):
+                "Se abrió REUC en tu navegador.\n\nInicia sesión ahí (y pasa la "
+                "verificación de Cloudflare). Cuando ya veas REUC, presiona Aceptar "
+                "y se bajan los dos archivos solos."):
             return
-        btn_reuc.config(state="disabled", bg="#aaaaaa")
-        var_estado_reuc.set("Actualizando...")
-        log("== Actualizar data REUC ==")
-        threading.Thread(target=hilo_reuc, daemon=True).start()
-        root.after(300, _revisar_cola_reuc)
+        v.log("== Actualizar data REUC ==")
 
-    btn_reuc = tk.Button(frame_reuc, text="Actualizar data REUC", bg="#2d7a2d", fg="white",
-                         command=actualizar_reuc)
-    btn_reuc.pack(side="left", padx=4)
-    tk.Label(frame_reuc, textvariable=var_estado_reuc, fg="#2d7a2d",
-             font=("Segoe UI", 9, "italic")).pack(side="left", padx=6)
+        def fin(r):
+            for p in r.values():
+                v.log(f"  Guardado en auxiliares: {p.name}")
+            v.var_estado.set("REUC actualizado")
+            messagebox.showinfo("REUC actualizado", "Se descargaron los archivos REUC.")
 
-    # ---------- Disco compartido: Balances SEN + SSCC ----------
-    f3 = tk.LabelFrame(
-        contenedor,
-        text="Disco compartido — Balances SEN (Plabacom) + 1_CUADROS_PAGO_SSCC",
-        padx=10, pady=6,
-    )
-    f3.pack(fill="x", padx=20, pady=6)
+        v.correr(lambda: descargar_reuc(carpeta_auxiliares(), log=v.log), fin,
+                 boton=btn_reuc, estado="Esperando las descargas…")
 
-    lbl_raiz = tk.Label(f3, textvariable=var_raiz_facturacion, wraplength=760,
-                        justify="center", cursor="hand2", font=("Segoe UI", 9))
-    lbl_raiz.pack()
-    lbl_raiz.bind("<Button-1>", lambda e: abrir_en_explorador(var_raiz_facturacion.get()))
-
-    tk.Label(f3, textvariable=var_par_info,
-             font=("Segoe UI", 9, "bold"), fg="#2d7a2d").pack(pady=(4, 2))
-
-    lbl_balances = tk.Label(f3, textvariable=var_balances, wraplength=760,
-                            justify="center", cursor="hand2", font=("Segoe UI", 9))
-    lbl_balances.pack()
-    lbl_balances.bind(
-        "<Button-1>",
-        lambda e: abrir_en_explorador(var_balances.get(), es_archivo=True)
-        if not var_balances.get().startswith("[") else None,
-    )
-
-    tk.Label(f3, textvariable=var_aviso_balances, wraplength=760, justify="center",
-             font=("Segoe UI", 8), fg=NARANJO).pack()
-
-    lbl_sscc = tk.Label(f3, textvariable=var_sscc, wraplength=760,
-                        justify="center", cursor="hand2", font=("Segoe UI", 9))
-    lbl_sscc.pack(pady=(2, 0))
-    lbl_sscc.bind(
-        "<Button-1>",
-        lambda e: abrir_en_explorador(var_sscc.get(), es_archivo=True)
-        if not var_sscc.get().startswith("[") else None,
-    )
-
-    tk.Label(f3, textvariable=var_aviso_sscc, wraplength=760, justify="center",
-             font=("Segoe UI", 8), fg=NARANJO).pack()
-
-    def buscar_par(mostrar_detalle=False):
-        var_balances.set("[buscando...]")
-        var_sscc.set("[buscando...]")
-        lbl_balances.config(fg="gray")
-        lbl_sscc.config(fg="gray")
-        var_par_info.set("")
-        var_aviso_balances.set("")
-        var_aviso_sscc.set("")
-        root.update_idletasks()
-
-        detalle = []
-
-        def _cap(msg):
-            detalle.append(str(msg))
-
-        par, info = buscar_par_mensual(var_raiz_facturacion.get(), log=_cap)
-
-        avisos = []
-        if par:
-            var_balances.set(str(par["xlsb"]))
-            var_sscc.set(str(par["xlsm"]))
-            var_par_info.set(f"Mes / proceso: {info}")
-            avisos = par["avisos_xlsb"] + par["avisos_xlsm"]
-        else:
-            var_balances.set(f"[{info}]")
-            var_sscc.set(f"[{info}]")
-            var_par_info.set("")
-
-        if mostrar_detalle or not par:
-            log("== Detalle de busqueda en disco compartido ==")
-            for d in detalle:
-                log(d)
-            log("")
-
-        actualizar_color_label(lbl_balances, var_balances.get(), es_archivo=True)
-        actualizar_color_label(lbl_sscc, var_sscc.get(), es_archivo=True)
-
-        # ---- Avisos de coherencia nombre vs carpeta ----
-        estado_avisos["lista"] = avisos
-
-        if par and par["avisos_xlsb"]:
-            lbl_balances.config(fg=NARANJO)
-            var_aviso_balances.set("⚠ " + "  |  ".join(par["avisos_xlsb"]))
-        else:
-            var_aviso_balances.set("")
-
-        if par and par["avisos_xlsm"]:
-            lbl_sscc.config(fg=NARANJO)
-            var_aviso_sscc.set("⚠ " + "  |  ".join(par["avisos_xlsm"]))
-        else:
-            var_aviso_sscc.set("")
-
-        if avisos:
-            log("== OJO: revisar nombres de archivo ==")
-            for a in avisos:
-                log(f"  ⚠ {a}")
-            log("")
-
-    def sel_raiz():
-        ini = var_raiz_facturacion.get() if Path(var_raiz_facturacion.get()).is_dir() else ""
-        r = filedialog.askdirectory(title="Raiz Facturacion", initialdir=ini)
-        if r:
-            var_raiz_facturacion.set(r)
-            actualizar_color_label(lbl_raiz, r)
-            guardar_config({"raiz_facturacion": r})
-            buscar_par()
-
-    frame_btn3 = tk.Frame(f3)
-    frame_btn3.pack(pady=(4, 0))
-    tk.Button(frame_btn3, text="Cambiar raiz", command=sel_raiz).pack(side="left", padx=4)
-    tk.Button(frame_btn3, text="Buscar mas reciente",
-              command=lambda: buscar_par(mostrar_detalle=True)).pack(side="left", padx=4)
-
-    # ---------- Archivo destino ----------
-    f2 = tk.LabelFrame(
-        contenedor,
-        text="Archivo destino:  0_CUADROS_RELIQUIDACIÓN SSCC_*.xlsm",
-        padx=10, pady=6,
-    )
-    f2.pack(fill="x", padx=20, pady=6)
-
-    lbl_destino = tk.Label(f2, textvariable=var_destino, wraplength=760,
-                           justify="center", cursor="hand2", font=("Segoe UI", 9))
-    lbl_destino.pack()
-    lbl_destino.bind(
-        "<Button-1>",
-        lambda e: abrir_en_explorador(var_destino.get(), es_archivo=True)
-        if not var_destino.get().startswith("[") else None,
-    )
-
+    # ---------- elegir ----------
     def sel_destino():
         ini = cfg.get("archivo_destino", "")
         ini = str(Path(ini).parent) if ini and Path(ini).exists() else ""
         r = filedialog.askopenfilename(
-            title="Seleccionar 0_CUADROS_RELIQUIDACIÓN SSCC",
-            initialdir=ini,
-            filetypes=[("Excel con macros", "*.xlsm"), ("Todos", "*.*")],
-        )
+            title="Seleccionar 0_CUADROS_RELIQUIDACIÓN SSCC", initialdir=ini,
+            filetypes=[("Excel con macros", "*.xlsm"), ("Todos", "*.*")])
         if r:
             var_destino.set(r)
-            actualizar_color_label(lbl_destino, r, es_archivo=True)
             guardar_config({"archivo_destino": r})
             cfg["archivo_destino"] = r
             # Si lo elige a mano, manda el usuario y no el traspaso.
-            if modo["traspaso"]:
-                modo["traspaso"] = False
-                log("Destino elegido a mano: se deja de usar la ruta del Revisor.")
+            modo["traspaso"] = False
 
-    tk.Button(f2, text="Examinar", command=sel_destino).pack(pady=(4, 0))
+    def sel_carpeta():
+        ini = var_carpeta.get() if Path(var_carpeta.get()).is_dir() else ""
+        r = filedialog.askdirectory(
+            title=f"Carpeta de datos (por defecto {NOMBRE_AUXILIARES})", initialdir=ini)
+        if r:
+            var_carpeta.set(r)
+            guardar_config({"carpeta_datos": r})
 
-    tk.Checkbutton(
-        contenedor,
-        text="Dejar Excel abierto al terminar",
-        variable=var_abrir,
-    ).pack(pady=(2, 6))
+    def sel_raiz():
+        ini = var_raiz.get() if Path(var_raiz.get()).is_dir() else ""
+        r = filedialog.askdirectory(title="Raíz Facturación (disco compartido)",
+                                    initialdir=ini)
+        if r:
+            var_raiz.set(r)
+            guardar_config({"raiz_facturacion": r})
+            buscar_par(mostrar_detalle=True)
 
-    # ---------- Progreso ----------
-    tk.Label(contenedor, textvariable=var_estado, anchor="w").pack(fill="x", padx=20)
-    tk.Label(contenedor, textvariable=var_tiempo,
-             font=("Consolas", 10, "bold"), fg="#2d7a2d").pack()
-    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
-    # es lo que dice que esta corriendo.
-
-    txt_log = tk.Text(contenedor, height=14, font=("Consolas", 9))
-    txt_log.pack(fill="both", expand=True, padx=20, pady=(0, 10))
-
-    def log(msg):
-        txt_log.insert("end", str(msg) + "\n")
-        txt_log.see("end")
-        root.update_idletasks()
-
-    def fmt_tiempo(seg):
-        m, s = divmod(int(seg), 60)
-        h, m = divmod(m, 60)
-        return f"{h:02d}:{m:02d}:{s:02d}"
-
-    timer_state = {"running": False, "t_ini": 0.0}
-
-    def tick():
-        if timer_state["running"]:
-            var_tiempo.set(fmt_tiempo(time.time() - timer_state["t_ini"]))
-            root.after(500, tick)
-
-    # ---------- Ejecutar ----------
-    def hilo_ejecutar(carpeta, destino, balances, sscc, avisos_previos, dejar_abierto):
-        """
-        Corre TODO el proceso pesado (lectura de Excel, xlwings) en un hilo
-        aparte para que la ventana no se congele (se pueda seguir haciendo
-        scroll, mover la ventana, etc. mientras trabaja).
-
-        xlwings usa COM (win32com) por debajo: en un hilo que no es el
-        principal hay que inicializar COM explicitamente, si no, falla.
-        """
-        def log_cola(msg):
-            cola_ejecutar.put(("log", msg))
-
-        def progreso(v):
-            cola_ejecutar.put(("progress", v))
-
-        def estado(msg):
-            cola_ejecutar.put(("estado", msg))
-
-        pythoncom = None
-        try:
-            import pythoncom
-            pythoncom.CoInitialize()
-        except ImportError:
-            pass  # no es Windows / no esta instalado: xlwings igual podria fallar
-
-        try:
-            estado("Procesando datos...")
-            log_cola("== Procesando datos ==")
-
-            if balances is None or sscc is None:
-                log_cola("  (Falta algun archivo del disco compartido; "
-                        "se buscara en la carpeta de datos)")
-
-            if avisos_previos:
-                log_cola("== OJO: nombres de archivo que no calzan con su carpeta ==")
-                for a in avisos_previos:
-                    log_cola(f"  ⚠ {a}")
-                log_cola("")
-
-            datos = procesar_datos(
-                carpeta, destino, archivo_xlsb=balances, archivo_xlsm=sscc, log=log_cola
-            )
-            progreso(50)
-
-            estado("Generando archivo de salida...")
-            log_cola("== Archivo de salida ==")
-            carpeta_rr = carpeta_reemplazos_reuc(destino)
-            log_cola(f"  Carpeta: {carpeta_rr}")
-            generar_archivo_salida(datos, carpeta_rr, log=log_cola)
-            cola_ejecutar.put(("carpeta_salida", str(carpeta_rr)))
-            progreso(60)
-
-            log_cola("== Respaldando archivos usados ==")
-            respaldar_fuentes(datos, carpeta_rr, log=log_cola)
-            progreso(70)
-
-            estado("Escribiendo en archivo destino...")
-            log_cola("== Escribiendo en 0_CUADROS_RELIQUIDACIÓN ==")
-            ok = escribir_en_destino(
-                destino, datos, log=log_cola, dejar_abierto=dejar_abierto
-            )
-            progreso(100)
-
-            # ---------- Alertas ----------
-            alertas = []
-
-            df_sin_rut_a_pago = datos["df_sin_rut_a_pago"]
-            if len(df_sin_rut_a_pago) > 0:
-                ejemplos = df_sin_rut_a_pago["EMPRESA"].drop_duplicates().head(3).tolist()
-                alertas.append(
-                    "⚠️ Ojito: hay empresas a pago SIN RUT:\n" + "\n".join(ejemplos)
-                )
-
-            df_salida = datos["df_salida"]
-            fuera_reuc = df_salida[(df_salida["EN_REUC"] == 0) & (df_salida["CLP"] != 0)]
-            if len(fuera_reuc) > 0:
-                ejemplos = fuera_reuc["EMPRESA"].drop_duplicates().head(3).tolist()
-                alertas.append(
-                    "⚠️ Ojito: hay empresas a pago que NO están en REUC:\n" + "\n".join(ejemplos)
-                )
-
-            estado("Listo" if ok else "Terminó con errores")
-            cola_ejecutar.put(("fin", {"ok": ok, "alertas": alertas}))
-
-        except Exception as e:
-            cola_ejecutar.put(("error", f"{e}\n{traceback.format_exc()}"))
-        finally:
-            if pythoncom is not None:
-                try:
-                    pythoncom.CoUninitialize()
-                except Exception:
-                    pass
-
-    def _revisar_cola_ejecutar():
-        try:
-            while True:
-                tipo, dato = cola_ejecutar.get_nowait()
-
-                if tipo == "log":
-                    log(dato)
-                elif tipo == "progress":
-                    pass        # sin barra de progreso: solo corre el tiempo
-                elif tipo == "estado":
-                    var_estado.set(dato)
-                elif tipo == "carpeta_salida":
-                    ruta_carpeta_salida["path"] = dato
-                    btn_abrir_carpeta.config(state="normal")
-                elif tipo == "fin":
-                    if dato["alertas"]:
-                        for a in dato["alertas"]:
-                            log("")
-                            log(a)
-                        messagebox.showwarning(
-                            "ALERTA DE VALIDACIÓN", "\n\n".join(dato["alertas"])
-                        )
-                    log("\n== FIN ==")
-                    timer_state["running"] = False
-                    btn.config(state="normal", bg="#2d7a2d")
-                    return
-                elif tipo == "error":
-                    var_estado.set("Error")
-                    log(f"ERROR: {dato}")
-                    messagebox.showerror("Error", dato.splitlines()[0])
-                    timer_state["running"] = False
-                    btn.config(state="normal", bg="#2d7a2d")
-                    return
-        except queue.Empty:
-            pass
-        root.after(200, _revisar_cola_ejecutar)
-
+    # ---------- ejecutar ----------
     def ejecutar():
-        carpeta = var_carpeta.get()
-        destino = var_destino.get()
-
+        carpeta, destino = var_carpeta.get(), var_destino.get()
         if not Path(carpeta).is_dir():
             messagebox.showerror("Error", "La carpeta de datos no es válida.")
             return
         if destino.startswith("[") or not Path(destino).is_file():
-            messagebox.showerror("Error", "Debes seleccionar el archivo 0_CUADROS_RELIQUIDACIÓN SSCC.")
+            messagebox.showerror("Error", "Elige el 0_CUADROS_RELIQUIDACIÓN SSCC con "
+                                 "Destino….")
             return
-
-        btn.config(state="disabled", bg="#aaaaaa")
-        txt_log.delete("1.0", "end")
-        timer_state["running"] = True
-        timer_state["t_ini"] = time.time()
-        tick()
-
         balances = var_balances.get()
-        balances = balances if not balances.startswith("[") else None
+        balances = None if balances.startswith("[") else balances
         sscc = var_sscc.get()
-        sscc = sscc if not sscc.startswith("[") else None
+        sscc = None if sscc.startswith("[") else sscc
+        avisos_previos = list(avisos_par["lista"])
+        dejar_abierto = var_abrir.get()
+        v.limpiar_log()
 
-        threading.Thread(
-            target=hilo_ejecutar,
-            args=(carpeta, destino, balances, sscc,
-                  list(estado_avisos["lista"]), var_abrir.get()),
-            daemon=True,
-        ).start()
-        root.after(200, _revisar_cola_ejecutar)
+        def trabajo():
+            # xlwings usa COM: en un hilo que no es el principal hay que
+            # inicializarlo a mano.
+            pythoncom = None
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+            except ImportError:
+                pass
+            try:
+                v.log("== Procesando datos ==")
+                if balances is None or sscc is None:
+                    v.log("  (Falta algún archivo del disco compartido; se buscará en "
+                          "la carpeta de datos)")
+                for a in avisos_previos:
+                    v.log(f"  ⚠ {a}")
+                datos = procesar_datos(carpeta, destino, archivo_xlsb=balances,
+                                       archivo_xlsm=sscc, log=v.log)
+                v.estado("Generando archivo de salida…")
+                carpeta_rr = carpeta_reemplazos_reuc(destino)
+                v.log(f"== Archivo de salida ==\n  Carpeta: {carpeta_rr}")
+                generar_archivo_salida(datos, carpeta_rr, log=v.log)
+                v.log("== Respaldando archivos usados ==")
+                respaldar_fuentes(datos, carpeta_rr, log=v.log)
+                v.estado("Escribiendo en el cuadro 0…")
+                v.log("== Escribiendo en 0_CUADROS_RELIQUIDACIÓN ==")
+                ok = escribir_en_destino(destino, datos, log=v.log,
+                                         dejar_abierto=dejar_abierto)
+                alertas = []
+                sin_rut = datos["df_sin_rut_a_pago"]
+                if len(sin_rut) > 0:
+                    alertas.append("Empresas a pago SIN RUT:\n" + "\n".join(
+                        sin_rut["EMPRESA"].drop_duplicates().head(3).tolist()))
+                df = datos["df_salida"]
+                fuera = df[(df["EN_REUC"] == 0) & (df["CLP"] != 0)]
+                if len(fuera) > 0:
+                    alertas.append("Empresas a pago que NO están en REUC:\n" + "\n".join(
+                        fuera["EMPRESA"].drop_duplicates().head(3).tolist()))
+                return {"ok": ok, "alertas": alertas, "carpeta": str(carpeta_rr)}
+            finally:
+                if pythoncom is not None:
+                    try:
+                        pythoncom.CoUninitialize()
+                    except Exception:
+                        pass
 
-    btn = tk.Button(frame_btns_fijo, text="Ejecutar", bg="#2d7a2d", fg="white",
-                    font=("Segoe UI", 10, "bold"), command=ejecutar)
-    btn.pack(side="left", padx=8, expand=True)
+        def fin(r):
+            for a in r["alertas"]:
+                v.log("\n⚠ " + a)
+            if r["alertas"]:
+                messagebox.showwarning("Ojo", "\n\n".join(r["alertas"]))
+            v.var_estado.set("Listo" if r["ok"] else "Terminó con errores — revisa el log")
+            if r["ok"] and messagebox.askyesno(
+                    "Listo", "Cuadro 0 actualizado.\n\n¿Abrir la carpeta Reemplazos REUC?"):
+                abrir_en_explorador(r["carpeta"])
 
-    btn_abrir_carpeta = tk.Button(
-        frame_btns_fijo,
-        text="Abrir carpeta Reemplazos REUC",
-        state="disabled",
-        command=lambda: abrir_en_explorador(ruta_carpeta_salida["path"])
-        if ruta_carpeta_salida["path"] else None,
-    )
-    btn_abrir_carpeta.pack(side="left", padx=8, expand=True)
+        v.correr(trabajo, fin, boton=btn, estado="Procesando datos…")
 
-    tk.Button(frame_btns_fijo, text="Salir", command=root.destroy).pack(
-        side="right", padx=8
-    )
-
-    # ---------- Init ----------
-    avisar_legado(log)
-    actualizar_color_label(lbl_carpeta, var_carpeta.get())
-    actualizar_color_label(lbl_destino, var_destino.get(), es_archivo=True)
-    actualizar_color_label(lbl_raiz, var_raiz_facturacion.get())
-    root.after(200, buscar_par)   # busqueda automatica al abrir
-
-    root.mainloop()
+    btn = v.boton("EJECUTAR", ejecutar, principal=True)
+    v.boton("Destino…", sel_destino)
+    v.boton("Datos…", sel_carpeta)
+    v.boton("Raíz T:…", sel_raiz)
+    v.boton("Salir", v.root.destroy)
+    avisar_legado(v.log)
+    v.root.after(200, buscar_par)   # búsqueda automática al abrir
+    v.iniciar()
 
 
 if __name__ == "__main__":

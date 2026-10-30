@@ -1,15 +1,8 @@
-# ── Constantes configurables ────────────────────────────────────────────────
-INSTRUCCIONES = (
-    "Selecciona la carpeta '02 CASO RELIQUIDACION'.\n"
-    "El script detecta automáticamente todos los archivos origen y destino.\n"
-    "Los .xlsm destino deben estar CERRADOS antes de ejecutar."
-)
-
 # ── Imports ─────────────────────────────────────────────────────────────────
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 from pathlib import Path
-import json, subprocess, sys, re, socket, os, traceback, unicodedata, time
+import json, sys, re, socket, os, traceback, unicodedata, time
 
 # ── Config por usuario/PC ───────────────────────────────────────────────────
 # config.json es compartido con el Revisor y el resto de los actualizadores,
@@ -48,6 +41,17 @@ except ImportError as e:
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
+
+# La ventana chica comun de esta version (actualizadores/ventana_chica.py).
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "actualizadores"))
+    from ventana_chica import VentanaChica
+except ImportError as e:
+    _morir("Falta ventana_chica.py",
+           "No se pudo cargar actualizadores/ventana_chica.py.\n\n"
+           "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
+           f"Detalle: {e}")
+
 
 get_usuario = _cfg.clave_equipo
 
@@ -100,18 +104,6 @@ def leer_traspaso(argv):
     return _traspaso.leer_argumento(argv)
 
 # ── Utilidades ──────────────────────────────────────────────────────────────
-def abrir_en_explorador(ruta: str, es_archivo: bool = False):
-    p = Path(ruta)
-    if not p.exists():
-        return
-    carpeta = p.parent if es_archivo else p
-    if sys.platform == "win32":
-        subprocess.Popen(["explorer", str(carpeta)])
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(carpeta)])
-    else:
-        subprocess.Popen(["xdg-open", str(carpeta)])
-
 normalizar = _texto.suave_requerido
 
 # ── Mapeos ───────────────────────────────────────────────────────────────────
@@ -1151,93 +1143,32 @@ def main():
     # ese momento la ventana vuelve a buscar los archivos por su cuenta.
     modo = {"traspaso": traspaso is not None}
 
-    root = tk.Tk()
-    root.title("Actualiza FD" + ("  —  enviado por el Revisor" if traspaso else ""))
-    root.resizable(True, True)
-    root.geometry("1000x700")
-
-    # ── Layout: botones fijos abajo + canvas scrollable arriba ───────────────
-    # frame_btns_fijo va PRIMERO al fondo
-    frame_btns_fijo = tk.Frame(root)
-    frame_btns_fijo.pack(side="bottom", fill="x", pady=8)
-
-    # Canvas + scrollbar para el contenido
-    canvas_outer = tk.Canvas(root, borderwidth=0, highlightthickness=0)
-    scrollbar_v = tk.Scrollbar(root, orient="vertical", command=canvas_outer.yview)
-    canvas_outer.configure(yscrollcommand=scrollbar_v.set)
-
-    scrollbar_v.pack(side="right", fill="y")
-    canvas_outer.pack(side="left", fill="both", expand=True)
-
-    # Frame interno que CONTIENE todo el contenido scrollable
-    contenedor = tk.Frame(canvas_outer)
-    canvas_window = canvas_outer.create_window((0, 0), window=contenedor, anchor="nw")
-
-    def _actualizar_scroll(event=None):
-        canvas_outer.configure(scrollregion=canvas_outer.bbox("all"))
-        # Hacer que el contenedor tenga el ancho del canvas
-        canvas_outer.itemconfig(canvas_window, width=canvas_outer.winfo_width())
-
-    contenedor.bind("<Configure>", _actualizar_scroll)
-    canvas_outer.bind("<Configure>", _actualizar_scroll)
-
-    # La rueda del mouse: el canvas de la ventana solo scrollea si el puntero NO
-    # esta sobre un widget que scrollea solo (el log, por ejemplo).
-    #
-    # bind_all captura la rueda GLOBALMENTE. Sin este filtro, al intentar subir
-    # en el log se movia la ventana entera y el log no se movia: los dos
-    # respondian a la misma rueda, o directamente ganaba el canvas.
-    def _rueda(e, _cv=canvas_outer):
-        w = e.widget.winfo_toplevel().winfo_containing(e.x_root, e.y_root)
-        pasos = int(-e.delta / 120)
-        # Se sube por los padres: el puntero puede estar sobre un hijo del Text.
-        while w is not None:
-            if isinstance(w, (tk.Text, tk.Listbox)):
-                w.yview_scroll(pasos, "units")
-                return "break"
-            if w is _cv:
-                break
-            w = getattr(w, "master", None)
-        _cv.yview_scroll(pasos, "units")
-
-    canvas_outer.bind_all("<MouseWheel>", _rueda)
-
-    # ── Estado ───────────────────────────────────────────────────────────────
+    v = VentanaChica("Actualizar data", "Elige la planilla y marca qué traer. Los "
+                     "Excel destino tienen que estar cerrados.", traspaso, alto=440)
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
-
-    # Radio: planilla seleccionada (única). El Revisor manda desde qué archivo
-    # se apretó el botón, así que se preselecciona esa.
+    # El Revisor manda desde qué archivo se apretó el botón: se preselecciona.
     plan_ini = (traspaso or {}).get("planilla")
     var_planilla = tk.StringVar(
         value=plan_ini if plan_ini in ("sc", "p3", "p5", "p6") else "sc")
 
-    # Checkboxes por planilla: {planilla: {"fd": BoolVar, "otro": BoolVar}}
-    # Viniendo del Revisor arrancan en blanco a propósito: el usuario tiene que
-    # decir qué quiere actualizar. A mano se mantiene FD premarcado como antes.
+    # Viniendo del Revisor las casillas arrancan en blanco a propósito: el
+    # usuario tiene que decir qué quiere actualizar. A mano, FD premarcado.
     fd_ini = not modo["traspaso"]
-    opciones = {
-        k: {"fd": tk.BooleanVar(value=fd_ini), "otro": tk.BooleanVar(value=False)}
-        for k in ("sc", "p3", "p5", "p6")
-    }
-    # Planilla 5: la hoja "SC y CO", con SC y CO por separado (como en la
-    # ventana de Actualiza_SC_CO.py). Arrancan en blanco siempre.
+    opciones = {k: {"fd": tk.BooleanVar(value=fd_ini), "otro": tk.BooleanVar(value=False)}
+                for k in ("sc", "p3", "p5", "p6")}
     opciones["p5"]["sc"] = tk.BooleanVar(value=False)
     opciones["p5"]["co"] = tk.BooleanVar(value=False)
 
-    paths_detectados = {
-        "sc":    {"destino": tk.StringVar(), "sscc": tk.StringVar(),
-                  "coyailen": tk.StringVar()},
-        "p3":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
-        "p5":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar(),
-                  "sc_origen": tk.StringVar(), "co_origen": tk.StringVar()},
-        "p6":    {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
+    rutas_v = {
+        "sc": {"destino": tk.StringVar(), "sscc": tk.StringVar(),
+               "coyailen": tk.StringVar()},
+        "p3": {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
+        "p5": {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar(),
+               "sc_origen": tk.StringVar(), "co_origen": tk.StringVar()},
+        "p6": {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
     }
-
-    # Widgets de checkboxes para mostrar/ocultar
-    frames_planilla = {}
-
-    # Claves del JSON de traspaso que alimentan cada label de la ventana.
+    # Claves del JSON de traspaso que alimentan cada archivo de la ventana.
     MAPA_TRASPASO = {
         "sc": {"destino": "calculo_sscc_maestro", "sscc": "sscc_desempeno",
                "coyailen": "sc_cfrec_coyailen"},
@@ -1247,366 +1178,145 @@ def main():
         "p6": {"destino": "p6", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros"},
     }
 
-    def aplicar_traspaso():
-        """Rellena los labels con las rutas que mandó el Revisor. No busca nada:
-        las reglas de búsqueda de este script y las del Revisor no coinciden, y
-        el punto del traspaso es justamente usar las del Revisor."""
-        dadas = traspaso.get("rutas", {})
-        for plan, subs in MAPA_TRASPASO.items():
-            for sub, clave in subs.items():
-                val = dadas.get(clave)
-                paths_detectados[plan][sub].set(
-                    str(val) if val else f"[el Revisor no mandó {clave}]")
-        actualizar_colores()
+    # ── planilla (una sola) ─────────────────────────────────────────────────
+    fr_rb = tk.Frame(v.cuerpo)
+    fr_rb.pack(fill="x", pady=(4, 0))
+    frames = {}
+    for k, et in (("sc", "Sobrecostos"), ("p3", "Planilla 3"),
+                  ("p5", "Planilla 5"), ("p6", "Planilla 6")):
+        tk.Radiobutton(fr_rb, text=et, variable=var_planilla, value=k,
+                       font=("Segoe UI", 9, "bold"),
+                       command=lambda: mostrar()).pack(side="left", padx=(0, 8))
 
-    def refrescar_archivos(*_):
-        if modo["traspaso"]:
-            aplicar_traspaso()
-            return
-        ruta = var_carpeta.get()
-        if not ruta or not Path(ruta).is_dir():
-            return
-        reliq = Path(ruta)
+    def armar(k, titulo):
+        fr = tk.LabelFrame(v.cuerpo, text=titulo, font=("Segoe UI", 8, "bold"),
+                           padx=6, pady=2)
+        frames[k] = fr
+        v.archivo(fr, "Destino", rutas_v[k]["destino"])
+        v.casilla(fr, "FD", opciones[k]["fd"], "desde SSCC_Desempeno")
+        v.archivo(fr, "", rutas_v[k]["sscc"], sangria=24)
+        if k == "sc":
+            v.casilla(fr, "SOBRECOSTOS", opciones[k]["otro"],
+                      "desde el csv para Coyailen (A7:R)")
+            v.archivo(fr, "", rutas_v[k]["coyailen"], sangria=24)
+        else:
+            v.casilla(fr, "Prorrata", opciones[k]["otro"], "desde Prorrata_Retiros")
+            v.archivo(fr, "", rutas_v[k]["prorrata"], sangria=24)
+        if k == "p5":
+            # Hoja "SC y CO": SC y CO por separado; el que no se marca se
+            # conserva (ver Actualiza_SC_CO.py).
+            v.casilla(fr, "SC", opciones[k]["sc"], 'hoja "SC y CO", desde Cálculo_Sobrecostos')
+            v.archivo(fr, "", rutas_v[k]["sc_origen"], sangria=24)
+            v.casilla(fr, "CO", opciones[k]["co"], 'hoja "SC y CO", desde Reporte_CRA')
+            v.archivo(fr, "", rutas_v[k]["co_origen"], sangria=24)
 
-        sscc = buscar_sscc_desempeno(reliq)
-        sscc_str = str(sscc) if sscc else "[SSCC_Desempeno no encontrado]"
-        for key in ("sc", "p3", "p5", "p6"):
-            paths_detectados[key]["sscc"].set(sscc_str)
+    armar("sc", "Cálculo_SobrecostosSSCC")
+    armar("p3", "3_REMUNERACIÓN_SUBASTAS_E_ID")
+    armar("p5", "5_REMUNERACIÓN_CRA")
+    armar("p6", "6_REMUNERACIÓN_REA_Y_CO_ERNC")
 
-        sc = buscar_sobrecostos_xlsm(reliq)
-        paths_detectados["sc"]["destino"].set(str(sc) if sc else "[Cálculo_SobrecostosSSCC no encontrado]")
-        coy = buscar_sc_cfrec_coyailen(reliq)
-        paths_detectados["sc"]["coyailen"].set(
-            str(coy) if coy else "[SC_CfrecSinFD_*_para_coyailen.csv no encontrado]")
-        # Origenes de "SC y CO" (planilla 5)
-        paths_detectados["p5"]["sc_origen"].set(str(sc) if sc else "[Cálculo_SobrecostosSSCC no encontrado]")
-        rcra = buscar_reporte_cra(reliq)
-        paths_detectados["p5"]["co_origen"].set(str(rcra) if rcra else "[Reporte_CRA_15min (.csv) no encontrado]")
-
-        p3 = buscar_planilla9(reliq, "3_remuneracion_subastas")
-        paths_detectados["p3"]["destino"].set(str(p3) if p3 else "[3_REMUNERACIÓN_SUBASTAS no encontrado]")
-
-        p5 = buscar_planilla9(reliq, "5_remuneracion_cra")
-        paths_detectados["p5"]["destino"].set(str(p5) if p5 else "[5_REMUNERACIÓN_CRA no encontrado]")
-
-        p6 = buscar_planilla9(reliq, "6_remuneracion_rea")
-        paths_detectados["p6"]["destino"].set(str(p6) if p6 else "[6_REMUNERACIÓN_REA no encontrado]")
-
-        # Origen prorrata (compartido por p3/p5/p6)
-        prorrata = buscar_prorrata(reliq)
-        prorrata_str = str(prorrata) if prorrata else "[Prorrata_Retiros no encontrado]"
-        for key in ("p3", "p5", "p6"):
-            paths_detectados[key]["prorrata"].set(prorrata_str)
-
-        actualizar_colores()
-
-    def actualizar_colores():
-        for key, lbl_map in labels_archivos.items():
-            for subkey, lbl in lbl_map.items():
-                val = paths_detectados[key][subkey].get()
-                # Rojo tambien si la ruta viene escrita pero el archivo no esta:
-                # importa al recibir rutas del Revisor, que las resolvio antes.
-                ok = bool(val) and not val.startswith("[")
-                if ok:
-                    try:
-                        ok = Path(val).is_file()
-                    except Exception:
-                        ok = False
-                lbl.config(fg="blue" if ok else "red")
-
-    def mostrar_frame_planilla(*_):
-        plan = var_planilla.get()
-        for k, fr in frames_planilla.items():
-            if k == plan:
-                fr.pack(fill="x", padx=6, pady=2)
+    def mostrar():
+        for k, fr in frames.items():
+            if k == var_planilla.get():
+                fr.pack(fill="x", pady=(4, 0))
             else:
                 fr.pack_forget()
 
-    # ── Aviso de procedencia (solo si vino del Revisor) ──────────────────────
-    # Va arriba de todo y bien visible para que no se actualice el mes equivocado.
-    if traspaso:
-        fr_aviso = tk.Frame(contenedor, bg="#fff4c2", bd=1, relief="solid")
-        fr_aviso.pack(fill="x", padx=20, pady=(10, 0))
-        tk.Label(fr_aviso,
-                 text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
-                 bg="#fff4c2", font=("Segoe UI", 11, "bold")).pack(pady=(6, 0))
-        tk.Label(fr_aviso,
-                 text="Las rutas las resolvió el Revisor; este script no las vuelve a buscar.\n"
-                      "Marca qué quieres actualizar: los casilleros arrancan en blanco.",
-                 bg="#fff4c2", font=("Segoe UI", 8), fg="#444444",
-                 justify="center").pack(pady=(0, 6))
+    # ── rutas ───────────────────────────────────────────────────────────────
+    def refrescar(*_):
+        if modo["traspaso"]:
+            dadas = traspaso.get("rutas", {})
+            for plan, subs in MAPA_TRASPASO.items():
+                for sub, clave in subs.items():
+                    rutas_v[plan][sub].set(dadas.get(clave) or "[el Revisor no lo mandó]")
+            return
+        ruta = var_carpeta.get()
+        if not ruta or not Path(ruta).is_dir():
+            for subs in rutas_v.values():
+                for x in subs.values():
+                    x.set("[elige la carpeta 02 CASO RELIQUIDACION]")
+            return
+        reliq = Path(ruta)
 
-    # ── Instrucciones ────────────────────────────────────────────────────────
-    frame_info = tk.LabelFrame(contenedor, text="Instrucciones", padx=10, pady=6)
-    frame_info.pack(fill="x", padx=20, pady=(10, 4))
-    tk.Label(frame_info, text=INSTRUCCIONES, wraplength=700,
-             justify="left", fg="#333333", font=("Segoe UI", 9)).pack()
+        def poner(x, r, falta):
+            x.set(str(r) if r else f"[{falta} no encontrado]")
 
-    # ── Selector carpeta ─────────────────────────────────────────────────────
-    frame_c = tk.LabelFrame(contenedor, text="Carpeta 02 CASO RELIQUIDACION", padx=10, pady=6)
-    frame_c.pack(fill="x", padx=20, pady=4)
-
-    lbl_carpeta = tk.Label(frame_c, textvariable=var_carpeta, wraplength=700,
-                           justify="center", fg="gray", cursor="hand2",
-                           font=("Segoe UI", 9))
-    lbl_carpeta.pack()
-    lbl_carpeta.bind("<Button-1>",
-                     lambda e: abrir_en_explorador(var_carpeta.get()) if var_carpeta.get() else None)
+        sscc = buscar_sscc_desempeno(reliq)
+        sc = buscar_sobrecostos_xlsm(reliq)
+        prorrata = buscar_prorrata(reliq)
+        for k in rutas_v:
+            poner(rutas_v[k]["sscc"], sscc, "SSCC_Desempeno")
+        for k in ("p3", "p5", "p6"):
+            poner(rutas_v[k]["prorrata"], prorrata, "Prorrata_Retiros")
+        poner(rutas_v["sc"]["destino"], sc, "Cálculo_SobrecostosSSCC")
+        poner(rutas_v["sc"]["coyailen"], buscar_sc_cfrec_coyailen(reliq),
+              "SC_CfrecSinFD_*_para_coyailen.csv")
+        poner(rutas_v["p5"]["sc_origen"], sc, "Cálculo_SobrecostosSSCC")
+        poner(rutas_v["p5"]["co_origen"], buscar_reporte_cra(reliq), "Reporte_CRA_15min")
+        poner(rutas_v["p3"]["destino"], buscar_planilla9(reliq, "3_remuneracion_subastas"),
+              "3_REMUNERACIÓN_SUBASTAS")
+        poner(rutas_v["p5"]["destino"], buscar_planilla9(reliq, "5_remuneracion_cra"),
+              "5_REMUNERACIÓN_CRA")
+        poner(rutas_v["p6"]["destino"], buscar_planilla9(reliq, "6_remuneracion_rea"),
+              "6_REMUNERACIÓN_REA")
 
     def sel_carpeta():
-        ini = cfg.get("carpeta_reliq", "")
-        ini = ini if ini and Path(ini).exists() else ""
-        ruta = filedialog.askdirectory(title="Selecciona 02 CASO RELIQUIDACION", initialdir=ini)
+        ini = var_carpeta.get()
+        ruta = filedialog.askdirectory(title="Selecciona 02 CASO RELIQUIDACION",
+                                       initialdir=ini if ini and Path(ini).is_dir() else "")
         if ruta:
             var_carpeta.set(ruta)
-            lbl_carpeta.config(fg="blue" if Path(ruta).is_dir() else "red")
             guardar_config({"carpeta_reliq": ruta})
-            # Si el usuario elige carpeta a mano, manda el, no el traspaso:
-            # se vuelve a buscar todo dentro de la carpeta que eligio.
-            if modo["traspaso"]:
-                modo["traspaso"] = False
-                log("Carpeta elegida a mano: se dejan de usar las rutas del Revisor.")
-            refrescar_archivos()
+            # Si el usuario elige carpeta a mano, manda él, no el traspaso.
+            modo["traspaso"] = False
+            refrescar()
 
-    tk.Button(frame_c, text="Seleccionar carpeta", command=sel_carpeta).pack(pady=(4, 0))
-
-    # ── Planillas + opciones ─────────────────────────────────────────────────
-    frame_plan = tk.LabelFrame(contenedor, text="Planilla a actualizar", padx=10, pady=6)
-    frame_plan.pack(fill="x", padx=20, pady=4)
-
-    labels_archivos = {
-        "sc": {}, "p3": {}, "p5": {}, "p6": {},
-    }
-
-    def hacer_lbl_archivo(parent, var, clave_plan, clave_sub):
-        lbl = tk.Label(parent, textvariable=var, wraplength=680,
-                       justify="left", fg="gray", font=("Segoe UI", 8), cursor="hand2")
-        lbl.pack(anchor="w", padx=30)
-        lbl.bind("<Button-1>",
-                 lambda e: abrir_en_explorador(var.get(), es_archivo=True)
-                 if var.get() and Path(var.get()).exists() else None)
-        labels_archivos[clave_plan][clave_sub] = lbl
-
-    def hacer_fila_planilla(parent, key, nombre_radio, nombre_fd, nombre_otro, otro_habilitado):
-        rb = tk.Radiobutton(parent, text=nombre_radio, variable=var_planilla,
-                            value=key, command=mostrar_frame_planilla,
-                            font=("Segoe UI", 9, "bold"))
-        rb.pack(anchor="w")
-
-        fr = tk.Frame(parent)
-        frames_planilla[key] = fr
-        # No se hace pack aquí; lo maneja mostrar_frame_planilla
-
-        # Destino
-        tk.Label(fr, text="Destino:", font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14)
-        hacer_lbl_archivo(fr, paths_detectados[key]["destino"], key, "destino")
-
-        # Origen SSCC
-        tk.Label(fr, text="Origen SSCC_Desempeno:", font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14)
-        hacer_lbl_archivo(fr, paths_detectados[key]["sscc"], key, "sscc")
-
-        # Checkbox FD
-        tk.Checkbutton(fr, text=nombre_fd, variable=opciones[key]["fd"],
-                       font=("Segoe UI", 9)).pack(anchor="w", padx=20)
-
-        # Checkbox otro: Prorrata en p3/p5/p6; en sc, SOBRECOSTOS desde el csv
-        # para Coyailen (en el modo horario era "Traer Consolidado").
-        if nombre_otro:
-            cb_otro = tk.Checkbutton(fr, text=nombre_otro, variable=opciones[key]["otro"],
-                                     font=("Segoe UI", 9))
-            if not otro_habilitado:
-                cb_otro.config(state="disabled")
-                opciones[key]["otro"].set(False)
-            cb_otro.pack(anchor="w", padx=20)
-
-        if key == "sc":
-            tk.Label(fr, text="Origen SOBRECOSTOS — 01 Sobrecostos/"
-                              "SC_CfrecSinFD_AAMM_para_coyailen.csv (se pega en A7:R):",
-                     font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14)
-            hacer_lbl_archivo(fr, paths_detectados["sc"]["coyailen"], "sc", "coyailen")
-
-        # Origen Prorrata (p3/p5/p6)
-        if key in ("p3", "p5", "p6"):
-            tk.Label(fr, text="Origen Prorrata_Retiros:", font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14)
-            hacer_lbl_archivo(fr, paths_detectados[key]["prorrata"], key, "prorrata")
-
-        # Hoja "SC y CO" (solo p5): SC y CO por separado. Los dos bloques se
-        # reescriben siempre (el CO va debajo del SC); el que no se marca se
-        # conserva tal como estaba. Ver Actualiza_SC_CO.py.
-        if key == "p5":
-            tk.Label(fr, text='Hoja "SC y CO" (solo embalses; SC arriba, CO abajo):',
-                     font=("Segoe UI", 8, "bold")).pack(anchor="w", padx=14, pady=(6, 0))
-            tk.Checkbutton(fr, text="Actualizar SC", variable=opciones["p5"]["sc"],
-                           font=("Segoe UI", 9)).pack(anchor="w", padx=20)
-            tk.Label(fr, text="Origen SC — Cálculo_SobrecostosSSCC (maestro), hoja SOBRECOSTOS:",
-                     font=("Segoe UI", 8)).pack(anchor="w", padx=30)
-            hacer_lbl_archivo(fr, paths_detectados["p5"]["sc_origen"], "p5", "sc_origen")
-            tk.Checkbutton(fr, text="Actualizar CO", variable=opciones["p5"]["co"],
-                           font=("Segoe UI", 9)).pack(anchor="w", padx=20)
-            tk.Label(fr, text="Origen CO — Reporte_CRA_15min (.csv):",
-                     font=("Segoe UI", 8)).pack(anchor="w", padx=30)
-            hacer_lbl_archivo(fr, paths_detectados["p5"]["co_origen"], "p5", "co_origen")
-
-    hacer_fila_planilla(frame_plan, "sc",
-                        "Cálculo_SobrecostosSSCC",
-                        "Actualizar FD",
-                        "Actualizar SOBRECOSTOS (desde SC sin FD para Coyailen)",
-                        otro_habilitado=True)
-
-    hacer_fila_planilla(frame_plan, "p3",
-                        "3_REMUNERACIÓN_SUBASTAS_E_ID",
-                        "Actualizar FD",
-                        "Actualizar Prorrata",
-                        otro_habilitado=True)
-
-    hacer_fila_planilla(frame_plan, "p5",
-                        "5_REMUNERACIÓN_CRA",
-                        "Actualizar FD",
-                        "Actualizar Prorrata",
-                        otro_habilitado=True)
-
-    hacer_fila_planilla(frame_plan, "p6",
-                        "6_REMUNERACIÓN_REA_Y_CO_ERNC",
-                        "Actualizar FD",
-                        "Actualizar Prorrata",
-                        otro_habilitado=True)
-
-    mostrar_frame_planilla()
-
-    # ── Log ──────────────────────────────────────────────────────────────────
-    # Barra de progreso y tiempo
-    frame_prog = tk.Frame(contenedor)
-    frame_prog.pack(fill="x", padx=20, pady=(4, 0))
-
-    var_estado = tk.StringVar(value="Listo")
-    var_tiempo = tk.StringVar(value="00:00:00")
-
-    tk.Label(frame_prog, textvariable=var_estado, font=("Segoe UI", 9),
-             fg="#333333", anchor="w").pack(side="left", fill="x", expand=True)
-    tk.Label(frame_prog, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
-             fg="#2d7a2d").pack(side="right", padx=8)
-
-    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
-    # es lo que dice que esta corriendo.
-
-    frame_log = tk.LabelFrame(contenedor, text="Progreso detallado", padx=6, pady=4)
-    frame_log.pack(fill="both", expand=True, padx=20, pady=4)
-    txt_log = tk.Text(frame_log, height=6, width=70, font=("Consolas", 9))
-    scroll = tk.Scrollbar(frame_log, command=txt_log.yview)
-    txt_log.config(yscrollcommand=scroll.set)
-    scroll.pack(side="right", fill="y")
-    txt_log.pack(fill="both", expand=True)
-
-    def log(msg):
-        txt_log.insert("end", str(msg) + "\n")
-        txt_log.see("end")
-        root.update_idletasks()
-
-    # ── Ejecutar ─────────────────────────────────────────────────────────────
-    # Estado del timer
-    timer_state = {"running": False, "t_ini": 0.0}
-
-    def actualizar_timer():
-        if timer_state["running"]:
-            t = time.time() - timer_state["t_ini"]
-            var_tiempo.set(fmt_tiempo(t))
-            root.after(500, actualizar_timer)
-
-    def callback_progreso(actual, total, mensaje):
-        var_estado.set(mensaje)
-        root.update_idletasks()
-
+    # ── ejecutar ────────────────────────────────────────────────────────────
     def ejecutar():
         ruta = var_carpeta.get()
-        # Con traspaso las rutas son absolutas y la carpeta solo sirve de respaldo,
-        # asi que no se exige que exista.
+        # Con traspaso las rutas son absolutas y la carpeta solo es respaldo.
         if not modo["traspaso"] and (not ruta or not Path(ruta).is_dir()):
-            messagebox.showerror("Error", "Selecciona la carpeta 02 CASO RELIQUIDACION.")
+            messagebox.showerror("Error", "Elige la carpeta 02 CASO RELIQUIDACION.")
             return
-
         plan = var_planilla.get()
-        hacer_fd   = opciones[plan]["fd"].get()
+        hacer_fd = opciones[plan]["fd"].get()
         hacer_otro = opciones[plan]["otro"].get()
         hacer_sc_co = [c for c, k in (("SC", "sc"), ("CO", "co"))
                        if k in opciones[plan] and opciones[plan][k].get()]
-
         if not hacer_fd and not hacer_otro and not hacer_sc_co:
             messagebox.showwarning("Aviso", "Marca al menos una opción.")
             return
+        v.limpiar_log()
+        v.log(f"Planilla: {plan} | FD: {hacer_fd} | Otro: {hacer_otro}"
+              + (f" | SC y CO: {'+'.join(hacer_sc_co)}" if hacer_sc_co else ""))
 
-        btn_ejecutar.config(state="disabled", bg="#aaaaaa")
-        var_estado.set("Iniciando…")
-        var_tiempo.set("00:00:00")
-        timer_state["running"] = True
-        timer_state["t_ini"] = time.time()
-        root.after(100, actualizar_timer)
-        root.update_idletasks()
+        def trabajo():
+            return ejecutar_actualizacion(
+                Path(ruta) if ruta else Path("."), plan, hacer_fd, hacer_otro,
+                log_func=v.log, progreso_func=lambda a, t=100, m=None: v.estado(m or ""),
+                rutas=traspaso.get("rutas") if modo["traspaso"] else None,
+                hacer_sc_co=hacer_sc_co)
 
-        txt_log.delete("1.0", "end")
-        log(f"Planilla: {plan} | FD: {hacer_fd} | Otro: {hacer_otro}"
-            + (f" | SC y CO: {'+'.join(hacer_sc_co)}" if hacer_sc_co else ""))
-        if modo["traspaso"]:
-            log(f"Rutas enviadas por el Revisor — mes {traspaso.get('aamm') or '?'}")
-        log("─" * 50)
+        def fin(r):
+            ok, rutas = r
+            if ok and rutas:
+                v.var_estado.set(f"Listo en {v.var_tiempo.get()}")
+                messagebox.showinfo("Listo", "Actualizado (queda abierto en Excel):\n\n"
+                                    + "\n".join(Path(x).name for x in rutas))
+            elif not ok:
+                v.var_estado.set("Terminó con errores — revisa el log")
+                messagebox.showerror("Error", "Hubo un error. Revisa el log.")
 
-        ok, rutas = ejecutar_actualizacion(
-            Path(ruta) if ruta else Path("."), plan, hacer_fd, hacer_otro,
-            log_func=log, progreso_func=callback_progreso,
-            rutas=traspaso.get("rutas") if modo["traspaso"] else None,
-            hacer_sc_co=hacer_sc_co,
-        )
+        # En el hilo de la ventana, como siempre: xlwings maneja Excel desde ahí.
+        v.correr(trabajo, fin, boton=btn, hilo=False, estado="Iniciando…")
 
-        timer_state["running"] = False
-        tiempo_total = fmt_tiempo(time.time() - timer_state["t_ini"])
-        var_tiempo.set(tiempo_total)
-        btn_ejecutar.config(state="normal", bg="#2d7a2d")
+    btn = v.boton("EJECUTAR", ejecutar, principal=True)
+    v.boton("Carpeta…", sel_carpeta)
+    v.boton("Salir", v.root.destroy)
+    refrescar()
+    mostrar()
+    v.iniciar()
 
-        if ok and rutas:
-            var_estado.set(f"✓ Completado en {tiempo_total}")
-            log(f"✓ Proceso completado en {tiempo_total}")
-            _mostrar_completado(rutas)
-        elif not ok:
-            var_estado.set("✗ Error")
-            messagebox.showerror("Error", "Hubo un error. Revisa el log.")
 
-    def _mostrar_completado(rutas):
-        win = tk.Toplevel(root)
-        win.title("Completado")
-        win.resizable(False, False)
-        win.grab_set()
-        tk.Label(win, text="Archivo actualizado (queda abierto en Excel):",
-                 font=("Segoe UI", 9, "bold"), pady=12, padx=20).pack()
-        for r in rutas:
-            lbl = tk.Label(win, text=str(r), fg="blue", cursor="hand2",
-                           wraplength=460, justify="center", padx=20)
-            lbl.pack(pady=2)
-            lbl.bind("<Button-1>", lambda e, p=r: abrir_en_explorador(str(p), True))
-        tk.Label(win, text="clic en la ruta para abrir su carpeta",
-                 font=("Segoe UI", 7), fg="gray", pady=4).pack()
-        tk.Button(win, text="Aceptar", width=10, command=win.destroy).pack(pady=(4, 12))
-        win.update_idletasks()
-        w, h = win.winfo_width(), win.winfo_height()
-        sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
-        win.geometry(f"+{(sw-w)//2}+{(sh-h)//2}")
-
-    # ── Botones (en frame fijo abajo) ────────────────────────────────────────
-    tk.Button(frame_btns_fijo, text="Cerrar", width=12,
-              command=root.destroy).pack(side="left", padx=8, expand=True)
-    btn_ejecutar = tk.Button(frame_btns_fijo, text="Ejecutar", width=12,
-              bg="#2d7a2d", fg="white",
-              activebackground="#1f5c1f", activeforeground="white",
-              command=ejecutar)
-    btn_ejecutar.pack(side="left", padx=8, expand=True)
-
-    # Inicializar
-    refrescar_archivos()
-
-    root.update_idletasks()
-    w, h = root.winfo_width(), root.winfo_height()
-    sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-    root.geometry(f"+{(sw-w)//2}+{(sh-h)//2}")
-    root.mainloop()
-
-# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     main()

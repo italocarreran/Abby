@@ -60,10 +60,10 @@
 # =============================================================================
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 from pathlib import Path
-import json, subprocess, sys, re, socket, os, traceback, unicodedata, time
-import threading, queue
+import json, sys, re, socket, os, traceback, unicodedata, time
+
 
 DIR_SCRIPT = Path(__file__).resolve().parent
 
@@ -103,6 +103,17 @@ except ImportError as e:
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {_RAIZ_COMUN}\n\nDetalle: {e}")
+
+# La ventana chica comun de esta version (actualizadores/ventana_chica.py).
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "actualizadores"))
+    from ventana_chica import VentanaChica
+except ImportError as e:
+    _morir("Falta ventana_chica.py",
+           "No se pudo cargar actualizadores/ventana_chica.py.\n\n"
+           "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
+           f"Detalle: {e}")
+
 
 # --- Hojas y celdas ---------------------------------------------------------
 IDX_HOJA_3 = 2                  # 0-based: la TERCERA hoja, contando las ocultas
@@ -205,21 +216,6 @@ def guardar_config(data):
 escribir_json = _cfg.escribir_json
 
 
-def abrir_en_explorador(ruta, es_archivo=False):
-    if not ruta or str(ruta).startswith("["):
-        return
-    p = Path(ruta)
-    if not p.exists():
-        return
-    carpeta = p.parent if es_archivo else p
-    if sys.platform == "win32":
-        subprocess.Popen(["explorer", str(carpeta)])
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(carpeta)])
-    else:
-        subprocess.Popen(["xdg-open", str(carpeta)])
-
-
 # =============================================================================
 #  TRASPASO DESDE EL REVISOR
 # =============================================================================
@@ -280,11 +276,6 @@ def recalcular(app, log, motivo):
     t0 = time.time()
     app.calculate()
     log(f"    recalculo ({motivo}): {time.time() - t0:.1f} s")
-
-
-def fmt_tiempo(seg):
-    seg = int(seg)
-    return f"{seg // 3600:02d}:{(seg % 3600) // 60:02d}:{seg % 60:02d}"
 
 
 # =============================================================================
@@ -597,180 +588,38 @@ def main():
     traspaso = leer_traspaso(sys.argv)
     modo = {"traspaso": traspaso is not None}
 
-    root = tk.Tk()
-    root.title("Actualiza Cuadro 0"
-               + ("  —  enviado por el Revisor" if traspaso else ""))
-    root.geometry("1000x640")
-
-    frame_btns = tk.Frame(root)
-    frame_btns.pack(side="bottom", fill="x", pady=8)
-    canvas = tk.Canvas(root, borderwidth=0, highlightthickness=0)
-    scroll = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
-    canvas.configure(yscrollcommand=scroll.set)
-    scroll.pack(side="right", fill="y")
-    canvas.pack(side="left", fill="both", expand=True)
-    cont = tk.Frame(canvas)
-    win = canvas.create_window((0, 0), window=cont, anchor="nw")
-
-    def _aj(_e=None):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-        canvas.itemconfig(win, width=canvas.winfo_width())
-    cont.bind("<Configure>", _aj)
-    canvas.bind("<Configure>", _aj)
-    # La rueda del mouse: el canvas de la ventana solo scrollea si el puntero NO
-    # esta sobre un widget que scrollea solo (el log, por ejemplo).
-    #
-    # bind_all captura la rueda GLOBALMENTE. Sin este filtro, al intentar subir
-    # en el log se movia la ventana entera y el log no se movia: los dos
-    # respondian a la misma rueda, o directamente ganaba el canvas.
-    def _rueda(e, _cv=canvas):
-        w = e.widget.winfo_toplevel().winfo_containing(e.x_root, e.y_root)
-        pasos = int(-e.delta / 120)
-        # Se sube por los padres: el puntero puede estar sobre un hijo del Text.
-        while w is not None:
-            if isinstance(w, (tk.Text, tk.Listbox)):
-                w.yview_scroll(pasos, "units")
-                return "break"
-            if w is _cv:
-                break
-            w = getattr(w, "master", None)
-        _cv.yview_scroll(pasos, "units")
-
-    canvas.bind_all("<MouseWheel>", _rueda)
-
-    if traspaso:
-        fa = tk.Frame(cont, bg="#fff4c2", bd=1, relief="solid")
-        fa.pack(fill="x", padx=20, pady=(10, 0))
-        tk.Label(fa, text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
-                 bg="#fff4c2", font=("Segoe UI", 11, "bold")).pack(pady=(6, 0))
-        tk.Label(fa, text="Las rutas las resolvió el Revisor.",
-                 bg="#fff4c2", font=("Segoe UI", 8), fg="#444444",
-                 justify="center").pack(pady=(0, 6))
-
-    tk.Label(cont, text="Actualizar el 0_CUADROS_RELIQUIDACIÓN",
-             font=("Segoe UI", 12, "bold")).pack(pady=(10, 2))
-    tk.Label(cont, text="Este archivo se va a pago. Al terminar queda abierto en "
-                        "Excel para que lo revises.",
-             font=("Segoe UI", 8), fg="#a00000").pack(pady=(0, 8))
-
+    v = VentanaChica("Cuadro 0 — 0_CUADROS_RELIQUIDACIÓN",
+                     "Pega la tabla del cuadro 1 y ajusta las fórmulas. Este archivo "
+                     "se va a pago: queda abierto en Excel para revisarlo.",
+                     traspaso, alto=340)
     var_c0 = tk.StringVar(value="[pendiente]")
     var_c1 = tk.StringVar(value="[pendiente]")
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
-    labels = {}
-
-    def fila(parent, titulo, var, clave):
-        fr = tk.LabelFrame(parent, text=titulo, padx=10, pady=6)
-        fr.pack(fill="x", padx=20, pady=4)
-        l = tk.Label(fr, textvariable=var, wraplength=880, justify="left",
-                     cursor="hand2", font=("Segoe UI", 9), anchor="w")
-        l.pack(fill="x")
-        l.bind("<Button-1>", lambda e: abrir_en_explorador(var.get(), es_archivo=True))
-        labels[clave] = l
-        return fr
-
-    fila(cont, "Cuadro 0 — 0_CUADROS_RELIQUIDACIÓN (se modifica)", var_c0, "c0")
-    fila(cont, "Cuadro 1 — 1_CUADROS_PAGO_SSCC (solo se lee)", var_c1, "c1")
-
-    # ---- opciones ----
     # No hay casilleros por paso a proposito: los pasos dependen unos de otros
     # (la tabla define K, K define el largo de las formulas, A:G calcula C y C
     # define I), asi que correrlos por separado deja el libro a medio calcular.
-    # La secuencia completa esta documentada en el encabezado de este archivo y
-    # queda escrita en el log en cada corrida.
     v_guardar = tk.BooleanVar(value=True)
-    tk.Checkbutton(cont, text="Guardar al terminar (queda abierto en Excel igual)",
-                   variable=v_guardar,
-                   font=("Segoe UI", 9)).pack(anchor="w", padx=24, pady=(6, 0))
 
-    # ---- carpeta ----
-    fc = tk.LabelFrame(cont, text="Carpeta 02 CASO RELIQUIDACION", padx=10, pady=6)
-    fc.pack(fill="x", padx=20, pady=4)
-    lc = tk.Label(fc, textvariable=var_carpeta, wraplength=880, justify="left",
-                  cursor="hand2", font=("Segoe UI", 9), anchor="w")
-    lc.pack(fill="x")
-    lc.bind("<Button-1>", lambda e: abrir_en_explorador(var_carpeta.get()))
-    labels["carpeta"] = lc
-
-    # ---- progreso ----
-    var_estado = tk.StringVar(value="Listo")
-    var_tiempo = tk.StringVar(value="00:00:00")
-    fpr = tk.Frame(cont)
-    fpr.pack(fill="x", padx=20, pady=(6, 0))
-    tk.Label(fpr, textvariable=var_estado, font=("Segoe UI", 9),
-             anchor="w").pack(side="left", fill="x", expand=True)
-    tk.Label(fpr, textvariable=var_tiempo, font=("Consolas", 10, "bold"),
-             fg="#2d7a2d").pack(side="right", padx=8)
-    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
-    # es lo que dice que esta corriendo.
-
-    fl = tk.LabelFrame(cont, text="Progreso detallado", padx=6, pady=4)
-    fl.pack(fill="both", expand=True, padx=20, pady=4)
-    txt = tk.Text(fl, height=16, font=("Consolas", 9), wrap="none")
-    sb = tk.Scrollbar(fl, command=txt.yview)
-    txt.configure(yscrollcommand=sb.set)
-    sb.pack(side="right", fill="y")
-    txt.pack(fill="both", expand=True)
-
-    cola = queue.Queue()
-    log = lambda m="": cola.put(("log", str(m)))
-    progreso = lambda a, t=100, m=None: cola.put(("prog", (a, t, m)))
-
-    def bombear():
-        try:
-            for _ in range(200):
-                tipo, val = cola.get_nowait()
-                if tipo == "log":
-                    txt.insert("end", val + "\n")
-                    txt.see("end")
-                else:
-                    a, t, m = val
-                    if m:
-                        var_estado.set(m)
-        except queue.Empty:
-            pass
-        root.after(120, bombear)
-
-    timer = {"on": False, "t0": 0.0}
-
-    def tick():
-        if timer["on"]:
-            var_tiempo.set(fmt_tiempo(time.time() - timer["t0"]))
-            root.after(500, tick)
-
-    # ---- rutas ----
-    def pintar():
-        for k in ("c0", "c1"):
-            v = labels[k].cget("text")
-        for k, var in (("c0", var_c0), ("c1", var_c1)):
-            v = var.get()
-            ok = bool(v) and not v.startswith("[")
-            if ok:
-                try:
-                    ok = Path(v).is_file()
-                except Exception:
-                    ok = False
-            labels[k].config(fg="blue" if ok else "red")
-        v = var_carpeta.get()
-        labels["carpeta"].config(
-            fg="blue" if v and Path(v).is_dir() else "red")
+    fr = v.seccion("Archivos")
+    v.archivo(fr, "Cuadro 0", var_c0)
+    v.archivo(fr, "Cuadro 1", var_c1)
+    v.casilla(v.cuerpo, "Guardar al terminar", v_guardar)
 
     def refrescar(*_):
         if modo["traspaso"]:
             d = traspaso.get("rutas", {})
-            var_c0.set(d.get("cuadro_0") or "[el Revisor no mandó cuadro_0]")
-            var_c1.set(d.get("cuadro_1") or "[el Revisor no mandó cuadro_1]")
-            pintar()
+            var_c0.set(d.get("cuadro_0") or "[el Revisor no lo mandó]")
+            var_c1.set(d.get("cuadro_1") or "[el Revisor no lo mandó]")
             return
         base = var_carpeta.get()
         if not base or not Path(base).is_dir():
-            pintar()
+            var_c0.set("[elige la carpeta 02 CASO RELIQUIDACION]")
+            var_c1.set("[elige la carpeta 02 CASO RELIQUIDACION]")
             return
-        ent = None
-        for p in Path(base).iterdir():
-            if p.is_dir() and normalizar(p.name) == normalizar("00 Entregables"):
-                ent = p
-                break
+        ent = next((p for p in Path(base).iterdir() if p.is_dir()
+                    and normalizar(p.name) == normalizar("00 Entregables")), None)
+
         def buscar(pref):
             if ent is None:
                 return None
@@ -782,7 +631,6 @@ def main():
         c0, c1 = buscar("0_cuadros"), buscar("1_cuadros")
         var_c0.set(str(c0) if c0 else "[0_CUADROS no encontrado]")
         var_c1.set(str(c1) if c1 else "[1_CUADROS no encontrado]")
-        pintar()
 
     def sel_carpeta():
         ini = var_carpeta.get()
@@ -791,115 +639,63 @@ def main():
         if r:
             var_carpeta.set(r)
             guardar_config({"carpeta_reliq": r})
-            if modo["traspaso"]:
-                modo["traspaso"] = False
-                log("Carpeta elegida a mano: se dejan de usar las rutas del Revisor.")
+            modo["traspaso"] = False
             refrescar()
 
-    tk.Button(fc, text="Examinar", command=sel_carpeta).pack(anchor="w", pady=(4, 0))
-
-    # ---- lanzar ----
     def lanzar():
-        c0 = var_c0.get()
+        c0, c1 = var_c0.get(), var_c1.get()
         if not c0 or c0.startswith("[") or not Path(c0).is_file():
-            messagebox.showerror("Falta el archivo",
-                                 f"No se encontró el cuadro 0.\n\n{c0}")
+            messagebox.showerror("Falta el archivo", "No se encontró el cuadro 0.")
             return
-        c1 = var_c1.get()
         if not c1 or c1.startswith("[") or not Path(c1).is_file():
-            messagebox.showerror("Falta el archivo",
-                                 f"Hace falta el cuadro 1 para la tabla."
-                                 f"\n\n{c1}")
+            messagebox.showerror("Falta el archivo", "Hace falta el cuadro 1 para la tabla.")
             return
-        # Tiene que estar cerrado: se abre para escribir.
-        p = Path(c0)
         try:
-            with open(p, "r+b"):
+            with open(c0, "r+b"):
                 pass
         except PermissionError:
             messagebox.showwarning("El archivo está en uso",
-                                   f"Ciérralo en Excel y volvé a intentar:\n\n{p.name}")
+                                   f"Ciérralo en Excel y vuelve a intentar:\n\n{Path(c0).name}")
             return
         except OSError:
             pass
-
-        que = ["  • pegar la tabla del cuadro 1 (se REEMPLAZA A5:C)",
-               "  • la tasa (O2) NO se toca: queda la del Excel",
-               "  • reescribir K5 e I9 y ajustar el largo de las fórmulas",
-               "  • después, a mano en Excel: Cuadro de pagos, Actualiza Rango y "
-               "refrescar la dinámica"]
-        if v_guardar.get():
-            que.append("  • GUARDAR el archivo al terminar")
         if not messagebox.askyesno(
                 "Confirmar",
-                f"Sobre {Path(c0).name}:\n\n" + "\n".join(que) +
-                "\n\nEste archivo se va a pago. ¿Seguir?"):
+                f"Se reemplaza la tabla A5:C de {Path(c0).name} y se ajustan sus "
+                "fórmulas" + (" y se guarda" if v_guardar.get() else "") +
+                ".\n\nEste archivo se va a pago. ¿Seguir?"):
             return
-
-        txt.delete("1.0", "end")
-        log(f"Cuadro 0 : {c0}")
-        log(f"Cuadro 1 : {c1}")
-        if modo["traspaso"]:
-            log(f"Rutas enviadas por el Revisor — mes {traspaso.get('aamm') or '?'}")
-        log("-" * 70)
-
-        btn.config(state="disabled", bg="#aaaaaa")
-        var_estado.set("Procesando...")
-        timer["on"] = True
-        timer["t0"] = time.time()
-        tick()
-
+        v.limpiar_log()
+        v.log(f"Cuadro 0 : {c0}")
+        v.log(f"Cuadro 1 : {c1}")
         op = {"guardar": v_guardar.get()}
         rutas = {"cuadro0": c0, "cuadro1": c1}
 
-        def trabajo():
-            ok, msg, signos_ok = ejecutar(rutas, op, log, progreso)
+        def fin(r):
+            ok, msg, signos_ok = r
+            pendientes = ("Ahora, en Excel: Cuadro de pagos, Actualiza Rango, "
+                          "refrescar la dinámica de CPRT y Verificar en el Revisor.")
+            if ok and not signos_ok:
+                v.var_estado.set("Hecho, pero revisa los signos")
+                messagebox.showwarning(
+                    "Ojo con los signos",
+                    f"{msg}\n\nHay montos con el signo al revés en J:K (detalle en el "
+                    f"log): arréglalos antes de Cuadro de pagos.\n\n{pendientes}")
+            elif ok:
+                v.var_estado.set(f"Listo — {msg}")
+                messagebox.showinfo("Listo", f"{msg}\n\n{pendientes}")
+            else:
+                v.var_estado.set("Terminó con errores — revisa el log")
+                messagebox.showerror("Error", f"Falló.\n\n{msg}\n\nEl libro quedó "
+                                     "abierto donde se cortó.")
 
-            def fin():
-                timer["on"] = False
-                btn.config(state="normal", bg="#2d7a2d")
-                pendientes = ("Ahora, en Excel:\n"
-                              "   1. Cuadro de pagos\n"
-                              "   2. Actualiza Rango\n"
-                              "   3. refrescar la dinámica de CPRT\n"
-                              "   4. y después Verificar en el Revisor")
-                if ok and not signos_ok:
-                    var_estado.set(f"Hecho, pero revisá los signos — {msg}")
-                    messagebox.showwarning(
-                        "Datos al día, pero ojo con los signos",
-                        f"Los datos y las fórmulas quedaron al día.\n\n{msg}\n\n"
-                        "Pero hay montos con el signo al revés en J:K, y con eso "
-                        "Cuadro de pagos se va a cortar.\n"
-                        "Arreglalos primero; el detalle está en el log.\n\n"
-                        + pendientes)
-                elif ok:
-                    var_estado.set(f"Listo — {msg}")
-                    messagebox.showinfo(
-                        "Listo",
-                        f"Datos y fórmulas al día.\n\n{msg}\n\n"
-                        "El libro quedó abierto en Excel.\n\n" + pendientes)
-                else:
-                    var_estado.set("Terminó con errores — revisa el log")
-                    messagebox.showerror(
-                        "Error", f"Falló.\n\n{msg}\n\nEl libro quedó abierto "
-                                 "en el punto donde se cortó.")
-            root.after(0, fin)
+        v.correr(lambda: ejecutar(rutas, op, v.log, v.progreso), fin, boton=btn)
 
-        threading.Thread(target=trabajo, daemon=True).start()
-
-    btn = tk.Button(frame_btns, text="ACTUALIZAR CUADRO 0", bg="#2d7a2d", fg="white",
-                    font=("Segoe UI", 10, "bold"), command=lanzar)
-    btn.pack(side="left", padx=8, expand=True)
-    tk.Button(frame_btns, text="Refrescar rutas", command=refrescar).pack(side="left", padx=8)
-    tk.Button(frame_btns, text="Salir", command=root.destroy).pack(side="left", padx=8)
-
+    btn = v.boton("ACTUALIZAR", lanzar, principal=True)
+    v.boton("Carpeta…", sel_carpeta)
+    v.boton("Salir", v.root.destroy)
     refrescar()
-    bombear()
-    root.update_idletasks()
-    w, h = root.winfo_width(), root.winfo_height()
-    root.geometry(f"+{(root.winfo_screenwidth() - w) // 2}"
-                  f"+{(root.winfo_screenheight() - h) // 2}")
-    root.mainloop()
+    v.iniciar()
 
 
 if __name__ == "__main__":

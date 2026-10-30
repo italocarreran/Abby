@@ -45,9 +45,9 @@
 # =============================================================================
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 from pathlib import Path
-import re, subprocess, sys, threading, time, traceback, queue, zipfile
+import re, sys, time, traceback, zipfile
 
 DIR_SCRIPT = Path(__file__).resolve().parent
 
@@ -85,6 +85,17 @@ except ImportError as e:
            "Tiene que estar la carpeta '__comun__' hermana de Revisor_Relq_15min.\n"
            "Baja el repositorio completo, no los .py sueltos.\n\n"
            f"Carpeta actual: {DIR_SCRIPT}\n\nDetalle: {e}")
+
+# La ventana chica comun de esta version (actualizadores/ventana_chica.py).
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "actualizadores"))
+    from ventana_chica import VentanaChica
+except ImportError as e:
+    _morir("Falta ventana_chica.py",
+           "No se pudo cargar actualizadores/ventana_chica.py.\n\n"
+           "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
+           f"Detalle: {e}")
+
 
 
 # =============================================================================
@@ -176,21 +187,6 @@ def guardar_config(data):
         lambda todo: todo.setdefault(get_usuario(), {}).update(data))
 
 
-def abrir_en_explorador(ruta, es_archivo=False):
-    if not ruta or str(ruta).startswith("["):
-        return
-    p = Path(ruta)
-    if not p.exists():
-        return
-    carpeta = p.parent if es_archivo else p
-    if sys.platform == "win32":
-        subprocess.Popen(["explorer", str(carpeta)])
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(carpeta)])
-    else:
-        subprocess.Popen(["xdg-open", str(carpeta)])
-
-
 # =============================================================================
 #  TRASPASO DESDE EL REVISOR
 # =============================================================================
@@ -207,11 +203,6 @@ def leer_traspaso(argv):
 # =============================================================================
 normalizar = _texto.suave
 clave_tipo = _texto.clave_mayusculas     # "CO ERNC" == "CO_ERNC"
-
-
-def fmt_tiempo(seg):
-    seg = int(seg)
-    return f"{seg // 3600:02d}:{(seg % 3600) // 60:02d}:{seg % 60:02d}"
 
 
 def col_num(letra):
@@ -526,12 +517,9 @@ def main():
     traspaso = leer_traspaso(sys.argv)
     modo = {"traspaso": traspaso is not None}
 
-    root = tk.Tk()
-    root.title("Planilla 1 — 01.SSCC_Recurso_Técnico"
-               + ("  (Revisor)" if traspaso else ""))
-    root.geometry("640x470")
-    root.resizable(True, True)
-
+    v = VentanaChica("Planilla 1 — 01.SSCC_Recurso_Técnico",
+                     "Trae los pagos por empresa. La planilla que no se marca se "
+                     "conserva como está.", traspaso, alto=360)
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
     vars_r = {k: tk.StringVar(value="[pendiente]") for k in ("cuadro_1", "p4", "p8")}
@@ -539,100 +527,26 @@ def main():
     # por lo general no se actualiza.
     sel_p4 = tk.BooleanVar(value=not modo["traspaso"])
     sel_p8 = tk.BooleanVar(value=False)
-    labels = {}
 
-    if traspaso:
-        tk.Label(root, text=f"Mes {traspaso.get('aamm') or '?'} — enviado por el Revisor",
-                 bg="#fff4c2", font=("Segoe UI", 9, "bold")).pack(fill="x", padx=10,
-                                                                   pady=(6, 0))
-
-    def ruta_lbl(parent, clave):
-        l = tk.Label(parent, textvariable=vars_r[clave], wraplength=580,
-                     justify="left", anchor="w", cursor="hand2", font=("Segoe UI", 8))
-        l.pack(fill="x", padx=24)
-        l.bind("<Button-1>", lambda e: abrir_en_explorador(vars_r[clave].get(), True))
-        labels[clave] = l
-
-    fr = tk.LabelFrame(root, text="Qué actualizar", padx=8, pady=4)
-    fr.pack(fill="x", padx=10, pady=6)
-    tk.Checkbutton(fr, text="Planilla 4 — hojas PAGO_EMPRESAS_*", variable=sel_p4,
-                   font=("Segoe UI", 9, "bold")).pack(anchor="w")
-    ruta_lbl(fr, "p4")
-    tk.Checkbutton(fr, text="Planilla 8 — CONTROL_CONTINGENCIAS, hoja RESUMEN",
-                   variable=sel_p8, font=("Segoe UI", 9, "bold")).pack(anchor="w",
-                                                                       pady=(4, 0))
-    ruta_lbl(fr, "p8")
-    tk.Label(fr, text="La que no se marca se conserva como está en la planilla 1.",
-             font=("Segoe UI", 8), fg="#555555").pack(anchor="w", pady=(4, 0))
-
-    fd = tk.LabelFrame(root, text="Destino — 1_CUADROS_PAGO (se modifica)", padx=8, pady=2)
-    fd.pack(fill="x", padx=10)
-    ruta_lbl(fd, "cuadro_1")
-
-    fpr = tk.Frame(root)
-    fpr.pack(fill="x", padx=10, pady=(6, 0))
-    var_estado = tk.StringVar(value="Listo")
-    var_tiempo = tk.StringVar(value="00:00:00")
-    tk.Label(fpr, textvariable=var_estado, font=("Segoe UI", 8),
-             anchor="w").pack(side="left", fill="x", expand=True)
-    tk.Label(fpr, textvariable=var_tiempo, font=("Consolas", 9, "bold"),
-             fg="#2d7a2d").pack(side="right")
-    # Sin barra de progreso (usuaria, 2026-10-29): queda solo el tiempo, que
-    # es lo que dice que esta corriendo.
-
-    frame_btns = tk.Frame(root)
-    frame_btns.pack(side="bottom", fill="x", pady=6)
-    fl = tk.Frame(root)
-    fl.pack(fill="both", expand=True, padx=10, pady=2)
-    txt = tk.Text(fl, height=7, font=("Consolas", 8), wrap="none")
-    sb = tk.Scrollbar(fl, command=txt.yview)
-    txt.configure(yscrollcommand=sb.set)
-    sb.pack(side="right", fill="y")
-    txt.pack(fill="both", expand=True)
-
-    cola = queue.Queue()
-    log = lambda m="": cola.put(("log", str(m)))
-    progreso = lambda a, t=100, m=None: cola.put(("prog", (a, t, m)))
-
-    def bombear():
-        try:
-            for _ in range(200):
-                tipo, val = cola.get_nowait()
-                if tipo == "log":
-                    txt.insert("end", val + "\n")
-                    txt.see("end")
-                else:
-                    a, t, m = val
-                    if m:
-                        var_estado.set(m)
-        except queue.Empty:
-            pass
-        root.after(120, bombear)
-
-    timer = {"on": False, "t0": 0.0}
-
-    def tick():
-        if timer["on"]:
-            var_tiempo.set(fmt_tiempo(time.time() - timer["t0"]))
-            root.after(500, tick)
-
-    def pintar():
-        for k, l in labels.items():
-            v = vars_r[k].get()
-            l.config(fg="blue" if not v.startswith("[") and Path(v).is_file() else "red")
+    fr = v.seccion("Qué actualizar")
+    v.casilla(fr, "Planilla 4", sel_p4, "hojas PAGO_EMPRESAS_*")
+    v.archivo(fr, "", vars_r["p4"], sangria=24)
+    v.casilla(fr, "Planilla 8", sel_p8, "RESUMEN (control de contingencias)")
+    v.archivo(fr, "", vars_r["p8"], sangria=24)
+    fd = v.seccion("Destino")
+    v.archivo(fd, "Planilla 1", vars_r["cuadro_1"])
 
     def refrescar(*_):
         if modo["traspaso"]:
             d = traspaso.get("rutas", {})
             for k in vars_r:
-                vars_r[k].set(d.get(k) or f"[el Revisor no mandó {k}]")
+                vars_r[k].set(d.get(k) or "[el Revisor no la mandó]")
         else:
             base = var_carpeta.get()
             if base and Path(base).is_dir():
                 for k, pat in PATRONES.items():
                     r = buscar_archivo(base, pat)
-                    vars_r[k].set(str(r) if r else f"[no se encontró en {CARPETA_ENT}]")
-        pintar()
+                    vars_r[k].set(str(r) if r else f"[no está en {CARPETA_ENT}]")
 
     def sel_carpeta():
         ini = var_carpeta.get()
@@ -649,8 +563,8 @@ def main():
         if not (h4 or h8):
             messagebox.showwarning("Sin selección", "Marca la planilla 4, la 8 o las dos.")
             return
-        rutas = {k: v.get() for k, v in vars_r.items()
-                 if not v.get().startswith("[") and Path(v.get()).is_file()}
+        rutas = {k: x.get() for k, x in vars_r.items()
+                 if not x.get().startswith("[") and Path(x.get()).is_file()}
         if "cuadro_1" not in rutas:
             messagebox.showerror("Falta el archivo", "No se encontró la planilla 1.")
             return
@@ -671,40 +585,26 @@ def main():
             return
         except OSError:
             pass
-        txt.delete("1.0", "end")
-        log(f"Planilla 4: {'ACTUALIZAR' if h4 else 'se conserva'}   |   "
-            f"Planilla 8: {'ACTUALIZAR' if h8 else 'se conserva'}")
-        btn.config(state="disabled", bg="#aaaaaa")
-        timer["on"] = True
-        timer["t0"] = time.time()
-        tick()
+        v.limpiar_log()
+        v.log(f"Planilla 4: {'ACTUALIZAR' if h4 else 'se conserva'}   |   "
+              f"Planilla 8: {'ACTUALIZAR' if h8 else 'se conserva'}")
 
-        def trabajo():
-            ok, msg = ejecutar(rutas, h4, h8, log, progreso)
+        def fin(r):
+            ok, msg = r
+            if ok:
+                v.var_estado.set(f"Listo — {msg}")
+                messagebox.showinfo("Listo", f"{msg}\n\nLa planilla 1 quedó abierta en Excel.")
+            else:
+                v.var_estado.set("Terminó con errores — revisa el log")
+                messagebox.showerror("Error", f"Falló.\n\n{msg}")
 
-            def fin():
-                timer["on"] = False
-                btn.config(state="normal", bg="#2d7a2d")
-                if ok:
-                    var_estado.set(f"Listo — {msg}")
-                    messagebox.showinfo("Listo", f"{msg}\n\nLa planilla 1 quedó abierta "
-                                        "en Excel.")
-                else:
-                    var_estado.set("Terminó con errores — revisa el log")
-                    messagebox.showerror("Error", f"Falló.\n\n{msg}")
-            root.after(0, fin)
+        v.correr(lambda: ejecutar(rutas, h4, h8, v.log, v.progreso), fin, boton=btn)
 
-        threading.Thread(target=trabajo, daemon=True).start()
-
-    btn = tk.Button(frame_btns, text="ACTUALIZAR", bg="#2d7a2d", fg="white",
-                    font=("Segoe UI", 9, "bold"), width=14, command=lanzar)
-    btn.pack(side="left", padx=6, expand=True)
-    tk.Button(frame_btns, text="Carpeta...", command=sel_carpeta).pack(side="left", padx=6)
-    tk.Button(frame_btns, text="Salir", command=root.destroy).pack(side="left", padx=6)
-
+    btn = v.boton("ACTUALIZAR", lanzar, principal=True)
+    v.boton("Carpeta…", sel_carpeta)
+    v.boton("Salir", v.root.destroy)
     refrescar()
-    bombear()
-    root.mainloop()
+    v.iniciar()
 
 
 if __name__ == "__main__":
