@@ -212,6 +212,16 @@ except ImportError as e:
            "Copia la carpeta Revisor_Relq_15min completa, no los .py sueltos.\n\n"
            f"Detalle: {e}")
 
+# Las centrales que se agregaron como embalse desde la ventana del Revisor (V10)
+# se suman a la lista (revisor/embalses.py). Si ese modulo no esta, se sigue
+# con la lista base: el Revisor va a avisar igual de las que falten.
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from revisor import embalses as _embalses
+    EMBALSES_AGREGADOS = _embalses.ampliar(CENTRALES_EMBALSE)
+except Exception:
+    EMBALSES_AGREGADOS = []
+
 
 
 get_usuario = _cfg.clave_equipo
@@ -639,6 +649,8 @@ def actualizar_en_libro(app, wb_d, rutas, hacer, aamm_respaldo, log, progreso):
     if sh_d is None:
         raise RuntimeError(f"No está la hoja '{HOJA_DESTINO}' en el destino.")
     log(f"    hoja destino: {sh_d.name}")
+    if EMBALSES_AGREGADOS:
+        log(f"    embalses agregados desde el Revisor: {', '.join(EMBALSES_AGREGADOS)}")
     quitar_filtros(sh_d, log)
 
     # ---- juntar los dos bloques, se actualicen o no --------------------

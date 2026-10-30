@@ -1064,7 +1064,7 @@ def comprobar(self, c, valores, L):
                                      c["fila_inicio"], L)
         if datos is None:
             return dict(base, estado="SIN DATOS")
-        vistas, fuera, sospechosas = {}, {}, {}
+        vistas, fuera, sospechosas, ignoradas = {}, {}, {}, 0
         for f in sorted(datos.get(col, {})):
             v = datos[col][f]
             if not isinstance(v, str) or not v.strip() or v.startswith("#"):
@@ -1078,7 +1078,11 @@ def comprobar(self, c, valores, L):
             else:
                 fuera.setdefault(k, (nom, f))
                 if RE_UNIDAD_CENTRAL.search(nom):
-                    sospechosas.setdefault(k, (nom, f))
+                    # Las que la usuaria ya dijo que NO son embalse no se avisan.
+                    if k in CENTRALES_IGNORADAS:
+                        ignoradas += 1
+                    else:
+                        sospechosas.setdefault(k, (nom, f))
 
         malos = []
         if c.get("exigir"):
@@ -1101,6 +1105,10 @@ def comprobar(self, c, valores, L):
             L(f"                   en la lista. ¿Es una unidad nueva?")
         if len(avisar) > 15:
             L(f"          ... y {len(avisar) - 15} más")
+        if avisar:
+            L("          (al terminar se abre una ventana para decidir si son embalses)")
+        if ignoradas and c.get("avisar_sufijo"):
+            L(f"        {ignoradas} «-número» ya marcada(s) como NO embalse: no se avisan")
         for x in faltan[:15]:
             L(f"          falta: {x} no aparece en ninguna fila")
         if len(faltan) > 15:
@@ -1111,6 +1119,7 @@ def comprobar(self, c, valores, L):
                     n_lista=len(lista), n_vistas=len(vistas), n_fuera=len(fuera),
                     fuera=[f"{n} ({col}{fi})" for n, fi in malos[:40]],
                     sufijo=[f"{n} ({col}{fi})" for n, fi in avisar[:40]],
+                    sufijo_nombres=[n for n, _ in avisar],
                     faltan=faltan[:40])
 
     if tipo == "matriz_al_dia":

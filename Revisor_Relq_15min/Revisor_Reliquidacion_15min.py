@@ -133,6 +133,12 @@ CENTRALES_EMBALSE = [
     "ANTUCO-1", "ANTUCO-2",
     "ANGOSTURA-1", "ANGOSTURA-2", "ANGOSTURA-3",
 ]
+# Las que se agregaron o descartaron desde la ventana que abre V10 al ver una
+# central "-numero" nueva (revisor/embalses.py, __config__/
+# centrales_embalse_15min.json). main() las carga: las agregadas se suman EN
+# EL LUGAR a CENTRALES_EMBALSE y las descartadas van aca, para no volver a
+# preguntar. Las dos listas son las mismas que recibe revisor/verificaciones.py.
+CENTRALES_IGNORADAS = set()
 # TOL_MTIME (2 s, tolerancia al comparar fechas de modificacion) vive en
 # revisor/archivos.py, que es quien lo usa, y se importa mas abajo. NO
 # redefinirlo aca: el import lo pisaria y el cambio no haria nada.
@@ -1785,6 +1791,7 @@ def obtener_valor(clave, rutas, log, usar_cache=True):
 try:
     from revisor import verificaciones as _verificaciones
     from revisor import lanzamiento as _lanzamiento
+    from revisor import embalses as _embalses
 except ImportError as e:
     _morir_import(
         "No se pudieron cargar los motores internos del Revisor.\n\n"
@@ -1807,6 +1814,9 @@ class Revisor:
         self.rutas = {}          # id -> Path | None
         self.filas = {}          # id -> dict de widgets
         self.cola = queue.Queue()
+        # Centrales "-numero" fuera de la lista que vio la ultima tanda de
+        # verificaciones: al terminar se pregunta si son embalses nuevos.
+        self.sufijo_pendientes = {}
         self.trabajando = False
         self.timer = {"on": False, "t0": 0.0}
 
@@ -3352,6 +3362,69 @@ class Revisor:
         }
         self.cola.put(("ver_guardar", (vid, registro)))
 
+    def _preguntar_embalses(self, pendientes):
+        """Ventana para decidir, central por central, si una "-numero" que no
+        esta en la lista es un embalse nuevo (se agrega) o no (no se vuelve a
+        avisar). Lo que se deja en "Después" se vuelve a preguntar la proxima
+        vez. pendientes: [(nombre, vid, desc)]."""
+        win = tk.Toplevel(self.root)
+        win.title("¿Centrales de embalse nuevas?")
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.grab_set()
+        tk.Label(win, text="Estas centrales terminan en «-número» y no están en la "
+                           "lista de embalses.\n¿Son unidades de embalse?",
+                 font=("Segoe UI", 9, "bold"), justify="left").pack(anchor="w",
+                                                                    padx=12, pady=(10, 6))
+        fr = tk.Frame(win)
+        fr.pack(fill="x", padx=12)
+        decis = []
+        for i, (nom, vid, desc) in enumerate(pendientes):
+            var = tk.StringVar(value="despues")
+            decis.append((nom, var))
+            tk.Label(fr, text=nom, font=("Segoe UI", 9, "bold"), anchor="w").grid(
+                row=i, column=0, sticky="w", padx=(0, 10), pady=1)
+            for j, (val, txt) in enumerate((("si", "Sí, agregar"),
+                                            ("no", "No, no avisar más"),
+                                            ("despues", "Después"))):
+                tk.Radiobutton(fr, text=txt, variable=var, value=val,
+                               font=("Segoe UI", 8)).grid(row=i, column=1 + j, sticky="w")
+            tk.Label(fr, text=f"{vid} · {desc.split(':')[0]}", font=("Segoe UI", 7),
+                     fg="#666666",
+                     anchor="w").grid(row=i, column=4, sticky="w", padx=(8, 0))
+
+        def guardar():
+            si = [n for n, v in decis if v.get() == "si"]
+            no = [n for n, v in decis if v.get() == "no"]
+            if (si or no) and not _embalses.guardar(si, no):
+                messagebox.showerror("No se pudo guardar",
+                                     f"No se pudo escribir {_embalses.RUTA}.", parent=win)
+                return
+            for n in si:
+                if clave_central(n) not in {clave_central(x) for x in CENTRALES_EMBALSE}:
+                    CENTRALES_EMBALSE.append(n)
+                CENTRALES_IGNORADAS.discard(clave_central(n))
+            for n in no:
+                CENTRALES_IGNORADAS.add(clave_central(n))
+            win.destroy()
+            if si:
+                self.log(f"Embalses agregados: {', '.join(si)}")
+            if no:
+                self.log(f"No son embalses (no se vuelve a avisar): {', '.join(no)}")
+            if si or no:
+                messagebox.showinfo(
+                    "Guardado",
+                    ("Agregadas a los embalses: " + ", ".join(si) + ".\n"
+                     "Corre «Actualizar data» de la planilla 5 (SC y CO) para "
+                     "traerlas.\n\n" if si else "")
+                    + "Vuelve a verificar para que el resultado se actualice.")
+
+        fb = tk.Frame(win)
+        fb.pack(fill="x", padx=12, pady=10)
+        tk.Button(fb, text="Guardar", bg="#2d7a2d", fg="white", width=12,
+                  command=guardar).pack(side="left")
+        tk.Button(fb, text="Cerrar", command=win.destroy).pack(side="left", padx=8)
+
     def _comprobar(self, c, valores, L):
         return _verificaciones.comprobar(self, c, valores, L)
 
@@ -3365,6 +3438,10 @@ class Revisor:
                     pass        # sin barra de progreso: solo corre el tiempo
                 elif tipo == "ver_guardar":
                     vid, reg = dato
+                    for r in reg.get("comprobaciones", []):
+                        for nom in r.get("sufijo_nombres", []):
+                            self.sufijo_pendientes.setdefault(
+                                clave_central(nom), (nom, vid, r.get("desc", "")))
                     if not ESTADO.set(vid, reg):
                         self.log(f"  ! No se pudo guardar el estado de {vid} en "
                                  f"{DIR_SALIDAS}. Revisa permisos de escritura.")
@@ -3379,6 +3456,10 @@ class Revisor:
                     self._bloquear(False)
                     self._actualizar_verificaciones()
                     self.var_estado.set(f"Verificación terminada {datetime.now():%H:%M:%S}")
+                    if self.sufijo_pendientes:
+                        pendientes = list(self.sufijo_pendientes.values())
+                        self.sufijo_pendientes = {}
+                        self.root.after(100, lambda p=pendientes: self._preguntar_embalses(p))
         except queue.Empty:
             pass
         self.root.after(250, self._bombear_cola)
@@ -3386,8 +3467,12 @@ class Revisor:
 
 def main():
     aplicar_valores_cfg()          # sobrescribe VALORES con lo guardado en config.json
+    agregadas = _embalses.ampliar(CENTRALES_EMBALSE)
+    CENTRALES_IGNORADAS.update(_embalses.claves_ignoradas())
     root = tk.Tk()
     app = Revisor(root)
+    if agregadas:
+        app.log(f"Embalses agregados desde el Revisor: {', '.join(agregadas)}")
     app.log("Revisor de entregables — CASO RELIQUIDACION (15 minutos)")
     app.log("1) Examinar -> carpeta 02 CASO RELIQUIDACION   2) ACTUALIZAR   3) Verificar")
     app.log("Si a un verificador le falta saber la hoja/celda, usa «Configurar valores...»:")

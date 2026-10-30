@@ -70,6 +70,27 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-30 — Claude — 15 min: V10 pregunta si una central «-número» nueva es embalse
+
+V10 salía NO CUADRA porque «PE-CANELA-2» (eólica) del Reporte_CRA termina en
+«-número» y no está en la lista de embalses. La usuaria no quiso un filtro
+automático: pidió confirmar a mano si se agrega o no. Ahora, al terminar la
+verificación, se abre una ventana con cada central sospechosa y tres
+opciones: Sí, agregar / No, no avisar más / Después. Las decisiones quedan en
+`__config__/centrales_embalse_15min.json` (`revisor/embalses.py`), y las
+toman el Revisor (lista e ignoradas) y `Actualiza_SC_CO.py` (lista).
+
+Pruebas:
+- `revisor/test_embalses.py`, 5 pruebas.
+- Con el Revisor real y un csv de prueba, el chequeo pasa de NO CUADRA
+  (PE-CANELA-2, RALCO-3) a OK después de decidir.
+- La ventana, manejada con clics bajo Xvfb.
+
+Mientras probaba, una prueba escribió en el `__config__` real del contenedor
+(los argumentos por defecto capturaban la ruta): se borró, y ahora la ruta se
+resuelve al llamar. `__config__/` está en `.gitignore`. Hay que volver a
+verificar para que el resultado guardado se actualice.
+
 ## 2026-10-30 — Claude — 15 min: se saca el verificador V8 (Cálculo_SobrecostosSSCC)
 
 La usuaria pidió sacar el verificador de la planilla de sobrecostos: no se usa

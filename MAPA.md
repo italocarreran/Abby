@@ -682,6 +682,16 @@ y el paquete `revisor/`, salvo lo indicado).
   V12). V7 quedó solo con `M5 = 0`; V8 sin el `EE6 = SCAGC` del tabulado; V13
   sin la suma del `Ocupar_este.mdb` y colgando de V9/V10/V11; V14 sin la suma
   del `03b ENTRADA_SOB_SSCC.mdb` y, sin V8, sin previas.
+- **Embalses nuevos (2026-10-30, `revisor/embalses.py`):** cuando V10 encuentra
+  en un origen (SC o CO) una central «-número» que no está en
+  `CENTRALES_EMBALSE`, al terminar la verificación se abre una ventana
+  (`_preguntar_embalses`). Para cada central se elige «Sí, agregar», «No, no
+  avisar más» o «Después». Se guarda en `__config__/centrales_embalse_15min.json`
+  (`agregadas` / `ignoradas`, compartido por todos y escrito de forma atómica).
+  Al arrancar, el Revisor suma las agregadas a `CENTRALES_EMBALSE` y carga las
+  ignoradas en `CENTRALES_IGNORADAS`, que el chequeo `centrales_en_lista` ya
+  no avisa. `Actualiza_SC_CO.py` también suma las agregadas a su lista, así
+  que el embalse nuevo se trae a «SC y CO».
 - **Detalles que importan:** la cadena del cuadro cero es ahora
   `V16 -> V15 -> V14` (y `V15 -> V13 -> V9/V10/V11`). El caché de
   directorios está apagado por omisión y solo se enciende dentro del `with`,

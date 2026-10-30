@@ -49,20 +49,21 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1605 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3415 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3500 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 702 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 611 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 823 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
-- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 961 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
+- [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 973 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Sobrecostos.py`](#revisor_relq_15minactualizadoresactualiza_sobrecostospy) — 149 líneas — Actualiza Cálculo_SobrecostosSSCC — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1326 líneas
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 471 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/ventana_chica.py`](#revisor_relq_15minactualizadoresventana_chicapy) — 286 líneas — Ventana chica comun de los actualizadores — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
+- [`Revisor_Relq_15min/revisor/embalses.py`](#revisor_relq_15minrevisorembalsespy) — 75 líneas — Centrales de embalse que se agregaron (o descartaron) desde el Revisor.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
 - [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq_15min/revisor/lectores.py`](#revisor_relq_15minrevisorlectorespy) — 710 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
-- [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1446 líneas — Motor de las comprobaciones V4…V17 del Revisor.
+- [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1455 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2485 líneas — Comparador_Etapas.py
 - [`Comparadores/Comparador_Tabulado.py`](#comparadorescomparador_tabuladopy) — 1779 líneas — Comparador_Tabulado.py
 
@@ -2638,6 +2639,7 @@ manteniendo el formato de las celdas.
 | `TOL_PRORRATA_SUMA` | `0.0001` | Diferencia maxima al comparar la suma por suministrador de la prorrata de una planilla contra el Prorrata_Retiros. |
 | `RE_UNIDAD_CENTRAL` | `re.compile('-\\d+\\s*$')` | Una central que termina en "-numero" es una unidad, y las unidades son lo que tienen los embalses. |
 | `CENTRALES_EMBALSE` | `lista de 27 elementos: 'CANUTILLAR-1', 'CANUTILLAR-2', 'ELTORO-1', …` | Centrales de embalse OJO: esta lista esta TAMBIEN en Actualiza_SC_CO.py. |
+| `CENTRALES_IGNORADAS` | `set()` | Las que se agregaron o descartaron desde la ventana que abre V10 al ver una central "-numero" nueva (revisor/embalses.py, __config__/ centrales_embalse_15min.json). |
 | `VALORES` | `dict de 39 claves: 'PV_SUBASTAS', 'PV_CRA', 'PV_CO_ERNC', …` |  |
 | `VERIFICADORES` | `dict de 7 claves: 'V9', 'V10', 'V11', …` |  |
 | `XL` | `('.xlsm', '.xlsx', '.xlsb')` |  |
@@ -3793,6 +3795,52 @@ Tamaño, tomado del recorrido cuando el caché está activo.
 #### `def iguales_mtime(a, b)`
 
 #### `def fmt_monto(valor)`
+
+
+---
+
+## `Revisor_Relq_15min/revisor/embalses.py`
+
+> Centrales de embalse que se agregaron (o descartaron) desde el Revisor.
+>
+> La lista base de los 27 embalses vive en el codigo (``CENTRALES_EMBALSE`` del
+> Revisor y de ``Actualiza_SC_CO.py``). Cuando V10 encuentra en un origen una
+> central "-numero" que no esta en la lista, el Revisor pregunta (usuaria,
+> 2026-10-30) si es un embalse nuevo:
+>
+> * si -> va a ``agregadas`` y desde ahi la toman el Revisor y el actualizador
+>   de la hoja "SC y CO";
+> * no -> va a ``ignoradas`` y no se vuelve a avisar.
+>
+> Se guarda en ``__config__/centrales_embalse_15min.json``, compartido por
+> todos los usuarios: que una central sea o no embalse no depende de quien mira.
+> Solo biblioteca estandar + ``__comun__/config.py`` (escritura atomica).
+
+**Importa:** `__comun__`, `pathlib`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `RUTA` | `Path(__file__).resolve().parents[2] / '__config__' / 'centrales_embalse_15min.json'` |  |
+
+### Funciones
+
+#### `def leer(ruta=None)`
+
+(agregadas, ignoradas), cada una una lista de nombres.
+
+#### `def ampliar(base, ruta=None)`
+
+Agrega en el lugar (a la misma lista) las centrales agregadas que no
+esten ya. Devuelve las que agrego.
+
+#### `def claves_ignoradas(ruta=None)`
+
+#### `def guardar(agregar=(), ignorar=(), ruta=None)`
+
+Anota las decisiones. Una central agregada deja de estar ignorada y al
+reves. Devuelve True si se escribio.
 
 
 ---
