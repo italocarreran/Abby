@@ -1,11 +1,14 @@
 # `actualizadores/` — los que el Revisor lanza por botón
 
 ```
-Actualiza_datos.py           Actualiza_Cuadro0.py
+Actualiza_datos.py           (planillas 3, 5 y 6: FD, prorrata, SC y CO)
+Actualiza_Sobrecostos.py     (Cálculo_SobrecostosSSCC: FD y SOBRECOSTOS)
+Actualiza_Cuadro0.py
 Actualiza_Pagos_Varios.py    (arma 04 Planilla 9/pagos_varios_AAMM.csv)
 Actualiza_Cuadro1.py         (planilla 1: PAGO_EMPRESAS_* de la 4 y RESUMEN de la 8)
 Reorganiza_SC_Cfrec.py       (01 Sobrecostos/SC_CfrecSinFD_AAMM.csv -> ..._para_coyailen.csv)
 Actualiza_SC_CO.py           (sin botón propio: lo usa Actualiza_datos)
+ventana_chica.py             (la ventana común de todos)
 ```
 
 La hoja "SC y CO" de la planilla 5 se actualiza desde la ventana de

@@ -49,12 +49,13 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1605 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3436 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3438 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 702 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 611 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 823 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`](#revisor_relq_15minactualizadoresactualiza_sc_copy) — 961 líneas — Actualiza la hoja "SC y CO" de la planilla 5_ — VERSION 15 MINUTOS
-- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1322 líneas
+- [`Revisor_Relq_15min/actualizadores/Actualiza_Sobrecostos.py`](#revisor_relq_15minactualizadoresactualiza_sobrecostospy) — 149 líneas — Actualiza Cálculo_SobrecostosSSCC — VERSION 15 MIN
+- [`Revisor_Relq_15min/actualizadores/Actualiza_datos.py`](#revisor_relq_15minactualizadoresactualiza_datospy) — 1326 líneas
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 471 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/ventana_chica.py`](#revisor_relq_15minactualizadoresventana_chicapy) — 286 líneas — Ventana chica comun de los actualizadores — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
@@ -3376,6 +3377,39 @@ hacer: subconjunto de ["SC", "CO"]. Devuelve (ok, resumen).
 
 ---
 
+## `Revisor_Relq_15min/actualizadores/Actualiza_Sobrecostos.py`
+
+> Actualiza Cálculo_SobrecostosSSCC  —  VERSION 15 MIN
+> Ventana propia del maestro 01 Sobrecostos/Cálculo_SobrecostosSSCC_AAMM_*.xlsm,
+> separada de la de las planillas 3, 5 y 6 (usuaria, 2026-10-30). Dos casillas:
+>
+>   FD           hojas FD_* desde SSCC_Desempeno (MAPEO_SOBRECOSTOS_FD)
+>   SOBRECOSTOS  hoja SOBRECOSTOS!A7:R desde
+>                01 Sobrecostos/SC_CfrecSinFD_AAMM_para_coyailen.csv, con las
+>                formulas de S:EH al largo de lo pegado
+>
+> El motor es el mismo de Actualiza_datos.py (ejecutar_actualizacion con la
+> planilla "sc"): aca solo esta la ventana. Corre en un hilo aparte, asi que
+> la ventana no se congela mientras trabaja.
+>
+> Se puede correr solo, o recibir del Revisor la ruta de un JSON de traspaso.
+
+**Importa:** `pathlib`, `sys`, `tkinter`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `DIR_SCRIPT` | `Path(__file__).resolve().parent` |  |
+| `CLAVES` | `dict de 3 claves: 'destino', 'sscc', 'coyailen', …` | Claves del JSON de traspaso de cada archivo de la ventana. |
+
+### Funciones
+
+#### `def main()`
+
+
+---
+
 ## `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
 
 **Importa:** `json`, `os`, `pathlib`, `re`, `socket`, `sys`, `time`, `tkinter`, `traceback`, `unicodedata`
@@ -3498,6 +3532,12 @@ rutas: dict del traspaso del Revisor. Las claves que vengan se usan tal
        cual y NO se vuelve a buscar el archivo; las que falten caen al
        buscar_* de siempre.
 Retorna (ok, lista_rutas_modificadas)
+
+#### `def ejecutar_en_hilo(*args, **kwargs)`
+
+ejecutar_actualizacion desde un hilo que no es el de la ventana: COM
+(xlwings) hay que inicializarlo en cada hilo. Asi la ventana no se congela
+mientras corre (usuaria, 2026-10-30).
 
 **— Ventana —**
 
@@ -4665,7 +4705,7 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `DIR_CONFIG` | `Revisor_Relq/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py` |
 | `DIR_RAIZ` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `DIR_REVISOR` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
-| `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py` |
+| `DIR_SCRIPT` | `Revisor_Relq/Revisor_Reliquidacion.py`, `Revisor_Relq/actualizadores/Actualiza_Access_P9.py`, `Revisor_Relq/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq/actualizadores/Actualiza_Energia.py`, `Revisor_Relq/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py`, `Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Sobrecostos.py`, `Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py` |
 | `EPS_CERO` | `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`, `Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py` |
 | `ETAPAS` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `ETIQUETA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |

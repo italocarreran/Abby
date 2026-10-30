@@ -687,7 +687,28 @@ y el paquete `revisor/`, salvo lo indicado).
   `cache_directorios` es una clase, no una función: al salir deja
   `self.stats = (scans, hits)` para poder decir en la bitácora cuánto se ahorró.
 
+### `Revisor_Relq_15min/actualizadores/Actualiza_Sobrecostos.py` — Cálculo_SobrecostosSSCC aparte (2026-10-30)
+
+- **Qué hace:** la ventana propia del maestro `01 Sobrecostos/Cálculo_
+  SobrecostosSSCC_AAMM_*.xlsm`, separada de la de las planillas 3, 5 y 6 a
+  pedido de la usuaria. Tiene dos casillas: **FD** (hojas FD_* desde
+  SSCC_Desempeno) y **SOBRECOSTOS** (A7:R desde el csv para Coyailen, con las
+  fórmulas de S:EH al largo de lo pegado).
+- **Motor:** no tiene uno propio. Importa `Actualiza_datos.py` y llama a
+  `ejecutar_en_hilo(..., "sc", fd, sobrecostos)`, o sea a
+  `ejecutar_actualizacion` con COM inicializado en el hilo.
+- **Revisor:** el botón «Actualizar data» de `a_calc_sscc_01` lanza este
+  script. Recibe del traspaso `calculo_sscc_maestro`, `sscc_desempeno` y
+  `sc_cfrec_coyailen`.
+
 ### `Revisor_Relq_15min/actualizadores/Actualiza_datos.py`
+
+- **Desde 2026-10-30** la ventana es solo para las planillas 3, 5 y 6;
+  Cálculo_SobrecostosSSCC tiene la suya (`Actualiza_Sobrecostos.py`).
+  `ejecutar_actualizacion` sigue aceptando `"sc"`, que es lo que usa esa
+  ventana. Corre en un hilo aparte (`ejecutar_en_hilo`, con
+  `pythoncom.CoInitialize`), así que la ventana ya no se congela mientras
+  trabaja.
 
 - **SOBRECOSTOS desde SC sin FD (2026-10-29):** en Cálculo_SobrecostosSSCC,
   la casilla «Actualizar SOBRECOSTOS (desde SC sin FD para Coyailen)»

@@ -839,7 +839,9 @@ def _texto_carpeta(nodo):
 # El valor es una LISTA porque una fila puede tener mas de un actualizador: el
 # cuadro cero tiene dos, los reemplazos y los pasos del cuadro.
 ACTUALIZADORES = {
-    "a_calc_sscc_01": [dict(script="actualizadores/Actualiza_datos.py", planilla="sc")],
+    # Cálculo_SobrecostosSSCC tiene su propia ventana (FD y SOBRECOSTOS), aparte
+    # de la de las planillas 3, 5 y 6 (usuaria, 2026-10-30).
+    "a_calc_sscc_01": [dict(script="actualizadores/Actualiza_Sobrecostos.py")],
     "a_3_p9":         [dict(script="actualizadores/Actualiza_datos.py", planilla="p3")],
 
     # 15 minutos: la hoja "SC y CO" es una casilla mas de la planilla 5 dentro

@@ -1135,6 +1135,22 @@ def ejecutar_actualizacion(carpeta_reliq: Path, planilla: str,
             pass
         return False, []
 
+def ejecutar_en_hilo(*args, **kwargs):
+    """ejecutar_actualizacion desde un hilo que no es el de la ventana: COM
+    (xlwings) hay que inicializarlo en cada hilo. Asi la ventana no se congela
+    mientras corre (usuaria, 2026-10-30)."""
+    try:
+        import pythoncom
+    except ImportError:
+        pythoncom = None
+    if pythoncom is not None:
+        pythoncom.CoInitialize()
+    try:
+        return ejecutar_actualizacion(*args, **kwargs)
+    finally:
+        if pythoncom is not None:
+            pythoncom.CoUninitialize()
+
 # ── Ventana ──────────────────────────────────────────────────────────────────
 def main():
     cfg = leer_config()
@@ -1143,26 +1159,25 @@ def main():
     # ese momento la ventana vuelve a buscar los archivos por su cuenta.
     modo = {"traspaso": traspaso is not None}
 
-    v = VentanaChica("Actualizar data", "Elige la planilla y marca qué traer. Los "
-                     "Excel destino tienen que estar cerrados.", traspaso, alto=440)
+    v = VentanaChica("Actualizar data — planillas 3, 5 y 6",
+                     "Elige la planilla y marca qué traer. Los Excel destino tienen "
+                     "que estar cerrados.", traspaso, alto=440)
     var_carpeta = tk.StringVar(
         value=(traspaso or {}).get("carpeta_reliq") or cfg.get("carpeta_reliq", ""))
     # El Revisor manda desde qué archivo se apretó el botón: se preselecciona.
     plan_ini = (traspaso or {}).get("planilla")
-    var_planilla = tk.StringVar(
-        value=plan_ini if plan_ini in ("sc", "p3", "p5", "p6") else "sc")
+    # Cálculo_SobrecostosSSCC tiene su propia ventana (Actualiza_Sobrecostos.py).
+    var_planilla = tk.StringVar(value=plan_ini if plan_ini in ("p3", "p5", "p6") else "p3")
 
     # Viniendo del Revisor las casillas arrancan en blanco a propósito: el
     # usuario tiene que decir qué quiere actualizar. A mano, FD premarcado.
     fd_ini = not modo["traspaso"]
     opciones = {k: {"fd": tk.BooleanVar(value=fd_ini), "otro": tk.BooleanVar(value=False)}
-                for k in ("sc", "p3", "p5", "p6")}
+                for k in ("p3", "p5", "p6")}
     opciones["p5"]["sc"] = tk.BooleanVar(value=False)
     opciones["p5"]["co"] = tk.BooleanVar(value=False)
 
     rutas_v = {
-        "sc": {"destino": tk.StringVar(), "sscc": tk.StringVar(),
-               "coyailen": tk.StringVar()},
         "p3": {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar()},
         "p5": {"destino": tk.StringVar(), "sscc": tk.StringVar(), "prorrata": tk.StringVar(),
                "sc_origen": tk.StringVar(), "co_origen": tk.StringVar()},
@@ -1170,8 +1185,6 @@ def main():
     }
     # Claves del JSON de traspaso que alimentan cada archivo de la ventana.
     MAPA_TRASPASO = {
-        "sc": {"destino": "calculo_sscc_maestro", "sscc": "sscc_desempeno",
-               "coyailen": "sc_cfrec_coyailen"},
         "p3": {"destino": "p3", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros"},
         "p5": {"destino": "p5", "sscc": "sscc_desempeno", "prorrata": "prorrata_retiros",
                "sc_origen": "calculo_sscc_maestro", "co_origen": "reporte_cra"},
@@ -1182,8 +1195,7 @@ def main():
     fr_rb = tk.Frame(v.cuerpo)
     fr_rb.pack(fill="x", pady=(4, 0))
     frames = {}
-    for k, et in (("sc", "Sobrecostos"), ("p3", "Planilla 3"),
-                  ("p5", "Planilla 5"), ("p6", "Planilla 6")):
+    for k, et in (("p3", "Planilla 3"), ("p5", "Planilla 5"), ("p6", "Planilla 6")):
         tk.Radiobutton(fr_rb, text=et, variable=var_planilla, value=k,
                        font=("Segoe UI", 9, "bold"),
                        command=lambda: mostrar()).pack(side="left", padx=(0, 8))
@@ -1195,13 +1207,8 @@ def main():
         v.archivo(fr, "Destino", rutas_v[k]["destino"])
         v.casilla(fr, "FD", opciones[k]["fd"], "desde SSCC_Desempeno")
         v.archivo(fr, "", rutas_v[k]["sscc"], sangria=24)
-        if k == "sc":
-            v.casilla(fr, "SOBRECOSTOS", opciones[k]["otro"],
-                      "desde el csv para Coyailen (A7:R)")
-            v.archivo(fr, "", rutas_v[k]["coyailen"], sangria=24)
-        else:
-            v.casilla(fr, "Prorrata", opciones[k]["otro"], "desde Prorrata_Retiros")
-            v.archivo(fr, "", rutas_v[k]["prorrata"], sangria=24)
+        v.casilla(fr, "Prorrata", opciones[k]["otro"], "desde Prorrata_Retiros")
+        v.archivo(fr, "", rutas_v[k]["prorrata"], sangria=24)
         if k == "p5":
             # Hoja "SC y CO": SC y CO por separado; el que no se marca se
             # conserva (ver Actualiza_SC_CO.py).
@@ -1210,7 +1217,6 @@ def main():
             v.casilla(fr, "CO", opciones[k]["co"], 'hoja "SC y CO", desde Reporte_CRA')
             v.archivo(fr, "", rutas_v[k]["co_origen"], sangria=24)
 
-    armar("sc", "Cálculo_SobrecostosSSCC")
     armar("p3", "3_REMUNERACIÓN_SUBASTAS_E_ID")
     armar("p5", "5_REMUNERACIÓN_CRA")
     armar("p6", "6_REMUNERACIÓN_REA_Y_CO_ERNC")
@@ -1248,9 +1254,6 @@ def main():
             poner(rutas_v[k]["sscc"], sscc, "SSCC_Desempeno")
         for k in ("p3", "p5", "p6"):
             poner(rutas_v[k]["prorrata"], prorrata, "Prorrata_Retiros")
-        poner(rutas_v["sc"]["destino"], sc, "Cálculo_SobrecostosSSCC")
-        poner(rutas_v["sc"]["coyailen"], buscar_sc_cfrec_coyailen(reliq),
-              "SC_CfrecSinFD_*_para_coyailen.csv")
         poner(rutas_v["p5"]["sc_origen"], sc, "Cálculo_SobrecostosSSCC")
         poner(rutas_v["p5"]["co_origen"], buscar_reporte_cra(reliq), "Reporte_CRA_15min")
         poner(rutas_v["p3"]["destino"], buscar_planilla9(reliq, "3_remuneracion_subastas"),
@@ -1291,7 +1294,7 @@ def main():
               + (f" | SC y CO: {'+'.join(hacer_sc_co)}" if hacer_sc_co else ""))
 
         def trabajo():
-            return ejecutar_actualizacion(
+            return ejecutar_en_hilo(
                 Path(ruta) if ruta else Path("."), plan, hacer_fd, hacer_otro,
                 log_func=v.log, progreso_func=lambda a, t=100, m=None: v.estado(m or ""),
                 rutas=traspaso.get("rutas") if modo["traspaso"] else None,
@@ -1307,8 +1310,9 @@ def main():
                 v.var_estado.set("Terminó con errores — revisa el log")
                 messagebox.showerror("Error", "Hubo un error. Revisa el log.")
 
-        # En el hilo de la ventana, como siempre: xlwings maneja Excel desde ahí.
-        v.correr(trabajo, fin, boton=btn, hilo=False, estado="Iniciando…")
+        # En un hilo aparte (con COM inicializado ahí): la ventana sigue
+        # respondiendo y el log se puede mover mientras corre.
+        v.correr(trabajo, fin, boton=btn, estado="Iniciando…")
 
     btn = v.boton("EJECUTAR", ejecutar, principal=True)
     v.boton("Carpeta…", sel_carpeta)

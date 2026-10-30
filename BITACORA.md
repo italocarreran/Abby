@@ -67,6 +67,33 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-10-30 — Claude — 15 min: Sobrecostos con ventana propia y sin ventanas congeladas
+
+La usuaria pidió dos cosas.
+
+**Ventanas congeladas.** Algunas ventanas se quedaban bloqueadas mientras
+corrían, y el log no se movía aparte de la ventana. Había dos causas:
+- el canvas con scroll y `bind_all` de la rueda, que ya se sacaron con las
+  ventanas chicas;
+- `Actualiza_datos.py`, que corría todo en el hilo de la ventana.
+
+Ahora Actualiza_datos corre en un hilo (`ejecutar_en_hilo`, que inicializa COM
+como ya hacían Cuadro0, Cuadro1 y SC_CO). Las demás ya usaban un hilo.
+
+**Sobrecostos aparte.** El actualizador de Cálculo_SobrecostosSSCC (FD y
+SOBRECOSTOS) se separó de las planillas 3, 5 y 6:
+- `Actualiza_Sobrecostos.py`, nuevo, solo ventana, usa el motor de
+  Actualiza_datos;
+- el Revisor lanza ese script desde `a_calc_sscc_01`;
+- la ventana de Actualiza_datos quedó con 3, 5 y 6.
+
+Probado con Xvfb, con `ejecutar_actualizacion` falso:
+- en las dos ventanas el motor corre fuera del hilo principal y la ventana
+  sigue respondiendo y mostrando el log mientras trabaja;
+- llegan bien la planilla y las casillas.
+
+Falta con Excel real.
+
 ## 2026-10-30 — Claude — 15 min: ventanas chicas en todos los actualizadores
 
 La usuaria pidió ventanas más simples, intuitivas y chicas, como la de la
