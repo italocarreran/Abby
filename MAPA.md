@@ -625,10 +625,15 @@ y el paquete `revisor/`, salvo lo indicado).
   concepto, en magnitud y con `TOLERANCIA`. Es la pareja de
   `pago_por_empresa`: las dos planillas prorratean distinto, así que por
   empresa pueden diferir y el total de cada tipo igual tiene que coincidir.
-  Nombres con `clave_concepto` (`CO ERNC` = `CO_ERNC`). Fuera C.Frec, SCMT,
-  OTRO (usuaria) y EDAC-BF; los tipos de un solo lado se informan, no fallan.
+  Nombres con `clave_concepto` (`CO ERNC` = `CO_ERNC`); `equivalencias`:
+  el C.Frec de la 9 es el SC_SSCC de la 1. Fuera SCMT y OTRO (van por otro
+  camino, usuaria) y EDAC-BF; los tipos de un solo lado se informan, no fallan.
   No usa la hoja RESUMEN. Sale de la revisión de 2601 (CRA del cuadro de pago
   distinto del de la planilla 9).
+- **V15, total de RESUMEN (2026-11-23):** `C10 + C11 + C12 + C14 + C15 + C16
+  + C17:C25` = `P9_TOTAL_P1` (la 9 sin SCMT ni OTRO). `excel_col` acepta
+  `excluir_filtro`: suma todo menos esos valores, para que un tipo nuevo de la
+  9 entre igual. La horaria sigue con `C12 + C14 + C15 + C17:C25`.
 - **«Traer maestro»**: si la copia no existe copia sin preguntar ni avisar; si
   pisa o borra algo, una pregunta corta («X ya existe. ¿Seguro que desea
   reemplazarlo?»); si sale bien no muestra aviso (queda en la bitácora).

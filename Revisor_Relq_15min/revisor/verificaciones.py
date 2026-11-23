@@ -885,7 +885,12 @@ def comprobar(self, c, valores, L):
             return dict(base, estado="SIN DATOS")
         L(f"  .. {c['desc']}")
 
-        def por_concepto(ruta, lado):
+        # Tipos que en la 9 se llaman distinto que en la 1:
+        # {"C.Frec": "SC_SSCC"} suma el C.Frec de la 9 contra el SC_SSCC de la 1.
+        equiv = {clave_concepto(a): (clave_concepto(b), f"{a} = {b}")
+                 for a, b in (c.get("equivalencias") or {}).items()}
+
+        def por_concepto(ruta, lado, renombrar=False):
             """{clave: [suma, n_filas, nombre_tal_cual]} o None."""
             d = leer_columnas_rapido(ruta, lado["hoja"],
                                      [lado["col_concepto"], lado["col_monto"]],
@@ -901,12 +906,15 @@ def comprobar(self, c, valores, L):
                 v = d.get(cm, {}).get(f)
                 if not isinstance(v, (int, float)) or isinstance(v, bool):
                     continue
-                reg = out.setdefault(clave_concepto(con), [0.0, 0, con.strip()])
+                k, nom = clave_concepto(con), con.strip()
+                if renombrar and k in equiv:
+                    k, nom = equiv[k]
+                reg = out.setdefault(k, [0.0, 0, nom])
                 reg[0] += float(v)
                 reg[1] += 1
             return out
 
-        tdet = por_concepto(r_det, det)
+        tdet = por_concepto(r_det, det, renombrar=True)
         tres = por_concepto(r_res, res)
         if tdet is None or tres is None:
             return dict(base, estado="SIN DATOS")

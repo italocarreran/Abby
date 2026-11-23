@@ -256,6 +256,16 @@ VALORES = {
         "columna_filtro": "", "valores_filtro": [],
         "etiqueta": "Planilla 9 (csv): suma de Pago (J)",
     },
+    # El mismo total sin SCMT ni OTRO, que no pasan por la planilla 1 (van por
+    # otro camino; usuaria, 2026-11-23). Se excluye en vez de listar los tipos
+    # que entran: un tipo nuevo en la 9 suma igual y hace saltar el descuadre.
+    "P9_TOTAL_P1": {
+        "tipo": "excel_col", "archivo": "a_9_pagos",
+        "hoja": "(csv)", "columna": "J", "fila_inicio": 2,
+        "columna_filtro": "H", "valores_filtro": [],
+        "excluir_filtro": ["SCMT", "OTRO"],
+        "etiqueta": "Planilla 9 (csv): Pago (J) sin SCMT ni OTRO (H)",
+    },
     # 4_REMUNERACION_SC_CO_CCA  (en 00 Entregables)
     "P4_K6": {"tipo": "excel", "archivo": "a_4_rem", "hoja": "VERIFICADORES",
               "celda": "K6", "etiqueta": "Planilla 4  VERIFICADORES!K6"},
@@ -275,6 +285,8 @@ VALORES = {
                "etiqueta": "1_CUADROS_PAGO  C14"},
     "P1_C15": {"tipo": "excel", "archivo": "a_1_cuadros", "hoja": "RESUMEN", "celda": "C15",
                "etiqueta": "1_CUADROS_PAGO  C15"},
+    "P1_C16": {"tipo": "excel", "archivo": "a_1_cuadros", "hoja": "RESUMEN", "celda": "C16",
+               "etiqueta": "1_CUADROS_PAGO  C16 (BESS)"},
     "P1_C17_C25": {"tipo": "excel", "archivo": "a_1_cuadros", "hoja": "RESUMEN",
                    "celda": "C17:C25", "etiqueta": "1_CUADROS_PAGO  suma C17:C25"},
 }
@@ -518,9 +530,15 @@ VERIFICADORES = {
             {"tipo": "igualdad", "absoluto": True,
              "desc": "C10 + C11 + C13 = planilla 4 (L6)",
              "izq": ["P1_C10", "P1_C11", "P1_C13"], "der": ["P4_L6"]},
+            # 15 minutos (usuaria, 2026-11-23): la 9 trae tambien CO (C11),
+            # C.Frec (= SC_SSCC, C10) y BESS (C16); SCMT y OTRO quedan fuera.
+            # En la horaria era C12 + C14 + C15 + C17:C25 contra todo la 9.
             {"tipo": "igualdad", "absoluto": True,
-             "desc": "C12 + C14 + C15 + suma(C17:C25) = total general de planilla 9",
-             "izq": ["P1_C12", "P1_C14", "P1_C15", "P1_C17_C25"], "der": ["P9_TOTAL"]},
+             "desc": "C10 + C11 + C12 + C14 + C15 + C16 + suma(C17:C25) = "
+                     "planilla 9 sin SCMT ni OTRO",
+             "izq": ["P1_C10", "P1_C11", "P1_C12", "P1_C14", "P1_C15", "P1_C16",
+                     "P1_C17_C25"],
+             "der": ["P9_TOTAL_P1"]},
 
             # --- el pago por empresa y concepto -------------------------------
             # La planilla 1 y las planillas 9 y 4 son dos calculos PARALELOS del
@@ -559,14 +577,16 @@ VERIFICADORES = {
             # prorratean distinto: el monto por empresa puede diferir (lo ve la
             # de arriba) y el total del tipo igual tiene que coincidir.
             # Revision 2601 (usuaria, 2026-11-23): el CRA del cuadro de pago no
-            # era el de la planilla 9. Fuera C.Frec, SCMT y OTRO (pedido de la
-            # usuaria) y EDAC-BF (como en la de arriba: no esta en la 9).
+            # era el de la planilla 9. El C.Frec de la 9 es el SC_SSCC de la 1;
+            # SCMT y OTRO quedan fuera, van por otro camino (usuaria), y EDAC-BF
+            # tambien (como en la de arriba: no esta en la 9).
             {"tipo": "pago_por_concepto",
              "desc": "total por tipo de pago: planilla 9 = planilla 1",
              "detalle": {"archivo": "a_9_pagos", "hoja": "(csv)",
                          "fila_inicio": 2, "nombre": "P9",
                          "col_concepto": "H", "col_monto": "J"},
-             "excluir_conceptos": ["C.Frec", "SCMT", "OTRO", "EDAC-BF"],
+             "equivalencias": {"C.Frec": "SC_SSCC"},
+             "excluir_conceptos": ["SCMT", "OTRO", "EDAC-BF"],
              "resumen": {"archivo": "a_1_cuadros",
                          "hoja": "01.SSCC_Recurso_Técnico",
                          "fila_inicio": 9, "nombre": "P1",
@@ -1134,7 +1154,11 @@ def huella_spec(spec):
         return "|".join(["col", str(spec.get("hoja", "")), str(spec.get("columna", "")),
                          str(spec.get("fila_inicio", "")),
                          str(spec.get("columna_filtro", "")),
-                         ",".join(spec.get("valores_filtro") or [])])
+                         ",".join(spec.get("valores_filtro") or [])]
+                        # Solo si lo hay, para no cambiar la huella (y vaciar
+                        # el cache) de los valores que no lo usan.
+                        + (["sin:" + ",".join(spec["excluir_filtro"])]
+                           if spec.get("excluir_filtro") else []))
     if t == "excel":
         return "|".join(["celda", str(spec.get("hoja", "")), str(spec.get("celda", ""))])
     if t == "excel_etiqueta":

@@ -51,14 +51,18 @@ def _es_num(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
-def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_filtro, log):
+def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_filtro, log,
+                       excluir=None):
     """Suma una columna completa desde fila_inicio hacia abajo.
     Si se indica col_filtro, suma solo las filas cuyo valor de esa columna esta
-    en valores_filtro (comparacion sin tildes ni mayusculas).
+    en valores_filtro (comparacion sin tildes ni mayusculas). Con ``excluir``
+    (y valores_filtro vacio) suma todas las filas MENOS las de esos valores:
+    asi un valor nuevo que aparezca en la columna entra igual, no se pierde.
     Devuelve (suma, n_filas, {valor_filtro: suma}) o (None, 0, {})."""
     ci = col_letra_a_num(columna)
     cf = col_letra_a_num(col_filtro) if col_filtro else 0
     objetivo = {normalizar(v) for v in (valores_filtro or [])}
+    fuera = {normalizar(v) for v in (excluir or [])}
 
     # Cache: la misma columna se lee una sola vez por corrida aunque varios
     # valores la usen con distinto filtro (p.ej. SCMT y SCPC).
@@ -68,6 +72,8 @@ def leer_columna_excel(ruta, hoja, columna, fila_inicio, col_filtro, valores_fil
         """bruto: {clave: [suma, n]} -> (total, n, {clave: suma})"""
         if cf and objetivo:
             sel = [v for k, v in bruto.items() if k in objetivo]
+        elif cf and fuera:
+            sel = [v for k, v in bruto.items() if k not in fuera]
         else:
             sel = list(bruto.values())
         total = sum(v[0] for v in sel)
@@ -660,22 +666,31 @@ def obtener_valor(clave, rutas, log, usar_cache=True):
             listar_hojas(ruta, log)
             return None, f"sin configurar hoja/columna para {clave}"
         filtro = ""
-        if spec.get("columna_filtro"):
+        if spec.get("columna_filtro") and spec.get("excluir_filtro") \
+                and not spec.get("valores_filtro"):
+            filtro = (f"  sin las filas con {spec['columna_filtro']} = "
+                      f"{'/'.join(spec['excluir_filtro'])}")
+        elif spec.get("columna_filtro"):
             filtro = (f"  filtrando {spec['columna_filtro']} = "
                       f"{'/'.join(spec.get('valores_filtro') or ['(nada)'])}")
         log(f"    {spec['etiqueta']}  <-  {spec['hoja']}!{spec['columna']}"
             f"{spec.get('fila_inicio', 2)} hacia abajo{filtro}")
         v, n, desg = leer_columna_excel(
             ruta, spec["hoja"], spec["columna"], int(spec.get("fila_inicio", 2)),
-            spec.get("columna_filtro", ""), spec.get("valores_filtro") or [], log)
+            spec.get("columna_filtro", ""), spec.get("valores_filtro") or [], log,
+            excluir=spec.get("excluir_filtro") or None)
         if v is None:
             return None, f"no se pudo leer {clave}"
         log(f"      {n} fila(s) sumada(s)")
         if spec.get("columna_filtro") and len(desg) > 1:
             buscados = {normalizar(x) for x in (spec.get("valores_filtro") or [])}
+            fuera = {normalizar(x) for x in (spec.get("excluir_filtro") or [])}
             log(f"      valores presentes en la columna {spec['columna_filtro']}:")
             for k in sorted(desg):
-                marca = "<--" if k in buscados else "   "
+                if buscados:
+                    marca = "<--" if k in buscados else "   "
+                else:
+                    marca = "   " if k in fuera else "<--"
                 log(f"        {marca} {k:<14} {fmt_monto(desg[k]):>22}")
         CACHE.poner(clave, ruta, huella, v, n)
         return v, None

@@ -70,6 +70,32 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-11-23 — Claude — 15 min: V15 con C.Frec = SC_SSCC, y el total de RESUMEN corregido
+
+La usuaria respondió lo pendiente de la entrada de abajo: el CO está en
+RESUMEN, el C.Frec de la planilla 9 es el SC_SSCC de la planilla 1, y SCMT y
+OTRO quedan fuera porque van por otro camino.
+
+- `pago_por_concepto` acepta `equivalencias`; en V15, `{"C.Frec": "SC_SSCC"}`.
+  Fuera solo SCMT, OTRO y EDAC-BF.
+- La comprobación de totales de V15 pasa a ser `C10 + C11 + C12 + C14 + C15 +
+  C16 + suma(C17:C25)` de RESUMEN = `P9_TOTAL_P1` (la 9 sin SCMT ni OTRO).
+  `P9_TOTAL` queda definido, sin uso.
+- `excel_col` acepta `excluir_filtro` (`leer_columna_excel(..., excluir=)`):
+  suma todo menos esos valores. La huella del caché solo cambia para los
+  valores que lo usan.
+- Pruebas: `revisor/test_pago_por_concepto.py` (7). Corrido con el
+  1_CUADROS_2601 real y la 9 recortada: los dos NO CUADRA, esperado.
+- **Ojo, en el archivo de la usuaria (no en el código):** `RESUMEN!C12` del
+  `1_CUADROS_PAGO_SSCC_2601_R01P` da 0. Su SUMIFS busca «CO ERNC» y en
+  `01.SSCC_Recurso_Técnico` el concepto es «CO_ERNC» (45.490.373,92). Con la
+  9 completa, el total de RESUMEN va a descuadrar por eso hasta que se arregle
+  la fórmula o el texto de B12. Avisado a la usuaria.
+- **Pendiente:** correr V15 con la planilla 9 completa de 2601. No se tocó
+  `C10 + C11 + C13 = planilla 4 (L6)`.
+
+---
+
 ## 2026-11-23 — Claude — 15 min: V15 compara el total de cada tipo de pago (corrige la entrada anterior)
 
 La entrada de abajo («V15 compara el CRA…») quedó mal: comparaba solo el CRA
