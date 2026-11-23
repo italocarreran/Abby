@@ -256,6 +256,16 @@ VALORES = {
         "columna_filtro": "", "valores_filtro": [],
         "etiqueta": "Planilla 9 (csv): suma de Pago (J)",
     },
+    # Solo el CRA de la planilla 9: suma de J con tipo de pago (H) = CRA. Es el
+    # desglose por retiros del monto que el 1_CUADROS_PAGO da en RESUMEN!C15.
+    # Revision 2601 (usuaria, 2026-11-23): los dos montos no coincidian y el
+    # total de V15 no lo dejaba ver aparte.
+    "P9_CRA": {
+        "tipo": "excel_col", "archivo": "a_9_pagos",
+        "hoja": "(csv)", "columna": "J", "fila_inicio": 2,
+        "columna_filtro": "H", "valores_filtro": ["CRA"],
+        "etiqueta": "Planilla 9 (csv): Pago (J) con tipo de pago (H) = CRA",
+    },
     # 4_REMUNERACION_SC_CO_CCA  (en 00 Entregables)
     "P4_K6": {"tipo": "excel", "archivo": "a_4_rem", "hoja": "VERIFICADORES",
               "celda": "K6", "etiqueta": "Planilla 4  VERIFICADORES!K6"},
@@ -509,7 +519,7 @@ VERIFICADORES = {
     },
     "V15": {
         "archivo": "a_1_cuadros",
-        "titulo": "1_CUADROS_PAGO: totales y pago por empresa contra planillas 4 y 9",
+        "titulo": "1_CUADROS_PAGO: totales, CRA y pago por empresa contra planillas 4 y 9",
         # La planilla 9 sale del pagos_varios (V12), asi que V12 entra como previa
         # donde antes estaba V13.
         "depende": ["a_4_rem", "a_9_pagos"],
@@ -521,6 +531,13 @@ VERIFICADORES = {
             {"tipo": "igualdad", "absoluto": True,
              "desc": "C12 + C14 + C15 + suma(C17:C25) = total general de planilla 9",
              "izq": ["P1_C12", "P1_C14", "P1_C15", "P1_C17_C25"], "der": ["P9_TOTAL"]},
+            # El CRA por separado. El total de arriba puede cuadrar (o descuadrar)
+            # sin decir de qué concepto viene la diferencia; esta línea dice si el
+            # monto definitivo del CRA del cuadro de pago (RESUMEN!C15) es el
+            # mismo que el del desglose de pagos por retiros (planilla 9).
+            {"tipo": "igualdad", "absoluto": True,
+             "desc": "CRA: C15 del 1_CUADROS_PAGO = CRA de la planilla 9",
+             "izq": ["P1_C15"], "der": ["P9_CRA"]},
 
             # --- el pago por empresa y concepto -------------------------------
             # La planilla 1 y las planillas 9 y 4 son dos calculos PARALELOS del

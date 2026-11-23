@@ -70,6 +70,28 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-11-23 — Claude — 15 min: V15 compara el CRA del cuadro de pago con la planilla 9
+
+Observación de la revisión preliminar de enero 2026: el monto definitivo del
+CRA del `1_CUADROS_PAGO_SSCC_2601` no coincidía con el CRA del
+`9_Pagos_Retiros_..._2601`. En la horaria eso solo se veía dentro del total
+(`C12 + C14 + C15 + C17:C25 = planilla 9`), sin decir de qué concepto venía.
+
+- Valor nuevo `P9_CRA`: suma de J del csv de la planilla 9 filtrando H = `CRA`
+  (comparación sin tildes ni mayúsculas; `CRA_DEV_RH` queda fuera).
+- V15 suma la comprobación «CRA: C15 del 1_CUADROS_PAGO = CRA de la planilla
+  9» (`absoluto`, `TOLERANCIA`), entre el total y el pago por empresa.
+- Se ubicó la celda en el `1_CUADROS_PAGO_SSCC_2601_R01P.xlsm` que mandó la
+  usuaria: `RESUMEN!B15` = «CRA», `C15` = SUMIFS de la columna D (RECIBE > 0)
+  de `01.SSCC_Recurso_Técnico`; se lee por XML en 0 s.
+- **No probado contra el csv real:** el `9_Pagos_Retiros_2601.csv` pesa 69 MB
+  y el conector de Drive no lo baja. Se probó con un csv sintético. Si el tipo
+  de pago en la H no se llama «CRA», el log de V15 lista los valores presentes
+  de la columna H, y basta con corregir `valores_filtro` de `P9_CRA`.
+- Solo versión 15 min; la horaria no se tocó.
+
+---
+
 ## 2026-10-30 — Claude — 15 min: V10 pregunta si una central «-número» nueva es embalse
 
 V10 salía NO CUADRA porque «PE-CANELA-2» (eólica) del Reporte_CRA termina en
