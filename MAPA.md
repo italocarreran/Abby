@@ -619,10 +619,16 @@ y el paquete `revisor/`, salvo lo indicado).
   E suministrador, H tipo, J pago) contra la planilla 1 (B tipo, C empresa,
   E PAGA), en magnitud y con `TOL_PAGO_EMPRESA`; **EDAC-BF fuera**
   (`excluir_conceptos`, nuevo en `pago_por_empresa`). Previas V14 y V12.
-- **V15, CRA aparte (2026-11-23):** `RESUMEN!C15` del 1_CUADROS (`P1_C15`)
-  contra `P9_CRA` = suma de J del csv de la planilla 9 con H = `CRA`, en
-  magnitud y con `TOLERANCIA`. Sale de la revisión de 2601: el CRA del cuadro
-  de pago y el de la planilla 9 no coincidían y el total de V15 no lo aislaba.
+- **V15, total por tipo de pago (2026-11-23, `pago_por_concepto`):** la
+  planilla 9 (csv, H tipo, J pago) sumada por tipo contra
+  `01.SSCC_Recurso_Técnico` del 1_CUADROS (B concepto, E PAGA) sumada por
+  concepto, en magnitud y con `TOLERANCIA`. Es la pareja de
+  `pago_por_empresa`: las dos planillas prorratean distinto, así que por
+  empresa pueden diferir y el total de cada tipo igual tiene que coincidir.
+  Nombres con `clave_concepto` (`CO ERNC` = `CO_ERNC`). Fuera C.Frec, SCMT,
+  OTRO (usuaria) y EDAC-BF; los tipos de un solo lado se informan, no fallan.
+  No usa la hoja RESUMEN. Sale de la revisión de 2601 (CRA del cuadro de pago
+  distinto del de la planilla 9).
 - **«Traer maestro»**: si la copia no existe copia sin preguntar ni avisar; si
   pisa o borra algo, una pregunta corta («X ya existe. ¿Seguro que desea
   reemplazarlo?»); si sale bien no muestra aviso (queda en la bitácora).

@@ -863,6 +863,91 @@ def comprobar(self, c, valores, L):
                     faltan_resumen=[f"{co} / {em}" for (co, em), _ in faltan_res[:40]],
                     faltan_detalle=[f"{co} / {em}" for (co, em), _ in faltan_det[:40]])
 
+    if tipo == "pago_por_concepto":
+        # El TOTAL de cada tipo de pago: planilla 9 (una fila por retiro)
+        # contra la planilla 1 (01.SSCC_Recurso_Tecnico), sumando cada lado
+        # por su columna de concepto. Es la otra mitad de pago_por_empresa:
+        # la 9 y la 1 reparten con prorratas distintas, asi que el monto por
+        # empresa puede diferir y el total de cada tipo igual tiene que ser el
+        # mismo. Nacio de la revision de 2601 (usuaria, 2026-11-23): el CRA
+        # del cuadro de pago no coincidia con el de la planilla 9.
+        #
+        # Igual que en pago_por_empresa: los nombres se comparan con
+        # clave_concepto ("CO ERNC" = "CO_ERNC"), se compara la MAGNITUD (el
+        # signo de PAGA cambia segun el concepto dentro de la planilla 1) y
+        # solo los tipos que estan en los dos lados; los demas se informan.
+        det, res = c["detalle"], c["resumen"]
+        excluir = {clave_concepto(x) for x in c.get("excluir_conceptos", [])}
+        r_det = self.rutas.get(det["archivo"])
+        r_res = self.rutas.get(res["archivo"])
+        if r_det is None or r_res is None:
+            L(f"  ? {c['desc']}: falta uno de los archivos")
+            return dict(base, estado="SIN DATOS")
+        L(f"  .. {c['desc']}")
+
+        def por_concepto(ruta, lado):
+            """{clave: [suma, n_filas, nombre_tal_cual]} o None."""
+            d = leer_columnas_rapido(ruta, lado["hoja"],
+                                     [lado["col_concepto"], lado["col_monto"]],
+                                     lado["fila_inicio"], L)
+            if d is None:
+                return None
+            cc, cm = lado["col_concepto"].upper(), lado["col_monto"].upper()
+            out = {}
+            for f in sorted(d.get(cc, {})):
+                con = d[cc].get(f)
+                if not isinstance(con, str) or not con.strip():
+                    continue
+                v = d.get(cm, {}).get(f)
+                if not isinstance(v, (int, float)) or isinstance(v, bool):
+                    continue
+                reg = out.setdefault(clave_concepto(con), [0.0, 0, con.strip()])
+                reg[0] += float(v)
+                reg[1] += 1
+            return out
+
+        tdet = por_concepto(r_det, det)
+        tres = por_concepto(r_res, res)
+        if tdet is None or tres is None:
+            return dict(base, estado="SIN DATOS")
+        if excluir:
+            L(f"        se dejan fuera: {', '.join(c.get('excluir_conceptos', []))}")
+        con_det = set(tdet) - excluir
+        con_res = set(tres) - excluir
+        comunes = sorted(con_det & con_res)
+        solo_det = sorted(tdet[k][2] for k in con_det - con_res)
+        solo_res = sorted(tres[k][2] for k in con_res - con_det)
+        if solo_res:
+            L(f"        solo en {res['nombre']}: {', '.join(solo_res)}"
+              f"   (no se comparan)")
+        if solo_det:
+            L(f"        solo en {det['nombre']}: {', '.join(solo_det)}"
+              f"   (no se comparan)")
+
+        tol = c.get("tolerancia", TOLERANCIA)
+        filas, n_ok = [], 0
+        for k in comunes:
+            vd, vr = tdet[k][0], tres[k][0]
+            d = abs(vd) - abs(vr)
+            bien = abs(d) <= tol
+            n_ok += bien
+            filas.append((tdet[k][2], vd, vr, d, bien))
+        ok = bool(comunes) and n_ok == len(comunes)
+        L(f"  {'OK ' if ok else '>> '}{c['desc']}   (en valor absoluto)")
+        for nom, vd, vr, d, bien in filas:
+            L(f"        {'  ' if bien else '>>'} {nom:<10} "
+              f"{det['nombre']} {fmt_monto(vd):>18}  vs  "
+              f"{res['nombre']} {fmt_monto(vr):>18}   dif {fmt_monto(d)}")
+        if not comunes:
+            L("        ningún tipo de pago en común: revisar las columnas")
+        return dict(base, estado=("OK" if ok else
+                                  "NO CUADRA" if comunes else "SIN DATOS"),
+                    n_ok=n_ok, n_difs=len(comunes) - n_ok,
+                    comunes=[tdet[k][2] for k in comunes],
+                    solo_detalle=solo_det, solo_resumen=solo_res,
+                    difs=[(nom, vd, vr, d) for nom, vd, vr, d, bien in filas
+                          if not bien])
+
     if tipo == "bloque_contra_origen":
         # Compara UN bloque del destino (SC o CO) contra su origen filtrado por
         # embalses: cantidad de filas y suma del monto. Es lo unico que dice si

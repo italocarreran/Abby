@@ -256,16 +256,6 @@ VALORES = {
         "columna_filtro": "", "valores_filtro": [],
         "etiqueta": "Planilla 9 (csv): suma de Pago (J)",
     },
-    # Solo el CRA de la planilla 9: suma de J con tipo de pago (H) = CRA. Es el
-    # desglose por retiros del monto que el 1_CUADROS_PAGO da en RESUMEN!C15.
-    # Revision 2601 (usuaria, 2026-11-23): los dos montos no coincidian y el
-    # total de V15 no lo dejaba ver aparte.
-    "P9_CRA": {
-        "tipo": "excel_col", "archivo": "a_9_pagos",
-        "hoja": "(csv)", "columna": "J", "fila_inicio": 2,
-        "columna_filtro": "H", "valores_filtro": ["CRA"],
-        "etiqueta": "Planilla 9 (csv): Pago (J) con tipo de pago (H) = CRA",
-    },
     # 4_REMUNERACION_SC_CO_CCA  (en 00 Entregables)
     "P4_K6": {"tipo": "excel", "archivo": "a_4_rem", "hoja": "VERIFICADORES",
               "celda": "K6", "etiqueta": "Planilla 4  VERIFICADORES!K6"},
@@ -519,7 +509,7 @@ VERIFICADORES = {
     },
     "V15": {
         "archivo": "a_1_cuadros",
-        "titulo": "1_CUADROS_PAGO: totales, CRA y pago por empresa contra planillas 4 y 9",
+        "titulo": "1_CUADROS_PAGO: totales, total por tipo y pago por empresa contra planillas 4 y 9",
         # La planilla 9 sale del pagos_varios (V12), asi que V12 entra como previa
         # donde antes estaba V13.
         "depende": ["a_4_rem", "a_9_pagos"],
@@ -531,13 +521,6 @@ VERIFICADORES = {
             {"tipo": "igualdad", "absoluto": True,
              "desc": "C12 + C14 + C15 + suma(C17:C25) = total general de planilla 9",
              "izq": ["P1_C12", "P1_C14", "P1_C15", "P1_C17_C25"], "der": ["P9_TOTAL"]},
-            # El CRA por separado. El total de arriba puede cuadrar (o descuadrar)
-            # sin decir de qué concepto viene la diferencia; esta línea dice si el
-            # monto definitivo del CRA del cuadro de pago (RESUMEN!C15) es el
-            # mismo que el del desglose de pagos por retiros (planilla 9).
-            {"tipo": "igualdad", "absoluto": True,
-             "desc": "CRA: C15 del 1_CUADROS_PAGO = CRA de la planilla 9",
-             "izq": ["P1_C15"], "der": ["P9_CRA"]},
 
             # --- el pago por empresa y concepto -------------------------------
             # La planilla 1 y las planillas 9 y 4 son dos calculos PARALELOS del
@@ -572,6 +555,23 @@ VERIFICADORES = {
                          # RECIBE solo 41.
                          "col_monto": "E"},
              "tolerancia": TOL_PAGO_EMPRESA},
+            # El total de cada tipo de pago, sin abrir por empresa. La 9 y la 1
+            # prorratean distinto: el monto por empresa puede diferir (lo ve la
+            # de arriba) y el total del tipo igual tiene que coincidir.
+            # Revision 2601 (usuaria, 2026-11-23): el CRA del cuadro de pago no
+            # era el de la planilla 9. Fuera C.Frec, SCMT y OTRO (pedido de la
+            # usuaria) y EDAC-BF (como en la de arriba: no esta en la 9).
+            {"tipo": "pago_por_concepto",
+             "desc": "total por tipo de pago: planilla 9 = planilla 1",
+             "detalle": {"archivo": "a_9_pagos", "hoja": "(csv)",
+                         "fila_inicio": 2, "nombre": "P9",
+                         "col_concepto": "H", "col_monto": "J"},
+             "excluir_conceptos": ["C.Frec", "SCMT", "OTRO", "EDAC-BF"],
+             "resumen": {"archivo": "a_1_cuadros",
+                         "hoja": "01.SSCC_Recurso_Técnico",
+                         "fila_inicio": 9, "nombre": "P1",
+                         "col_concepto": "B", "col_monto": "E"},
+             "tolerancia": TOLERANCIA},
             {"tipo": "pago_por_empresa",
              "desc": "pago por empresa y concepto: planilla 4 = planilla 1",
              "detalle": {"archivo": "a_4_rem", "hoja": "PAGO_RETIRO",
@@ -3018,6 +3018,21 @@ class Revisor:
                         out.append(f"        falta en la planilla 1: {x}")
                     for x in c.get("faltan_detalle") or []:
                         out.append(f"        falta en el detalle: {x}")
+                elif c["tipo"] == "pago_por_concepto":
+                    out.append(f"        {c.get('n_ok')} tipo(s) de pago cuadran, "
+                               f"{c.get('n_difs')} con diferencia")
+                    if c.get("comunes"):
+                        out.append("        tipos comparados: "
+                                   + ", ".join(c["comunes"]))
+                    if c.get("solo_resumen"):
+                        out.append("        solo en la planilla 1: "
+                                   + ", ".join(c["solo_resumen"]))
+                    if c.get("solo_detalle"):
+                        out.append("        solo en la planilla 9: "
+                                   + ", ".join(c["solo_detalle"]))
+                    for etq, vd, vr, d in c.get("difs") or []:
+                        out.append(f"        {etq}: {fmt_monto(vd)} vs "
+                                   f"{fmt_monto(vr)}   dif {fmt_monto(d)}")
                 elif c["tipo"] == "bloque_contra_origen":
                     out.append(f"        bloque {c.get('bloque')}: "
                                f"destino {c.get('n_destino')} filas / "

@@ -70,6 +70,34 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-11-23 — Claude — 15 min: V15 compara el total de cada tipo de pago (corrige la entrada anterior)
+
+La entrada de abajo («V15 compara el CRA…») quedó mal: comparaba solo el CRA
+y contra `RESUMEN!C15`. La usuaria aclaró que van **todos los tipos**, por
+tipo de pago y desde `01.SSCC_Recurso_Técnico` (la hoja RESUMEN no sirve), y
+mandó una planilla 9 recortada con la estructura real: encabezado en la fila
+1, H = `Tipo_pago`, J = `pago`; tipos BESS, CRA, REA, CSF(±), CPF(-),
+CTF(±), CO, CO_ERNC, C.Frec, SCMT y OTRO.
+
+- Se sacaron `P9_CRA` y la comprobación `P1_C15 = P9_CRA`.
+- Tipo nuevo de comprobación `pago_por_concepto` (`revisor/verificaciones.py`
+  y su resumen en el informe del Revisor): suma cada lado por concepto y
+  compara tipo por tipo, en magnitud, con `TOLERANCIA` (1,0). En V15, junto a
+  `pago_por_empresa`, que sigue igual (son los dos verificadores que pidió la
+  usuaria: total y por empresa, porque las prorratas son distintas).
+- Fuera C.Frec, SCMT y OTRO (pedido de la usuaria) y EDAC-BF (como en
+  `pago_por_empresa`). CO_ERNC se encuentra con o sin guión bajo.
+- Probado con el 1_CUADROS_PAGO_2601_R01P real y la 9 recortada: 10 tipos en
+  común, NO CUADRA porque la 9 está recortada (esperado). Pruebas en
+  `revisor/test_pago_por_concepto.py`.
+- **Pendiente:** correrlo con la planilla 9 completa de 2601. **Ojo:** la
+  comprobación de totales que ya tenía V15 (`C12 + C14 + C15 + C17:C25` de
+  RESUMEN = total de la 9) no se tocó, pero en 15 min la 9 trae también CO,
+  BESS, C.Frec, SCMT y OTRO, así que probablemente no cuadra; falta que la
+  usuaria diga qué hacer con ella.
+
+---
+
 ## 2026-11-23 — Claude — 15 min: V15 compara el CRA del cuadro de pago con la planilla 9
 
 Observación de la revisión preliminar de enero 2026: el monto definitivo del
