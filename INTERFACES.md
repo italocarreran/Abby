@@ -49,7 +49,7 @@ Convenciones de esta página:
 - [`Revisor_Relq/revisor/lectores.py`](#revisor_relqrevisorlectorespy) — 802 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq/revisor/verificaciones.py`](#revisor_relqrevisorverificacionespy) — 1663 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Revisor_Relq_15min/Reemplazos REUC/ActualizaRemplazos.py`](#revisor_relq_15minreemplazos-reucactualizaremplazospy) — 1605 líneas — ActualizaRemplazos.py
-- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3556 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
+- [`Revisor_Relq_15min/Revisor_Reliquidacion_15min.py`](#revisor_relq_15minrevisor_reliquidacion_15minpy) — 3834 líneas — Revisor de entregables - CASO RELIQUIDACION (15 minutos)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro0.py`](#revisor_relq_15minactualizadoresactualiza_cuadro0py) — 702 líneas — Actualiza Cuadro 0 (0_CUADROS_RELIQUIDACION SSCC)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`](#revisor_relq_15minactualizadoresactualiza_cuadro1py) — 611 líneas — Actualiza la hoja "01.SSCC_Recurso_Técnico" de 1_CUADROS_PAGO_SSCC (15 MIN)
 - [`Revisor_Relq_15min/actualizadores/Actualiza_Pagos_Varios.py`](#revisor_relq_15minactualizadoresactualiza_pagos_variospy) — 823 líneas — Arma pagos_varios_AAMM.csv desde las planillas 3, 5 y 6 — VERSION 15 MIN
@@ -59,9 +59,11 @@ Convenciones de esta página:
 - [`Revisor_Relq_15min/actualizadores/Reorganiza_SC_Cfrec.py`](#revisor_relq_15minactualizadoresreorganiza_sc_cfrecpy) — 471 líneas — Reorganiza SC_CfrecSinFD_AAMM.csv para Coyailen — VERSION 15 MIN
 - [`Revisor_Relq_15min/actualizadores/ventana_chica.py`](#revisor_relq_15minactualizadoresventana_chicapy) — 286 líneas — Ventana chica comun de los actualizadores — VERSION 15 MIN
 - [`Revisor_Relq_15min/revisor/archivos.py`](#revisor_relq_15minrevisorarchivospy) — 192 líneas — Búsqueda de carpetas y archivos con caché acotada a una relectura.
+- [`Revisor_Relq_15min/revisor/balance.py`](#revisor_relq_15minrevisorbalancepy) — 290 líneas — El balance del caso: AÑO_MES_PROCESO (Revisor 15 min).
+- [`Revisor_Relq_15min/revisor/cambio_hora.py`](#revisor_relq_15minrevisorcambio_horapy) — 252 líneas — Cambios de hora de Chile, detectados solos a partir del AAMM.
 - [`Revisor_Relq_15min/revisor/embalses.py`](#revisor_relq_15minrevisorembalsespy) — 75 líneas — Centrales de embalse que se agregaron (o descartaron) desde el Revisor.
 - [`Revisor_Relq_15min/revisor/estado.py`](#revisor_relq_15minrevisorestadopy) — 174 líneas — Persistencia del estado de verificaciones y del caché de valores.
-- [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 241 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
+- [`Revisor_Relq_15min/revisor/lanzamiento.py`](#revisor_relq_15minrevisorlanzamientopy) — 246 líneas — Traspaso y lanzamiento de los actualizadores desde el Revisor.
 - [`Revisor_Relq_15min/revisor/lectores.py`](#revisor_relq_15minrevisorlectorespy) — 725 líneas — Adaptadores de lectura Excel usados por los verificadores del Revisor.
 - [`Revisor_Relq_15min/revisor/verificaciones.py`](#revisor_relq_15minrevisorverificacionespy) — 1548 líneas — Motor de las comprobaciones V4…V17 del Revisor.
 - [`Comparadores/Comparador_Etapas.py`](#comparadorescomparador_etapaspy) — 2485 líneas — Comparador_Etapas.py
@@ -2684,7 +2686,7 @@ manteniendo el formato de las celdas.
 
 Compatibilidad histórica con las dependencias del punto de entrada.
 
-- `def __init__(self)`
+- `def __init__(self)` — Por balance (año_mes_proceso), no por mes: ver revisor/balance.py.
 
 #### `class CacheValores(_CacheValores)`
 
@@ -2696,14 +2698,16 @@ Compatibilidad histórica con las dependencias del punto de entrada.
 
 - `def __init__(self, root)`
 - `def log(self, msg='')`
-- `def examinar(self)`
+- `def examinar(self)` — Elige la carpeta 02 CASO RELIQUIDACION del balance de las casillas.
+- `def ir_a_mes(self)` — «Ir a este balance»: abre la carpeta que ya tiene el balance elegido en las casillas, con su estado guardado.
+- `def avisar_si_bloqueado(self)` — True (y lo avisa) si el caso abierto esta bloqueado.
+- `def alternar_bloqueo(self)` — Bloquea o desbloquea el caso abierto (pregunta antes).
 - `def actualizar(self, motivo=None, solo_ids=None)` — Relee la carpeta: reubica los archivos, repinta fechas y recalcula la vigencia de las verificaciones.
 - `def estado_verificador(self, vid, _visitados=None)` — OK | VENCIDA | NO CUADRA | NO SE PUDO | SIN VERIFICAR.
 - `def configurar_valores(self)` — Ventana para indicar donde esta cada valor, sin editar el codigo.
-- `def ir_a_mes(self)` — Lleva TODA la ventana al mes escrito: cambia la carpeta del caso a la que se usó ese mes, recarga el árbol y su estado…
-- `def reiniciar_mes(self)` — Borra el estado y los valores guardados de un mes, para partir limpio.
+- `def reiniciar_mes(self)` — Borra el estado y los valores guardados del balance ABIERTO, para partir limpio.
 - `def ver_detalle_verificacion(self, vid)` — Totales, comprobaciones y bitácora de la última corrida.
-- `def ver_estado_mes(self)` — Abre el estado guardado del AAMM escrito en el cuadro.
+- `def ver_estado_mes(self)` — Abre el estado guardado del balance elegido en las casillas.
 - `def verificar(self, vid)`
 - `def verificar_todo(self)`
 
@@ -2719,6 +2723,12 @@ exactamente la misma ruta; si se separan, uno lee donde el otro no escribe.
 #### `def dir_config_mes(aamm, crear=False)`
 
 __config__/AAAA/MM Mes para estado, cache y traspasos internos.
+
+#### `def dir_config_balance(clave, crear=False)`
+
+__config__/AAAA/MM Mes/<Proceso>: el estado y el cache de UN balance
+('2601_Definitivo'). Sin proceso ('2601') es la del mes, como antes.
+Ver revisor/balance.py.
 
 #### `def leer_config()`
 
@@ -2763,9 +2773,10 @@ entrar con signo cambiado.  '-P4_L6' -> ('P4_L6', -1.0)
 Firma de QUE se lee de un archivo. Si cambia la hoja, la celda, la
 columna o el filtro, la huella cambia y el cache no aplica.
 
-#### `def leer_estado_mes(aamm)`
+#### `def leer_estado_mes(clave)`
 
-Lee el estado de cualquier mes sin tocar el estado en uso.
+Lee el estado de cualquier balance ('2601_Definitivo', o '2601' sin
+proceso) sin tocar el estado en uso.
 
 #### `def configurar_tags_log(widget)`
 
@@ -3799,6 +3810,221 @@ Tamaño, tomado del recorrido cuando el caché está activo.
 
 ---
 
+## `Revisor_Relq_15min/revisor/balance.py`
+
+> El balance del caso: AÑO_MES_PROCESO (Revisor 15 min).
+>
+> Pedido de la usuaria (2026-11-24): el principio de la ventana del Revisor tiene
+> que quedar como el de la ventana del BESS (``Balance_SSCC/Balance_BESS.py``):
+> tres casillas que se leen «2026_Enero_Definitivo», la ruta del balance al lado
+> y los botones «Ir a este balance», «Examinar» y «Bloquear caso».
+>
+> Lo que cambia por dentro:
+>
+> * **Una carpeta por balance**, no por mes: el Preliminar y el Definitivo del
+>   mismo mes son dos casos. Se recuerdan en ``carpetas_por_balance``
+>   (``{"2601_Definitivo": ruta}``) del config.json de esta version.
+>   ``carpetas_por_mes`` se sigue escribiendo (lo leen otros scripts), y una
+>   carpeta anotada solo por mes sirve para el proceso que dice su nombre.
+> * **El estado de las verificaciones va por balance** (usuaria): en
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `pathlib`, `shutil`, `time`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `ANO_INICIAL` | `2025` |  |
+| `MESES` | `tupla de 12 elementos: 'Enero', 'Febrero', 'Marzo', …` |  |
+| `PROCESOS_FIJOS` | `('Preliminar', 'Definitivo')` | Los que estan siempre; los demas (R01P, R01D, ...) los agrega la usuaria con el "+" de la lista y quedan en config.json (clave CLAVE_PROCESOS). |
+| `OPCION_AGREGAR_PROCESO` | `'+ Agregar otro...'` |  |
+| `CLAVE_PROCESOS` | `'procesos'` |  |
+| `CLAVE_CARPETAS` | `'carpetas_por_balance'` |  |
+| `ARCHIVO_BLOQUEO` | `'CASO_BLOQUEADO.txt'` |  |
+
+### Funciones
+
+#### `def anos_disponibles(ano_actual=None, extra=())`
+
+['2025', '2026', ...] hasta el año de hoy, mas los años de 'extra'
+(los de balances ya recordados) aunque sean de antes de ANO_INICIAL.
+
+#### `def aamm_de(ano, mes)`
+
+('2026', 'Enero') -> '2601'. '' si falta algo o no es valido.
+
+#### `def ano_mes_de(aamm)`
+
+'2601' -> ('2026', 'Enero'). ('', '') si no es un AAMM.
+
+#### `def nombre_balance(ano, mes, proceso)`
+
+'2026_Enero_Definitivo' (lo que falte no se escribe).
+
+#### `def clave_balance(aamm, proceso)`
+
+'2601_Definitivo'; solo '2601' si no hay proceso.
+
+#### `def partir_clave(clave)`
+
+'2601_Definitivo' -> ('2601', 'Definitivo'); '2601' -> ('2601', '').
+
+#### `def nombre_de_clave(clave)`
+
+'2601_Definitivo' -> '2026_Enero_Definitivo'.
+
+#### `def limpiar_proceso(texto)`
+
+El nombre de un proceso agregado a mano: sin espacios ni caracteres
+que no van en un nombre de carpeta. '' si no queda nada.
+
+#### `def procesos_de(cfg)`
+
+Preliminar, Definitivo y los que agrego este usuario.
+
+#### `def con_proceso_nuevo(cfg, texto)`
+
+(proceso, lista_para_guardar_o_None). La lista es None si el proceso
+ya estaba (no hay que escribir nada); proceso '' si el texto no sirve.
+
+#### `def proceso_en_el_nombre(ruta, procesos=PROCESOS_FIJOS)`
+
+El proceso que dice el nombre de la carpeta, o '' si no dice ninguno
+(o dice mas de uno). Se mira la carpeta y la de arriba: la del caso
+suele llamarse siempre «02 CASO RELIQUIDACION».
+
+#### `def carpetas_de(cfg)`
+
+#### `def carpeta_del_balance(cfg, aamm, proceso)`
+
+La carpeta de ese balance si ya tiene una y todavia existe; '' si no.
+Una carpeta anotada solo por mes (``carpetas_por_mes``, de antes de que
+hubiera proceso) sirve si su nombre dice ese proceso.
+
+#### `def misma_carpeta(a, b)`
+
+True si las dos rutas son la misma carpeta (resolviendo).
+
+#### `def balance_de_la_carpeta(cfg, ruta)`
+
+La clave del balance que ya usa esa carpeta ('2601_Preliminar'), o ''.
+
+#### `def carpetas_con(cfg, clave, ruta)`
+
+``carpetas_por_balance`` con 'ruta' anotada para 'clave'. Una carpeta
+es de un solo balance: si otro la tenia, la pierde.
+
+#### `def dir_balance(dir_config_mes, clave, crear=False)`
+
+``__config__/AAAA/MM Mes/<Proceso>`` (o la del mes si no hay proceso).
+``dir_config_mes`` es la del Revisor, que vive en ``__comun__/salidas.py``:
+la carpeta del mes no se arma a mano (ver AGENTS.md).
+
+#### `def heredar_estado_del_mes(dir_config_mes, clave, archivos)`
+
+Copia a la carpeta del balance los archivos de estado que haya a nivel
+de mes y que el balance todavia no tenga. No borra ni mueve nada: lo del
+mes queda donde estaba. Devuelve los nombres copiados.
+
+El que llama decide si corresponde (la carpeta del caso tiene que ser la
+que ese mes ya tenia en ``carpetas_por_mes``).
+
+#### `def ruta_bloqueo(carpeta_base)`
+
+#### `def info_bloqueo(carpeta_base)`
+
+{"quien", "cuando", "motivo"} si el caso esta bloqueado; None si no
+(o si no hay carpeta).
+
+#### `def bloquear(carpeta_base, quien, motivo='')`
+
+Deja el archivo de bloqueo. Devuelve su ruta.
+
+#### `def desbloquear(carpeta_base)`
+
+Borra el archivo de bloqueo. True si habia uno.
+
+
+---
+
+## `Revisor_Relq_15min/revisor/cambio_hora.py`
+
+> Cambios de hora de Chile, detectados solos a partir del AAMM.
+>
+> Copiado de ``Balance_SSCC/Script/nucleo/cambio_hora.py`` (2026-11-24) para el
+> aviso del recuadro «Balance del caso» del Revisor 15 min, que es igual al de la
+> ventana del BESS (pedido de la usuaria). Se dejo fuera ``hora_mes_correlativa``
+> (usa pandas y el Revisor no la necesita) y se agrego ``bloques_del_mes``.
+>
+> Se recorre el mes hora por hora en UTC y se mira el desfase de
+> ``America/Santiago``: donde cambia, hay cambio de hora. No hay fechas
+> escritas a mano, asi que si la ley cambia la fecha basta con que la
+> base de zonas horarias (``tzdata``) este al dia.
+>
+> Dos clases de cambio:
+>
+> - **adelanta** (septiembre, horario de verano): el reloj salta de 00:00
+>
+> *(el encabezado sigue arriba de todo en el archivo)*
+
+**Importa:** `calendar`, `dataclasses`, `datetime`, `functools`
+
+### Constantes
+
+| Nombre | Valor | |
+|---|---|---|
+| `ZONA_HORARIA` | `'America/Santiago'` |  |
+| `_UTC` | `datetime.timezone.utc` |  |
+| `_UNA_HORA` | `datetime.timedelta(hours=1)` |  |
+| `_TODOS_LOS_PERIODOS` | `frozenset(range(1, 25))` |  |
+
+### Clases
+
+`@dataclass(frozen=True)`
+#### `class CambioHora`
+
+Un cambio de hora y el dia local que lo sufre.
+
+- `def tipo(self)`
+- `def horas_del_dia(self)`
+- `def descripcion(self)`
+
+### Funciones
+
+#### `def hay_base_de_zonas()`
+
+False si no se pudo cargar America/Santiago (falta tzdata).
+
+#### `def cambios_de_hora(anio, mes)`
+
+Lista de CambioHora del mes (vacia si no hay cambio).
+
+#### `def cambios_del_periodo(aamm)`
+
+Lo mismo, a partir del AAMM de la ventana (ej. '2609').
+
+#### `def describir_periodo(aamm)`
+
+Texto para la ventana y el log: si el mes tiene cambio y cuando.
+
+#### `def bloques_del_mes(aamm)`
+
+Bloques de 15 minutos del mes: 96 por dia, +-4 por cada hora que el
+cambio de hora salta o repite (2976 en un mes de 31 dias sin cambio).
+
+#### `def horas_del_dia(anio, mes, dia)`
+
+Periodos que existen en el dia local de Chile (1..24 normalmente).
+
+El dia que se adelanta la hora falta el periodo del salto; el dia
+que se atrasa la hora que se repite se numera despues de la 24
+(1..25), como lo traen las ofertas SSCC en su columna E.
+
+
+---
+
 ## `Revisor_Relq_15min/revisor/embalses.py`
 
 > Centrales de embalse que se agregaron (o descartaron) desde el Revisor.
@@ -3947,6 +4173,10 @@ adivinar.
 Se manda el id del nodo y tambien la clave de su ruta, ya resuelta.
 
 #### `def lanzar_actualizador(self, nid, indice=0)`
+
+Caso bloqueado (recuadro «Balance del caso»): no se lanza nada. Va aca y
+no en el metodo de la ventana para que ese siga siendo un envoltorio de
+una linea (lo cuenta revisor/test_modulos_fase4.py).
 
 
 ---
@@ -4767,6 +4997,7 @@ Cada una es un punto donde un cambio hay que hacerlo en varios lados a la vez. C
 | `HOJA_DESTINO` | `Revisor_Relq_15min/actualizadores/Actualiza_Cuadro1.py`, `Revisor_Relq_15min/actualizadores/Actualiza_SC_CO.py` |
 | `LARGO_TEXTO` | `Revisor_Relq/actualizadores/Carga_Retiros.py`, `Revisor_Relq/actualizadores/Prorratear.py` |
 | `LIMITE_FILAS_HOJA` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
+| `MESES` | `__comun__/salidas.py`, `Revisor_Relq_15min/revisor/balance.py` |
 | `NOMBRE_JSON_MES` | `Comparadores/Comparador_Etapas.py`, `Comparadores/Comparador_Tabulado.py` |
 | `NS_REL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py`, `Revisor_Relq_15min/revisor/lectores.py` |
 | `NS_XL` | `__comun__/excel_xml.py`, `Revisor_Relq/actualizadores/Actualiza_Data_Access.py`, `Revisor_Relq/revisor/lectores.py`, `Revisor_Relq_15min/revisor/lectores.py` |

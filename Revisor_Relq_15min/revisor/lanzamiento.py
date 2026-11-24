@@ -113,6 +113,11 @@ def armar_traspaso(self, aamm, planilla, nid=None):
 
 
 def lanzar_actualizador(self, nid, indice=0):
+    # Caso bloqueado (recuadro «Balance del caso»): no se lanza nada. Va aca y
+    # no en el metodo de la ventana para que ese siga siendo un envoltorio de
+    # una linea (lo cuenta revisor/test_modulos_fase4.py).
+    if getattr(self, "avisar_si_bloqueado", None) and self.avisar_si_bloqueado():
+        return
     spec = ACTUALIZADORES[nid][indice]
     # El script puede estar en una subcarpeta ("Reemplazos REUC/..."), asi
     # que se arma con Path para que la barra funcione igual en Windows.

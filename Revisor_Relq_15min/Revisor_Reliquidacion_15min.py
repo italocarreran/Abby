@@ -947,6 +947,13 @@ def dir_config_mes(aamm, crear=False):
     return _sal.carpeta_mes(DIR_CONFIG, aamm, crear=crear)
 
 
+def dir_config_balance(clave, crear=False):
+    """__config__/AAAA/MM Mes/<Proceso>: el estado y el cache de UN balance
+    ('2601_Definitivo'). Sin proceso ('2601') es la del mes, como antes.
+    Ver revisor/balance.py."""
+    return _balance.dir_balance(dir_config_mes, clave, crear=crear)
+
+
 escribir_json = _cfg.escribir_json
 
 
@@ -1121,6 +1128,8 @@ try:
         ARCHIVO_CACHE, ARCHIVO_ESTADO, CacheValores as _CacheValores,
         Estado as _Estado, leer_estado_mes as _leer_estado_mes,
     )
+    from revisor import balance as _balance
+    from revisor import cambio_hora as _cambio_hora
 except ImportError as e:
     _morir_import(
         "No se pudo cargar la carpeta 'revisor/', que va adentro de\n"
@@ -1134,7 +1143,8 @@ class Estado(_Estado):
     """Compatibilidad histórica con las dependencias del punto de entrada."""
 
     def __init__(self):
-        super().__init__(dir_config_mes, escribir_json, firma_verificador)
+        # Por balance (año_mes_proceso), no por mes: ver revisor/balance.py.
+        super().__init__(dir_config_balance, escribir_json, firma_verificador)
 
 
 def partir_signo(clave):
@@ -1174,15 +1184,16 @@ class CacheValores(_CacheValores):
     """Compatibilidad histórica con las dependencias del punto de entrada."""
 
     def __init__(self):
-        super().__init__(dir_config_mes, escribir_json, mtime, tamano, fmt_fecha)
+        super().__init__(dir_config_balance, escribir_json, mtime, tamano, fmt_fecha)
 
 
 CACHE = CacheValores()
 
 
-def leer_estado_mes(aamm):
-    """Lee el estado de cualquier mes sin tocar el estado en uso."""
-    return _leer_estado_mes(aamm, dir_config_mes)
+def leer_estado_mes(clave):
+    """Lee el estado de cualquier balance ('2601_Definitivo', o '2601' sin
+    proceso) sin tocar el estado en uso."""
+    return _leer_estado_mes(clave, dir_config_balance)
 
 
 ESTADO = Estado()
@@ -1887,6 +1898,14 @@ class Revisor:
         self.var_releer = tk.BooleanVar(value=False)
         self.var_aamm_info = tk.StringVar(
             value="último mes visto" if self.cfg.get("ultimo_mes") else "se detecta al actualizar")
+        # El proceso del caso ABIERTO (Preliminar, Definitivo, R01P...). Un
+        # config de antes no lo tiene: se toma del nombre de la carpeta, y si
+        # tampoco lo dice queda vacio (el estado sigue en la carpeta del mes).
+        self.var_proceso = tk.StringVar(
+            value=_balance.limpiar_proceso(self.cfg.get("proceso", ""))
+            or _balance.proceso_en_el_nombre(self.cfg.get("carpeta_base", ""),
+                                             _balance.procesos_de(self.cfg)))
+        self.bloqueo = None      # lo que dice CASO_BLOQUEADO.txt del caso abierto
 
         self._construir()
         if self.var_base.get() and Path(self.var_base.get()).is_dir():
@@ -1973,42 +1992,13 @@ class Revisor:
 
         canvas.bind_all("<MouseWheel>", _rueda)
 
-        # --- selector de carpeta base
-        f = tk.LabelFrame(contenedor, text="Carpeta  02 CASO RELIQUIDACION", padx=10, pady=6)
-        f.pack(fill="x", padx=14, pady=(10, 4))
-        self.lbl_base = tk.Label(f, textvariable=self.var_base, wraplength=980,
-                                 justify="left", cursor="hand2", font=("Segoe UI", 9))
-        self.lbl_base.pack(anchor="w")
-        self.lbl_base.bind("<Button-1>", lambda e: abrir_en_explorador(self.var_base.get()))
-        tk.Button(f, text="Examinar", command=self.examinar).pack(anchor="w", pady=(4, 0))
-        self._color_base()
-
-        # --- mes reliquidado y estado guardado
-        fm = tk.LabelFrame(contenedor, text="Mes reliquidado (AAMM)", padx=10, pady=6)
-        fm.pack(fill="x", padx=14, pady=4)
-        linea = tk.Frame(fm)
-        linea.pack(fill="x")
-        ent = tk.Entry(linea, textvariable=self.var_aamm, width=8,
-                       font=("Consolas", 11, "bold"), justify="center")
-        ent.pack(side="left")
-        ent.bind("<Return>", lambda e: self.ir_a_mes())
-        tk.Button(linea, text="Ir a este mes", bg="#1f5fa8", fg="white",
-                  font=("Segoe UI", 9, "bold"),
-                  command=self.ir_a_mes).pack(side="left", padx=8)
-        tk.Button(linea, text="Ver estado guardado",
-                  command=self.ver_estado_mes).pack(side="left", padx=4)
-        tk.Button(linea, text="Reiniciar este mes", fg="#a00000",
-                  command=self.reiniciar_mes).pack(side="left", padx=12)
-        tk.Label(linea, textvariable=self.var_aamm_info, font=("Segoe UI", 8),
-                 fg="#444444", anchor="w").pack(side="left", padx=6)
-        self.lbl_salidas = tk.Label(fm, text=f"Salidas: {DIR_SALIDAS}",
-                                    font=("Consolas", 8), fg="blue", anchor="w",
-                                    cursor="hand2")
-        self.lbl_salidas.pack(fill="x", pady=(3, 0))
-        self.lbl_salidas.bind("<Button-1>",
-                              lambda e: abrir_en_explorador(dir_mes(self.var_aamm.get())
-                                                            if dir_mes(self.var_aamm.get()).is_dir()
-                                                            else DIR_SALIDAS))
+        # --- el balance del caso: AÑO _ MES _ PROCESO
+        # Igual al de la ventana del BESS (usuaria, 2026-11-24): tres casillas
+        # que se leen «2026_Enero_Definitivo», debajo el nombre y la ruta del
+        # balance (clic abre la carpeta) y los botones. Elegir en las casillas
+        # NO cambia el caso abierto: recien lo cambian «Ir a este balance» o
+        # «Examinar». var_base / var_aamm / var_proceso son los del caso ABIERTO.
+        self._armar_balance(contenedor)
 
         # --- leyenda
         leyenda = tk.Frame(contenedor)
@@ -2143,9 +2133,310 @@ class Revisor:
         self.txt_log.see("end")
         self.root.update_idletasks()
 
-    def _color_base(self):
-        v = self.var_base.get()
-        self.lbl_base.config(fg="blue" if v and Path(v).is_dir() else C_FALTA)
+    # ------------------------------------------------ BALANCE DEL CASO --
+    def _armar_balance(self, contenedor):
+        fp = tk.LabelFrame(contenedor, text="Balance del caso", padx=10, pady=6)
+        fp.pack(fill="x", padx=14, pady=(10, 4))
+
+        fila = tk.Frame(fp)
+        fila.pack(fill="x")
+        ano_ab, mes_ab = _balance.ano_mes_de(self.var_aamm.get())
+        hoy = time.localtime()
+        self.var_sel_ano = tk.StringVar(
+            value=ano_ab or str(max(hoy.tm_year, _balance.ANO_INICIAL)))
+        self.var_sel_mes = tk.StringVar(value=mes_ab or _balance.MESES[hoy.tm_mon - 1])
+        self.var_sel_proceso = tk.StringVar(
+            value=self.var_proceso.get() or _balance.PROCESOS_FIJOS[-1])
+        self._proceso_anterior = self.var_sel_proceso.get()
+
+        def casilla(valores, variable, ancho):
+            caja = ttk.Combobox(fila, textvariable=variable, values=valores,
+                                state="readonly", width=ancho,
+                                font=("Consolas", 11, "bold"), justify="center")
+            caja.pack(side="left")
+            return caja
+
+        def guion():
+            tk.Label(fila, text="_", font=("Consolas", 11, "bold")).pack(side="left", padx=2)
+
+        anos_vistos = [_balance.ano_mes_de(_balance.partir_clave(k)[0])[0]
+                       for k in list(_balance.carpetas_de(self.cfg))
+                       + list((self.cfg.get("carpetas_por_mes") or {}))]
+        casilla(_balance.anos_disponibles(extra=[a for a in anos_vistos if a]),
+                self.var_sel_ano, 6)
+        guion()
+        casilla(list(_balance.MESES), self.var_sel_mes, 11)
+        guion()
+        self.cb_proceso = casilla(
+            _balance.procesos_de(self.cfg) + [_balance.OPCION_AGREGAR_PROCESO],
+            self.var_sel_proceso, 16)
+
+        # Nombre del balance y su ruta (la ruta abre la carpeta).
+        fila_ruta = tk.Frame(fp)
+        fila_ruta.pack(fill="x", pady=(6, 0))
+        self.var_nombre_balance = tk.StringVar(value="")
+        self.var_ruta_balance = tk.StringVar(value="")
+        tk.Label(fila_ruta, textvariable=self.var_nombre_balance,
+                 font=("Segoe UI", 10, "bold"), anchor="w").pack(side="left")
+        self.lbl_ruta_balance = tk.Label(
+            fila_ruta, textvariable=self.var_ruta_balance, font=("Segoe UI", 9),
+            anchor="w", justify="left", wraplength=1100, cursor="hand2")
+        self.lbl_ruta_balance.pack(side="left", padx=(4, 0))
+        self.lbl_ruta_balance.bind("<Button-1>", lambda e: self._abrir_carpeta_balance())
+
+        botones = tk.Frame(fp)
+        botones.pack(anchor="w", fill="x", pady=(6, 0))
+        self.btn_ir_balance = tk.Button(botones, text="Ir a este balance", width=18,
+                                        font=("Segoe UI", 9, "bold"),
+                                        command=self.ir_a_mes)
+        self.btn_ir_balance.pack(side="left")
+        self.btn_examinar_balance = tk.Button(botones, text="Examinar", width=14,
+                                              command=self.examinar)
+        self.btn_examinar_balance.pack(side="left", padx=8)
+        self._color_boton = self.btn_examinar_balance.cget("bg")
+        # Bloquear / Desbloquear el caso ABIERTO, como en el BESS ("para no
+        # correr un caso anterior por error"). Ver revisor/balance.py.
+        self.btn_bloqueo = tk.Button(botones, text="Bloquear caso", width=16,
+                                     command=self.alternar_bloqueo)
+        self.btn_bloqueo.pack(side="left", padx=(16, 0))
+        tk.Button(botones, text="Ver estado guardado",
+                  command=self.ver_estado_mes).pack(side="left", padx=(16, 4))
+        tk.Button(botones, text="Reiniciar este balance", fg="#a00000",
+                  command=self.reiniciar_mes).pack(side="left", padx=8)
+        tk.Label(botones, textvariable=self.var_aamm_info, font=("Segoe UI", 8),
+                 fg="#444444", anchor="w").pack(side="left", padx=6)
+
+        # Cambio de hora del mes elegido: se detecta solo con el AAMM
+        # (revisor/cambio_hora.py) y queda a la vista mientras se trabaja.
+        self.var_cambio_hora = tk.StringVar(value="")
+        self.lbl_cambio_hora = tk.Label(fp, textvariable=self.var_cambio_hora,
+                                        font=("Segoe UI", 9, "bold"), fg="#444444",
+                                        wraplength=1100, justify="left", anchor="w")
+        self.lbl_cambio_hora.pack(fill="x", pady=(6, 0))
+
+        self.lbl_salidas = tk.Label(fp, text=f"Salidas: {DIR_SALIDAS}",
+                                    font=("Consolas", 8), fg="blue", anchor="w",
+                                    cursor="hand2")
+        self.lbl_salidas.pack(fill="x", pady=(3, 0))
+        self.lbl_salidas.bind("<Button-1>",
+                              lambda e: abrir_en_explorador(dir_mes(self.var_aamm.get())
+                                                            if dir_mes(self.var_aamm.get()).is_dir()
+                                                            else DIR_SALIDAS))
+
+        self.cb_proceso.bind("<<ComboboxSelected>>", self._proceso_elegido)
+        for v in (self.var_sel_ano, self.var_sel_mes, self.var_sel_proceso):
+            v.trace_add("write", lambda *_: self._refrescar_balance())
+        self._refrescar_balance()
+        self._actualizar_bloqueo()
+
+    def _seleccion(self):
+        """(aamm, proceso, nombre) de lo elegido en las casillas."""
+        proceso = self.var_sel_proceso.get()
+        if proceso == _balance.OPCION_AGREGAR_PROCESO:
+            proceso = ""
+        ano, mes = self.var_sel_ano.get(), self.var_sel_mes.get()
+        return _balance.aamm_de(ano, mes), proceso, _balance.nombre_balance(ano, mes, proceso)
+
+    def _clave_abierta(self):
+        """La clave del balance ABIERTO ('2601_Definitivo'), la del estado."""
+        return _balance.clave_balance(self.var_aamm.get().strip(),
+                                      self.var_proceso.get().strip())
+
+    def _abrir_carpeta_balance(self):
+        aamm, proceso, _ = self._seleccion()
+        ruta = _balance.carpeta_del_balance(self.cfg, aamm, proceso)
+        if ruta:
+            abrir_en_explorador(ruta)
+
+    def _mostrar_cambio_hora(self):
+        aamm = self._seleccion()[0]
+        try:
+            texto = _cambio_hora.describir_periodo(aamm) if aamm else ""
+            hay = bool(aamm) and bool(_cambio_hora.cambios_del_periodo(aamm))
+        except (ValueError, OverflowError):
+            texto, hay = "", False
+        self.var_cambio_hora.set(texto)
+        self.lbl_cambio_hora.config(fg="#c0392b" if hay else "#444444")
+        return texto, hay
+
+    def _refrescar_balance(self):
+        """La ruta y los dos botones segun lo elegido en las casillas."""
+        aamm, proceso, nombre = self._seleccion()
+        ruta = (_balance.carpeta_del_balance(self.cfg, aamm, proceso)
+                if aamm and proceso else "")
+        abierto = (bool(ruta) and ruta == self.var_base.get()
+                   and aamm == self.var_aamm.get() and proceso == self.var_proceso.get())
+        self.var_nombre_balance.set(nombre)
+        if ruta:
+            self.var_ruta_balance.set(f"- {ruta}" + ("   (abierto)" if abierto else ""))
+            self.lbl_ruta_balance.config(fg=C_OK if abierto else "blue")
+            self.btn_ir_balance.config(state="normal", bg="#1f5fa8", fg="white")
+            self.btn_examinar_balance.config(bg=self._color_boton, fg="black",
+                                             font=("Segoe UI", 9))
+        else:
+            self.var_ruta_balance.set("- (sin carpeta: elígela con Examinar)")
+            self.lbl_ruta_balance.config(fg=C_FALTA)
+            self.btn_ir_balance.config(state="disabled", bg=self._color_boton, fg="black")
+            self.btn_examinar_balance.config(bg="#c0392b", fg="white",
+                                             font=("Segoe UI", 9, "bold"))
+        self._mostrar_cambio_hora()
+
+    def _proceso_elegido(self, _e=None):
+        """El '+' de la lista: pide el nombre del proceso nuevo y lo guarda."""
+        if self.var_sel_proceso.get() != _balance.OPCION_AGREGAR_PROCESO:
+            self._proceso_anterior = self.var_sel_proceso.get()
+            return
+        from tkinter import simpledialog
+        texto = simpledialog.askstring(
+            "Agregar proceso", "Nombre del proceso (por ejemplo R01P o R01D):",
+            parent=self.root)
+        nuevo, lista = _balance.con_proceso_nuevo(self.cfg, texto)
+        if not nuevo:
+            self.var_sel_proceso.set(self._proceso_anterior)
+            return
+        if lista is not None:
+            self.cfg[_balance.CLAVE_PROCESOS] = lista
+            guardar_config({_balance.CLAVE_PROCESOS: lista})
+            self.log(f"Proceso agregado a la lista: {nuevo}")
+        self.cb_proceso.config(values=_balance.procesos_de(self.cfg)
+                               + [_balance.OPCION_AGREGAR_PROCESO])
+        self.var_sel_proceso.set(nuevo)
+
+    def _usar_carpeta(self, ruta):
+        """Pasa a trabajar sobre esa carpeta como la del balance de las
+        casillas: la anota como la de ese balance, la guarda y relee."""
+        ruta = str(ruta)
+        aamm, proceso, nombre = self._seleccion()
+        clave = _balance.clave_balance(aamm, proceso)
+        carpetas = _balance.carpetas_con(self.cfg, clave, ruta)
+        cambios = {"carpeta_base": ruta, "proceso": proceso,
+                   _balance.CLAVE_CARPETAS: carpetas}
+        self.cfg.update(cambios)
+        guardar_config(cambios)
+        self.var_base.set(ruta)
+        self.var_aamm.set(aamm)
+        self.var_proceso.set(proceso)
+        self.log("=" * 96)
+        self.log(f"Balance {nombre}: {ruta}")
+        texto, hay = self._mostrar_cambio_hora()
+        if hay:
+            self.log(f"  {texto}")
+        self._actualizar_bloqueo()
+        self.actualizar()
+        self._refrescar_balance()
+        # Si los archivos de esa carpeta son de otro mes, actualizar() lo
+        # detecta y deja el mes real: se avisa.
+        real = self.var_aamm.get().strip()
+        if real and real != aamm:
+            messagebox.showwarning(
+                "El mes no coincide",
+                f"Elegiste {nombre}, pero los archivos de esa carpeta son del "
+                f"mes {real}.\n\nLa ventana quedó en {real}.")
+
+    def examinar(self):
+        """Elige la carpeta 02 CASO RELIQUIDACION del balance de las casillas.
+        Si esa carpeta ya era la de otro balance se pregunta: una carpeta es
+        de un solo balance."""
+        if self.trabajando:
+            return
+        aamm, proceso, nombre = self._seleccion()
+        if not aamm or not proceso:
+            messagebox.showwarning("Falta el balance", "Elige el año, el mes y el proceso.")
+            return
+        ini = _balance.carpeta_del_balance(self.cfg, aamm, proceso) or self.var_base.get()
+        if not ini or not Path(ini).is_dir():
+            ini = ""
+        r = filedialog.askdirectory(
+            title=f"Carpeta 02 CASO RELIQUIDACION del balance {nombre}", initialdir=ini)
+        if not r:
+            return
+        duena = _balance.balance_de_la_carpeta(self.cfg, r)
+        clave = _balance.clave_balance(aamm, proceso)
+        if duena and duena != clave and not messagebox.askyesno(
+                "Carpeta de otro balance",
+                f"{r}\n\nya es la carpeta de {_balance.nombre_de_clave(duena)}.\n\n"
+                f"¿Pasa a ser la de {nombre}? (cada balance tiene su propia carpeta: "
+                f"{_balance.nombre_de_clave(duena)} queda sin carpeta)"):
+            return
+        self._usar_carpeta(r)
+
+    def ir_a_mes(self):
+        """«Ir a este balance»: abre la carpeta que ya tiene el balance elegido
+        en las casillas, con su estado guardado."""
+        if self.trabajando:
+            return
+        aamm, proceso, _ = self._seleccion()
+        ruta = _balance.carpeta_del_balance(self.cfg, aamm, proceso)
+        if not ruta:
+            self._refrescar_balance()
+            return
+        self._usar_carpeta(ruta)
+
+    def _actualizar_bloqueo(self):
+        """Lee CASO_BLOQUEADO.txt del caso abierto y pinta el boton."""
+        base = self.var_base.get()
+        hay_caso = bool(base) and Path(base).is_dir()
+        self.bloqueo = _balance.info_bloqueo(base) if hay_caso else None
+        if self.bloqueo is not None:
+            self.btn_bloqueo.config(text="Desbloquear caso", bg="#b00020", fg="white",
+                                    font=("Segoe UI", 9, "bold"))
+        else:
+            self.btn_bloqueo.config(text="Bloquear caso", bg=self._color_boton,
+                                    fg="black", font=("Segoe UI", 9))
+        self.btn_bloqueo.config(state="normal" if hay_caso and not self.trabajando
+                                else "disabled")
+
+    def avisar_si_bloqueado(self):
+        """True (y lo avisa) si el caso abierto esta bloqueado. Lo consultan
+        lanzar un actualizador, «Traer maestro» y exportar el CPRT; verificar
+        no, porque solo lee."""
+        self._actualizar_bloqueo()
+        if self.bloqueo is None:
+            return False
+        info = self.bloqueo
+        messagebox.showwarning(
+            "Caso bloqueado",
+            "Este caso está bloqueado: no se lanzan actualizadores, no se trae "
+            "ningún maestro ni se exporta el CPRT.\n\n"
+            + (f"Lo bloqueó {info['quien']} el {info['cuando']}.\n\n"
+               if info.get("quien") else "")
+            + "Si de verdad hay que correrlo, usa «Desbloquear caso» (arriba, "
+              "junto a Examinar).")
+        return True
+
+    def alternar_bloqueo(self):
+        """Bloquea o desbloquea el caso abierto (pregunta antes)."""
+        base = self.var_base.get()
+        if self.trabajando or not base or not Path(base).is_dir():
+            return
+        ano, mes = _balance.ano_mes_de(self.var_aamm.get())
+        nombre = (_balance.nombre_balance(ano, mes, self.var_proceso.get())
+                  or Path(base).name)
+        self._actualizar_bloqueo()
+        try:
+            if self.bloqueo is None:
+                if not messagebox.askyesno(
+                        "Bloquear caso",
+                        f"¿Bloquear {nombre}?\n\n{base}\n\nMientras esté bloqueado "
+                        "no se lanzan actualizadores, no se trae ningún maestro ni "
+                        "se exporta el CPRT (verificar sí se puede). Queda un "
+                        f"archivo {_balance.ARCHIVO_BLOQUEO} en la carpeta: lo ve "
+                        "cualquiera que la abra."):
+                    return
+                _balance.bloquear(base, quien=get_usuario())
+                self.log(f"Caso bloqueado: {nombre}")
+            else:
+                if not messagebox.askyesno(
+                        "Desbloquear caso",
+                        f"¿Desbloquear {nombre}?\n\n{base}\n\nSe van a poder volver "
+                        "a lanzar sus actualizadores y cambiar sus archivos.",
+                        icon="warning"):
+                    return
+                _balance.desbloquear(base)
+                self.log(f"Caso desbloqueado: {nombre}")
+        except OSError as e:
+            messagebox.showerror("No se pudo cambiar el bloqueo", str(e))
+        self._actualizar_bloqueo()
 
     def _abrir(self, nid):
         r = self.rutas.get(nid)
@@ -2158,18 +2449,6 @@ class Revisor:
             carp = resolver_carpeta(_base_de(base, nodo), nodo["carpeta"])
             if carp:
                 abrir_en_explorador(carp)
-
-    def examinar(self):
-        ini = self.cfg.get("carpeta_base", "")
-        ini = ini if ini and Path(ini).is_dir() else ""
-        r = filedialog.askdirectory(title="Selecciona la carpeta 02 CASO RELIQUIDACION",
-                                    initialdir=ini)
-        if r:
-            self.var_base.set(r)
-            self.cfg["carpeta_base"] = r
-            guardar_config({"carpeta_base": r})
-            self._color_base()
-            self.actualizar()
 
     def _fmt_tiempo(self, seg):
         m, s = divmod(int(seg), 60)
@@ -2187,6 +2466,14 @@ class Revisor:
         self.btn_todo.config(state=est)
         self.btn_cfg.config(state=est)
         self.chk_releer.config(state=est)
+        # El recuadro «Balance del caso»: no se cambia de caso a media corrida.
+        for b in (self.btn_ir_balance, self.btn_examinar_balance):
+            b.config(state=est)
+        if not on:
+            self._refrescar_balance()
+            self._actualizar_bloqueo()
+        else:
+            self.btn_bloqueo.config(state="disabled")
         for w in self.filas.values():
             if "btn_ver" in w:
                 w["btn_ver"].config(state=est)
@@ -2282,6 +2569,7 @@ class Revisor:
         else:
             aamm, det = detectar_aamm(self.rutas)
             manual = self.var_aamm.get().strip()
+            carpeta_del_mes = ""
             if aamm:
                 if manual and manual != aamm:
                     self.log(f"  OJO: el AAMM escrito ({manual}) no coincide con el "
@@ -2289,20 +2577,45 @@ class Revisor:
                 self.var_aamm.set(aamm)
                 self.var_aamm_info.set(f"detectado {det}")
                 # Se recuerda la carpeta de cada mes para poder volver a el despues.
+                # La carpeta del mes ANTES de anotar esta: con ella se decide si
+                # el balance hereda el estado viejo del mes (mas abajo).
+                carpeta_del_mes = (self.cfg.get("carpetas_por_mes") or {}).get(aamm, "")
                 carpetas = dict(self.cfg.get("carpetas_por_mes") or {})
                 carpetas[aamm] = str(base)
-                self.cfg["carpetas_por_mes"] = carpetas
-                self.cfg["ultimo_mes"] = aamm
-                guardar_config({"ultimo_mes": aamm, "carpetas_por_mes": carpetas})
+                cambios = {"ultimo_mes": aamm, "carpetas_por_mes": carpetas}
+                # Y la del balance (año_mes_proceso), que es la que usan las
+                # casillas de arriba. Ver revisor/balance.py.
+                if self.var_proceso.get():
+                    cambios[_balance.CLAVE_CARPETAS] = _balance.carpetas_con(
+                        self.cfg, _balance.clave_balance(aamm, self.var_proceso.get()),
+                        str(base))
+                self.cfg.update(cambios)
+                guardar_config(cambios)
             elif manual:
                 aamm = manual
                 self.var_aamm_info.set("escrito a mano (no se pudo detectar)")
             else:
                 self.var_aamm_info.set("no se pudo detectar: escríbelo a mano")
             if aamm:
-                habia = ESTADO.cargar(aamm)
-                CACHE.cargar(aamm)
-                self.log(f"  Mes {aamm} — estado en {dir_config_mes(aamm) / ARCHIVO_ESTADO}"
+                clave = _balance.clave_balance(aamm, self.var_proceso.get())
+                # El estado va por balance. Si esta carpeta ya era la del mes
+                # (de antes de que hubiera proceso), el balance arranca con una
+                # COPIA del estado del mes; lo del mes no se toca.
+                if (clave != aamm and carpeta_del_mes
+                        and _balance.misma_carpeta(carpeta_del_mes, base)):
+                    try:
+                        copiados = _balance.heredar_estado_del_mes(
+                            dir_config_mes, clave, [ARCHIVO_ESTADO, ARCHIVO_CACHE])
+                    except OSError as e:
+                        copiados = []
+                        self.log(f"  ! No se pudo copiar el estado del mes: {e}")
+                    if copiados:
+                        self.log(f"  Estado del mes {aamm} copiado a "
+                                 f"{dir_config_balance(clave)}: {', '.join(copiados)}")
+                habia = ESTADO.cargar(clave)
+                CACHE.cargar(clave)
+                self.log(f"  Balance {_balance.nombre_de_clave(clave)} — estado en "
+                         f"{dir_config_balance(clave) / ARCHIVO_ESTADO}"
                          + ("" if habia else "   (aún no existe, se crea al verificar)"))
             else:
                 ESTADO.cargar(None)
@@ -2392,6 +2705,8 @@ class Revisor:
 
     def _traer_maestro(self, nid):
         """Rehace esta copia a partir de su maestro."""
+        if self.avisar_si_bloqueado():
+            return
         nodo = NODO_POR_ID[nid]
         esp = nodo.get("espejo")
         if not esp:
@@ -2502,6 +2817,8 @@ class Revisor:
 
     def _exportar_cprt(self, nid="a_0_cuadros"):
         """Saca la hoja CPRT del cuadro cero a un .csv listo para mandar a pago."""
+        if self.avisar_si_bloqueado():
+            return
         # Se relee primero, por lo mismo que el boton de actualizar data: si
         # apareció una revisión nueva, la ruta en memoria es la vieja.
         if not self.actualizar(motivo="previo a exportar el CPRT",
@@ -2802,58 +3119,17 @@ class Revisor:
         if caducos:
             self.log(f"  Se volverá a leer ({len(caducos)}): " + ", ".join(caducos))
 
-    def ir_a_mes(self):
-        """Lleva TODA la ventana al mes escrito: cambia la carpeta del caso a la
-        que se usó ese mes, recarga el árbol y su estado guardado."""
-        aamm = self.var_aamm.get().strip()
-        if not re.fullmatch(r"\d{4}", aamm):
-            messagebox.showwarning("AAMM inválido",
-                                   "Escribe el mes con 4 dígitos, por ejemplo 2401.")
-            return
-        carpetas = self.cfg.get("carpetas_por_mes") or {}
-        destino = carpetas.get(aamm)
-
-        if not destino or not Path(destino).is_dir():
-            faltante = ("La carpeta que se usó ese mes ya no existe:\n" + destino
-                        if destino else
-                        f"Todavía no he visto el mes {aamm} en este equipo.")
-            if not messagebox.askyesno(
-                    f"Mes {aamm}",
-                    f"{faltante}\n\n¿Buscar ahora la carpeta 02 CASO RELIQUIDACION "
-                    f"del mes {aamm}?"):
-                return
-            r = filedialog.askdirectory(
-                title=f"Carpeta 02 CASO RELIQUIDACION del mes {aamm}",
-                initialdir=self.cfg.get("carpeta_base", ""))
-            if not r:
-                return
-            destino = r
-
-        self.var_base.set(destino)
-        self.cfg["carpeta_base"] = destino
-        guardar_config({"carpeta_base": destino})
-        self._color_base()
-        self.log("=" * 96)
-        self.log(f"Cambiando la ventana al mes {aamm}")
-        self.var_aamm.set(aamm)
-        self.actualizar()
-        # Si los archivos de esa carpeta son de otro mes, actualizar() lo detecta
-        # y avisa; el cuadro queda con el mes real.
-        real = self.var_aamm.get().strip()
-        if real != aamm:
-            messagebox.showwarning(
-                "El mes no coincide",
-                f"Pediste el mes {aamm}, pero los archivos de esa carpeta son "
-                f"del mes {real}.\n\nLa ventana quedó en {real}.")
-
     def reiniciar_mes(self):
-        """Borra el estado y los valores guardados de un mes, para partir limpio."""
+        """Borra el estado y los valores guardados del balance ABIERTO, para
+        partir limpio. Es por balance: el otro proceso del mes no se toca."""
         aamm = self.var_aamm.get().strip()
         if not re.fullmatch(r"\d{4}", aamm):
-            messagebox.showwarning("AAMM inválido",
-                                   "Escribe el mes con 4 dígitos, por ejemplo 2407.")
+            messagebox.showwarning("Sin balance abierto",
+                                   "Abre primero un balance (Ir a este balance o Examinar).")
             return
-        carpeta = dir_config_mes(aamm)
+        clave = self._clave_abierta()
+        carpeta = dir_config_balance(clave)
+        aamm = _balance.nombre_de_clave(clave)
         archivos = [carpeta / ARCHIVO_ESTADO, carpeta / ARCHIVO_CACHE]
         existen = [a for a in archivos if a.exists()]
         if not existen:
@@ -2877,8 +3153,8 @@ class Revisor:
                 borrados.append(a.name)
             except Exception as e:
                 fallidos.append(f"{a.name}: {e}")
-        ESTADO.cargar(aamm)
-        CACHE.cargar(aamm)
+        ESTADO.cargar(clave)
+        CACHE.cargar(clave)
         CACHE_COLUMNAS.clear()
         for w in self.filas.values():
             if "lbl_ver" in w:
@@ -3195,14 +3471,15 @@ class Revisor:
         self._ventana_texto(f"Detalle {vid} — {reg.get('resultado')}", out)
 
     def ver_estado_mes(self):
-        """Abre el estado guardado del AAMM escrito en el cuadro."""
-        aamm = self.var_aamm.get().strip()
-        if not re.fullmatch(r"\d{4}", aamm):
-            messagebox.showwarning("AAMM inválido",
-                                   "Escribe el mes con 4 dígitos, por ejemplo 2407.")
+        """Abre el estado guardado del balance elegido en las casillas."""
+        aamm, proceso, _ = self._seleccion()
+        if not aamm:
+            messagebox.showwarning("Falta el balance", "Elige el año y el mes.")
             return
-        carpeta = dir_config_mes(aamm)
-        data = leer_estado_mes(aamm)
+        clave = _balance.clave_balance(aamm, proceso)
+        carpeta = dir_config_balance(clave)
+        data = leer_estado_mes(clave)
+        aamm = _balance.nombre_de_clave(clave)
         if data is None:
             messagebox.showinfo(
                 "No existe",
@@ -3530,7 +3807,8 @@ def main():
     if agregadas:
         app.log(f"Embalses agregados desde el Revisor: {', '.join(agregadas)}")
     app.log("Revisor de entregables — CASO RELIQUIDACION (15 minutos)")
-    app.log("1) Examinar -> carpeta 02 CASO RELIQUIDACION   2) ACTUALIZAR   3) Verificar")
+    app.log("1) Elige Año _ Mes _ Proceso y «Ir a este balance» (o «Examinar» la carpeta "
+            "02 CASO RELIQUIDACION)   2) ACTUALIZAR   3) Verificar")
     app.log("Si a un verificador le falta saber la hoja/celda, usa «Configurar valores...»:")
     app.log("ahí eliges la hoja de una lista y escribes la celda o el rango a sumar.")
     legado = _sal.carpetas_legado(DIR_SALIDAS)

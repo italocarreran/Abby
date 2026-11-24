@@ -70,6 +70,32 @@
       `00 Entregables` que usa el Revisor (documento de dominio, sección 10).
 ---
 
+## 2026-11-24 — Claude — 15 min: recuadro «Balance del caso» como el del BESS
+
+La usuaria pidió que el principio de la ventana del Revisor 15 min (donde se
+ponía el AAMM) quede como el de la ventana del BESS
+(`Balance_SSCC/Balance_BESS.py`). Respuestas de la usuaria: casillas Año _
+Mes _ Proceso, un solo recuadro, aviso de cambio de hora y «Bloquear caso», y
+el estado de las verificaciones separado por proceso.
+
+- Nuevos `revisor/balance.py` (lógica sin tkinter) y `revisor/cambio_hora.py`
+  (copiado del BESS). Detalle en `MAPA.md`.
+- El Revisor: `_armar_balance` y sus métodos; `examinar` e `ir_a_mes` ahora
+  son «Examinar» e «Ir a este balance» del balance de las casillas;
+  `dir_config_balance`; `actualizar()` carga el estado por balance;
+  «Reiniciar este balance» y «Ver estado guardado» por balance; bloqueo en
+  `_traer_maestro`, `_exportar_cprt` y `lanzamiento.lanzar_actualizador`.
+- Probado en este contenedor con tkinter bajo xvfb, sobre una copia del repo y
+  carpetas de prueba: capturas del recuadro, cambio de proceso, estado viejo
+  del mes copiado a `01 Enero/Definitivo/`, Preliminar con estado propio,
+  bloqueo frenando «Traer maestro» y un actualizador, vuelta al Definitivo.
+- **Pendiente:** probarlo en Windows con los casos reales. Decisiones mías
+  sin confirmar: el año arranca en 2025 (como el BESS, más los años ya
+  recordados); con el caso bloqueado se puede verificar; el traspaso sigue en
+  la carpeta del mes. La versión horaria no se tocó.
+
+---
+
 ## 2026-11-23 — Claude — 15 min: V15 con C.Frec = SC_SSCC, y el total de RESUMEN corregido
 
 La usuaria respondió lo pendiente de la entrada de abajo: el CO está en

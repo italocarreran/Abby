@@ -714,6 +714,46 @@ y el paquete `revisor/`, salvo lo indicado).
   `cache_directorios` es una clase, no una función: al salir deja
   `self.stats = (scans, hits)` para poder decir en la bitácora cuánto se ahorró.
 
+### `Revisor_Relq_15min/revisor/balance.py` — el balance del caso (2026-11-24)
+
+- **Qué hace:** la lógica del recuadro «Balance del caso» del Revisor 15 min,
+  copiado de la ventana del BESS (`Balance_SSCC/Balance_BESS.py`) a pedido de
+  la usuaria: casillas **Año _ Mes _ Proceso** («2026_Enero_Definitivo»),
+  nombre y ruta del balance (clic abre la carpeta), «Ir a este balance» (azul
+  si ya tiene carpeta, bloqueado si no), «Examinar» (rojo si falta),
+  «Bloquear caso», «Ver estado guardado», «Reiniciar este balance», el aviso
+  de cambio de hora y la línea «Salidas». Reemplaza los recuadros «Carpeta 02
+  CASO RELIQUIDACION» y «Mes reliquidado (AAMM)». Sin tkinter: la ventana
+  vive en `Revisor._armar_balance` y sus métodos.
+- **Una carpeta por balance:** `carpetas_por_balance`
+  (`{"2601_Definitivo": ruta}`) en la sección `modo_15min`; una carpeta es de
+  un solo balance. `carpetas_por_mes` y `ultimo_mes` se siguen escribiendo; una
+  carpeta anotada solo por mes sirve para el proceso que dice su nombre (o el
+  de la carpeta de arriba). Procesos: Preliminar y Definitivo fijos, los demás
+  con «+ Agregar otro...» (clave `procesos`). El proceso abierto va en
+  `proceso`.
+- **Estado por balance:** `dir_config_balance(clave)` del Revisor =
+  `__config__/AAAA/MM Mes/<Proceso>/` (sin proceso, la del mes, como antes).
+  `Estado` y `CacheValores` reciben esa función, así que `revisor/estado.py`
+  no cambió; su `aamm` ahora es la clave del balance. La primera vez que un
+  balance abre la carpeta que ese mes ya tenía en `carpetas_por_mes`, se
+  **copia** el estado del mes a su carpeta (`heredar_estado_del_mes`); lo del
+  mes no se toca. El `_traspaso_actualizador.json` sigue en la carpeta del mes.
+- **Bloqueo:** `CASO_BLOQUEADO.txt` en la carpeta del caso (quién, cuándo).
+  Con el caso bloqueado no se lanzan actualizadores (`lanzamiento.py` llama a
+  `avisar_si_bloqueado`), no se trae ningún maestro ni se exporta el CPRT;
+  verificar sí, porque solo lee.
+- **Pruebas:** `revisor/test_balance.py`.
+
+### `Revisor_Relq_15min/revisor/cambio_hora.py` — cambio de hora del mes (2026-11-24)
+
+- Copia de `Balance_SSCC/Script/nucleo/cambio_hora.py`, sin
+  `hora_mes_correlativa` (pandas). Detecta los cambios con la zona
+  `America/Santiago`; sin `tzdata` usa la regla de abril/septiembre.
+  `describir_periodo(aamm)` es el texto del aviso (rojo si hay cambio) y suma
+  `bloques_del_mes(aamm)`: 96 por día, ±4 por hora saltada o repetida (2976
+  en un mes de 31 días; 2884 en abril de 2026; 2876 en septiembre).
+
 ### `Revisor_Relq_15min/actualizadores/Actualiza_Sobrecostos.py` — Cálculo_SobrecostosSSCC aparte (2026-10-30)
 
 - **Qué hace:** la ventana propia del maestro `01 Sobrecostos/Cálculo_
